@@ -39,6 +39,12 @@ Aurora team, so these are overridden:
   global *Safety* rule, which names this repo), and no `Co-Authored-By` or
   `Session:` trailer on upstream PR branches. The draft-first gate above still
   holds. Commits on `circuskid` follow our usual trailers.
+- 🔴 **Their PR-shape rules DO bind our PRs**, because the maintainer reviews
+  against them: a TASKS.md line we add names its issue, then its PR
+  (`#n` then `PR #m`, each linked, as its neighbours do; AGENTS.md §9), plus the PR template
+  and `Closes`/`Refs`. Get them right before the first push: a fix pushed after
+  review re-runs first-contributor CI, which waits for maintainer approval
+  (missed on #1332, 2026-10-28).
 - Their reference sources: `../phoenix-firestorm` = `~/Projects/phoenix-firestorm`,
   a `--depth 1` clone, read-only, not one of our projects. Refresh it with
   `git -C ~/Projects/phoenix-firestorm pull --depth 1`.
