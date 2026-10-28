@@ -1,5 +1,6 @@
 // Motion vectors of the avatars for DLSS (dlss.rs), concatenated after
 // common.wgsl, object.wgsl and env.wgsl. The opaque draws of the frame again,
+// and the blended faces of rigged meshes that wrote the depth (hair, lashes),
 // over the camera's motion (dlss_motion.wgsl): a rigged mesh or a worn prim
 // placed this frame as the depth prepass placed it, and as last frame's
 // palettes (a copy kept at the end of each frame) placed it. Only where it is

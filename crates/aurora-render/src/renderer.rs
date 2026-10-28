@@ -7389,7 +7389,10 @@ impl Backend {
                     &scene.palettes,
                     &mut |pass: &mut wgpu::RenderPass| {
                         bind_mesh(pass, &self.groups.a);
-                        for r in [rg.opaque, rg.opaque_2s, rg.mask, rg.mask_2s] {
+                        // with the blended faces of rigged meshes (hair,
+                        // lashes, alpha layers): they wrote the scene depth
+                        // in pass B, so their pixels match only them
+                        for r in [rg.opaque, rg.opaque_2s, rg.mask, rg.mask_2s, (b0, n_depth)] {
                             if r.1 > 0 {
                                 pass.multi_draw_indexed_indirect(&self.indirect, r.0, r.1);
                             }
