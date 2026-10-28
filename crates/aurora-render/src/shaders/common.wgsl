@@ -349,6 +349,12 @@ fn sample_tex(idx: u32, uv: vec2<f32>) -> vec4<f32> {
     return textureSampleBias(tex_pages[loc >> 16u], tex_sampler, uv, loc & 0xffffu, frame.contact.z);
 }
 
+// sample_tex without the bias, for the shadow pass (no frame group)
+fn sample_tex_unbiased(idx: u32, uv: vec2<f32>) -> vec4<f32> {
+    let loc = tex_loc[idx];
+    return textureSample(tex_pages[loc >> 16u], tex_sampler, uv, loc & 0xffffu);
+}
+
 fn sample_tex_level(idx: u32, uv: vec2<f32>, lod: f32) -> vec4<f32> {
     let loc = tex_loc[idx];
     return textureSampleLevel(tex_pages[loc >> 16u], tex_sampler, uv, loc & 0xffffu, lod);
