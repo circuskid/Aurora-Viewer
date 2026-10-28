@@ -108,6 +108,10 @@ libmimalloc-sys = "=0.1.47"
 
 # remembered login password and the GitHub authorization of crash reports
 # (Windows Credential Manager, macOS Keychain, Secret Service on Linux)
+[features]
+# local DLSS experiment (aurora-render/src/dlss.rs)
+dlss = ["aurora-render/dlss"]
+
 [dependencies.keyring]
 version = "4"
 

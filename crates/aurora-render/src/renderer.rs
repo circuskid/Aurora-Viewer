@@ -1458,6 +1458,9 @@ pub(crate) struct Backend {
     rlva_overlays: Option<crate::rlva::overlay::Overlays>,
     rlva_resolution_divisor: u32,
     rlva_scaled: Option<crate::rlva::resolution::Scaled>,
+    /// DLSS super resolution (local experiment, dlss.rs): the world at its
+    /// render size, upscaled into the window in place of `rlva_scaled`
+    dlss: Option<crate::dlss::Dlss>,
     smaa: Smaa,
     smaa_targets: Option<SmaaTargets>,
     targets: Targets,
@@ -2775,6 +2778,7 @@ impl Backend {
         });
         let egui = egui_wgpu::Renderer::new(&device, format, egui_wgpu::RendererOptions::default());
         let timer = timestamps.then(|| GpuTimer::new(&device, &queue));
+        let dlss = crate::dlss::Dlss::new(&device, &adapter, format);
 
         let mut r = Backend {
             device,
@@ -2835,6 +2839,7 @@ impl Backend {
             rlva_overlays: None,
             rlva_resolution_divisor: 1,
             rlva_scaled: None,
+            dlss,
             smaa,
             smaa_targets: None,
             targets,
@@ -4296,7 +4301,17 @@ impl Backend {
     fn rebuild_targets(&mut self) {
         self.occlusion.invalidate();
         self.depth_pick.scene_changed();
-        let size = crate::rlva::resolution::size((self.config.width, self.config.height), self.rlva_resolution_divisor);
+        let window = (self.config.width, self.config.height);
+        let mut size = crate::rlva::resolution::size(window, self.rlva_resolution_divisor);
+        // (a photo frame is drawn at its own size, without DLSS)
+        if let Some(dlss) = &mut self.dlss
+            && self.snapshot_window.is_none()
+        {
+            match dlss.prepare(&self.device, &self.queue, window) {
+                Some(render) => size = render,
+                None => self.dlss = None,
+            }
+        }
         self.targets = Self::make_targets(
             &self.device,
             &self.post_layout,
@@ -4886,6 +4901,19 @@ impl Backend {
             self.rlva_resolution_divisor = params.rlva_resolution_divisor;
             self.rebuild_targets();
         }
+        // DLSS draws the world at its own size and is its own anti-aliasing
+        let mut settings = settings;
+        if let Some(dlss) = &mut self.dlss {
+            settings.aa = AntiAliasing::None;
+            match dlss.prepare(&self.device, &self.queue, (self.config.width, self.config.height)) {
+                Some(render) if render != self.scene_size() => self.rebuild_targets(),
+                Some(_) => {}
+                None => {
+                    self.dlss = None;
+                    self.rebuild_targets();
+                }
+            }
+        }
         stats.present_mode = Some(self.config.present_mode);
         if settings != self.settings {
             self.apply_settings(settings);
@@ -5058,6 +5086,17 @@ impl Backend {
             );
             let mut j = f.clone();
             j.proj = Mat4::from_translation(Vec3::new(jx, jy, 0.0)) * f.proj;
+            jittered = j;
+            &jittered
+        } else if let Some(dlss) = self.dlss.as_ref().filter(|_| snapshot.is_none()) {
+            // DLSS's jitter, in render pixels (y down), as TAA's above
+            let [hx, hy] = dlss.jitter();
+            depth_jitter = glam::Vec2::new(
+                hx * self.config.width as f32 / world_size.0 as f32,
+                hy * self.config.height as f32 / world_size.1 as f32,
+            );
+            let mut j = f.clone();
+            j.proj = Mat4::from_translation(Vec3::new(2.0 * hx / world_size.0 as f32, -2.0 * hy / world_size.1 as f32, 0.0)) * f.proj;
             jittered = j;
             &jittered
         } else {
@@ -7149,6 +7188,11 @@ impl Backend {
                 }
             }
         }
+        let dlss_cams = crate::dlss::Cameras {
+            view_proj: fu.proj * fu.view,
+            unjittered: unjittered_vp,
+            prev: self.prev_view_proj.unwrap_or(unjittered_vp),
+        };
         self.prev_view_proj = Some(unjittered_vp);
         self.last_inv_vp = unjittered_vp.inverse();
 
@@ -7189,7 +7233,8 @@ impl Backend {
         mark(&mut encoder, MARK_BLOOM_END);
 
         let draw_huds = lists.hud_view.is_some() && self.hud_depth.is_some() && snapshot.is_none_or(|s| s.huds);
-        if world_size != (self.config.width, self.config.height) {
+        let dlss_on = self.dlss.is_some() && snapshot.is_none();
+        if world_size != (self.config.width, self.config.height) || dlss_on {
             if self.rlva_scaled.as_ref().is_none_or(|scaled| scaled.size() != world_size) {
                 self.rlva_scaled = Some(crate::rlva::resolution::Scaled::new(&self.device, self.config.format, world_size));
             }
@@ -7299,8 +7344,24 @@ impl Backend {
             );
             calls.set(calls.get() + passes as u32);
         }
+        // DLSS's command buffer runs between the two halves of the post
+        // encoder (dlss.rs)
+        let mut dlss_cmds = None;
         if let Some(scaled) = &self.rlva_scaled {
-            scaled.encode(&mut encoder, &surface_view);
+            if let Some(dlss) = self.dlss.as_mut().filter(|_| dlss_on) {
+                dlss_cmds = dlss.encode(
+                    &self.device,
+                    &self.queue,
+                    &mut encoder,
+                    &scaled.view,
+                    &self.targets.depth_ss,
+                    &dlss_cams,
+                    &surface_view,
+                );
+            }
+            if dlss_cmds.is_none() {
+                scaled.encode(&mut encoder, &surface_view);
+            }
             calls.set(calls.get() + 1);
         }
 
@@ -7542,7 +7603,11 @@ impl Backend {
         // frame of a second)
         let (pre, post, scene) = self.finishers.pair(enc_pre, encoder, move || enc_scene.finish());
         match (pre, post) {
-            (Some(pre), Some(post)) => extra_cmds.extend([pre, scene, post]),
+            (Some(pre), Some(post)) => {
+                extra_cmds.extend([pre, scene]);
+                extra_cmds.extend(dlss_cmds.into_iter().flatten());
+                extra_cmds.push(post);
+            }
             _ => {
                 log::error!("render: a command encoder thread panicked");
                 let spent = Spent { writes, lists: draw_lists };

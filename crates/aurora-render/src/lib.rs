@@ -13,6 +13,7 @@ mod contact_shadows;
 mod cutout;
 mod dedicated;
 mod device_lost;
+mod dlss;
 mod dof;
 mod drawn_pick;
 mod exposure;

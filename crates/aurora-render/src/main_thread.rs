@@ -247,7 +247,8 @@ impl Renderer {
             };
             desc
         };
-        let mut instance = wgpu::Instance::new(desc());
+        // (DLSS, a local experiment: its NGX extensions, when asked for)
+        let mut instance = crate::dlss::instance(&desc()).unwrap_or_else(|| wgpu::Instance::new(desc()));
         // ---- the GPU: every adapter listed, then tried in our order
         // (adapter_choice.rs), the next one if one fails to open
         let mut adapters = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::VULKAN));
@@ -1379,15 +1380,18 @@ fn open_device(adapter: &wgpu::Adapter) -> Result<OpenedDevice, RenderError> {
         .max_binding_array_elements_per_shader_stage
         .min(alim.max_sampled_textures_per_shader_stage.saturating_sub(17))
         .clamp(64, 16384);
-    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+    let desc = wgpu::DeviceDescriptor {
         label: Some("aurora"),
         required_features: features,
         required_limits: alim.clone(),
         experimental_features: wgpu::ExperimentalFeatures::disabled(),
         memory_hints: wgpu::MemoryHints::Performance,
         trace: wgpu::Trace::Off,
-    }))
-    .map_err(|e| RenderError::Device(e.to_string()))?;
+    };
+    let (device, queue) = match crate::dlss::request_device(adapter, &desc, alim.clone()) {
+        Some(opened) => opened.map_err(RenderError::Device)?,
+        None => pollster::block_on(adapter.request_device(&desc)).map_err(|e| RenderError::Device(e.to_string()))?,
+    };
     Ok(OpenedDevice {
         device,
         queue,

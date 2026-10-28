@@ -17,11 +17,16 @@ parking_lot = "0.12.5"
 pollster = "1.0.1"
 thiserror = "2.0.21"
 uuid = "1.27.0"
+# local DLSS experiment only: never in a published build (dlss.rs)
+dlss_wgpu = { version = "6.0.0", optional = true }
 # counters: bytes of the live textures and buffers, for the memory budget (vram.rs)
 wgpu = { version = "30.0.1", features = ["counters"] }
 ash = "0.38"
 bcdec_rs = "0.2.0"
 intel_tex_2 = "0.5.0"
+
+[features]
+dlss = ["dep:dlss_wgpu"]
 
 [target.'cfg(windows)'.dependencies]
 # CPU time of a thread, for the profile (thread_cpu.rs)
