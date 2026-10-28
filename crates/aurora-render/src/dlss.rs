@@ -98,7 +98,7 @@ mod imp {
         })
     }
 
-    /// The jitter's sign given to DLSS; `AURORA_DLSS_JITTER=x|y|xy|none`
+    /// The jitter's sign given to DLSS; `AURORA_DLSS_JITTER=x|y|xy`
     /// flips the axes named, to debug it (static scenes must resolve sharp).
     fn sign() -> [f32; 2] {
         static SIGN: std::sync::OnceLock<[f32; 2]> = std::sync::OnceLock::new();
@@ -109,6 +109,13 @@ mod imp {
                 if flip.contains('y') { 1.0 } else { -1.0 },
             ]
         })
+    }
+
+    /// `AURORA_DLSS_JITTER=off`: no jitter at all, to debug it (DLSS then
+    /// only upscales, and still edges stay aliased).
+    fn no_jitter() -> bool {
+        static OFF: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        *OFF.get_or_init(|| std::env::var("AURORA_DLSS_JITTER").is_ok_and(|v| v == "off"))
     }
 
     /// A Vulkan instance with the NGX extensions, when DLSS is wanted.
@@ -394,6 +401,7 @@ mod imp {
         pub fn jitter(&self) -> [f32; 2] {
             self.context
                 .as_ref()
+                .filter(|_| !no_jitter())
                 .map_or([0.0; 2], |c| c.suggested_jitter(self.frame, [self.render.0, self.render.1]))
         }
 
@@ -544,7 +552,11 @@ mod imp {
             }
             // this frame's poses are next frame's last
             encoder.copy_buffer_to_buffer(palettes, 0, prev_palettes, 0, palettes.size());
-            let jitter = context.suggested_jitter(self.frame, [self.render.0, self.render.1]);
+            let jitter = if no_jitter() {
+                [0.0; 2]
+            } else {
+                context.suggested_jitter(self.frame, [self.render.0, self.render.1])
+            };
             let params = DlssSuperResolutionRenderParameters {
                 color,
                 depth,
