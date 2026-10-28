@@ -14,7 +14,9 @@ minimized window, so it is never sent on Wayland, where winit's request is
 an xdg_activation that made Hyprland switch workspace and steal focus.
 Upstream issue Aurora-Viewer/Aurora-Viewer#1330, PR Aurora-Viewer/Aurora-Viewer#1332
 (branch `fix/wayland-attention-focus`, head d7c4ad3b). Released as tag
-`v0.8.2.1793212147` (pkgbuilds d66c37c), not built with makepkg here.
+`v0.8.2.1793212147` (pkgbuilds d66c37c), built by `circuskid-repo update`
+and installed on this host 2026-10-28 (aurora-viewer is now in
+`~/.config/circuskid-repo/packages`, so `paru` picks up later releases).
 
 ### FIRST — the two-minute check
 
