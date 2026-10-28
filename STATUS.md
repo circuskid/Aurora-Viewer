@@ -26,10 +26,9 @@ how far behind upstream we are (0 = current; upstream merges many PRs a day).
 
 ### THEN — what is owed
 
-1. **PR #1332**: the maintainer reviewed it (⚠️ verdict only because CI had
-   not run; X11 minimized-only change accepted as intended). CI on 5dad5d2a
-   was green; the run on d7c4ad3b (TASKS.md nit only) waits for her approval.
-   We never merge it. When upstream merges it, merge `upstream/main` into
+1. **PR #1332**: maintainer review ✅ ready to merge on d7c4ad3b, CI green
+   (2026-10-28; X11 minimized-only change accepted as intended). Nothing
+   owed from us; the merge is hers. We never merge it. When upstream merges it, merge `upstream/main` into
    `circuskid`, check `gh workflow list -R circuskid/Aurora-Viewer --all`,
    close our #1, and end the worktree.
 2. A rejected alternative, in case review reopens it: skip the flash only on
