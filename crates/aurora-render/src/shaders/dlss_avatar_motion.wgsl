@@ -11,7 +11,7 @@ struct AvatarMotion {
     // relative to this frame's eye
     prev_eye_view_proj: mat4x4<f32>,
     eye_view_proj: mat4x4<f32>,
-    size: vec4<f32>,
+    size: vec4<f32>, // render size, z: coverage debug
 };
 @group(3) @binding(10) var<uniform> avatar_motion: AvatarMotion;
 @group(3) @binding(11) var<storage, read> prev_palettes: array<mat4x4<f32>>;
@@ -78,6 +78,10 @@ fn fs_avatar_motion(in: AvatarMotionOut) -> @location(0) vec4<f32> {
     let d = textureLoad(avatar_motion_depth, vec2<i32>(in.clip.xy), 0);
     if (abs(in.clip.z - d) > max(d, in.clip.z) * 1e-4 || abs(in.prev.w) < 1e-12 || abs(in.cur.w) < 1e-12) {
         discard;
+    }
+    // size.z: AURORA_DLSS_DEBUG=coverage, the pixels written at full motion
+    if (avatar_motion.size.z > 0.5) {
+        return vec4<f32>(1.0, 1.0, 0.0, 0.0);
     }
     return vec4<f32>(avatar_motion_pixel(in.prev) - avatar_motion_pixel(in.cur), 0.0, 0.0);
 }

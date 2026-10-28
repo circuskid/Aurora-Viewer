@@ -72,6 +72,17 @@ mod imp {
         })
     }
 
+    /// `AURORA_DLSS_DEBUG=motion`: the motion vectors shown instead of
+    /// DLSS's image; `coverage`: the same, the avatars' pixels at full motion.
+    fn debug() -> u32 {
+        static DEBUG: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
+        *DEBUG.get_or_init(|| match std::env::var("AURORA_DLSS_DEBUG").as_deref() {
+            Ok("motion") => 1,
+            Ok("coverage") => 2,
+            _ => 0,
+        })
+    }
+
     /// The jitter's sign given to DLSS; `AURORA_DLSS_JITTER=x|y|xy|none`
     /// flips the axes named, to debug it (static scenes must resolve sharp).
     fn sign() -> [f32; 2] {
@@ -140,6 +151,8 @@ mod imp {
         /// last frame's joint palettes (a copy at the end of each frame)
         prev_palettes: Option<wgpu::Buffer>,
         blit: wgpu::RenderPipeline,
+        /// AURORA_DLSS_DEBUG's view, and its group on the motion vectors
+        debug_view: Option<(wgpu::RenderPipeline, Option<wgpu::BindGroup>)>,
         frame: u32,
         reset: bool,
     }
@@ -167,6 +180,13 @@ mod imp {
                 source: wgpu::ShaderSource::Wgsl(include_str!("shaders/rlva_resolution.wgsl").into()),
             });
             let blit = fullscreen(device, "DLSS output", &blit_shader, surface_format);
+            let debug_view = (debug() > 0).then(|| {
+                let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("DLSS debug"),
+                    source: wgpu::ShaderSource::Wgsl(include_str!("shaders/dlss_debug.wgsl").into()),
+                });
+                (fullscreen(device, "DLSS debug", &shader, surface_format), None)
+            });
             let motion_uniforms = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("DLSS motion vectors"),
                 size: 208,
@@ -196,6 +216,7 @@ mod imp {
                 avatar_uniforms,
                 prev_palettes: None,
                 blit,
+                debug_view,
                 frame: 0,
                 reset: true,
             })
@@ -257,7 +278,7 @@ mod imp {
                 }],
             });
             self.output = Some((tex, view, group));
-            self.motion = Some(crate::renderer::make_view(
+            let motion = crate::renderer::make_view(
                 device,
                 "DLSS motion vectors",
                 self.render.0,
@@ -265,7 +286,18 @@ mod imp {
                 MOTION_FORMAT,
                 1,
                 wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            ));
+            );
+            if let Some((pipeline, group)) = &mut self.debug_view {
+                *group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("DLSS debug"),
+                    layout: &pipeline.get_bind_group_layout(0),
+                    entries: &[wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&motion.1),
+                    }],
+                }));
+            }
+            self.motion = Some(motion);
             self.reset = true;
             log::info!("DLSS: {}x{} drawn, {}x{} shown", self.render.0, self.render.1, window.0, window.1);
             Some(self.render)
@@ -282,7 +314,12 @@ mod imp {
         /// Texture LOD bias while DLSS runs: textures picked for the
         /// window's pixels, not the smaller drawn ones (NVIDIA's suggested
         /// log2(render / window) - 1).
+        /// `AURORA_DLSS_MIP_BIAS=<n>` replaces it, to compare.
         pub fn mip_bias(&self) -> f32 {
+            static FORCED: std::sync::OnceLock<Option<f32>> = std::sync::OnceLock::new();
+            if let Some(bias) = *FORCED.get_or_init(|| std::env::var("AURORA_DLSS_MIP_BIAS").ok()?.trim().parse().ok()) {
+                return bias;
+            }
             self.context
                 .as_ref()
                 .map_or(0.0, |c| c.suggested_mip_bias([self.render.0, self.render.1]))
@@ -350,6 +387,7 @@ mod imp {
             a[16..32].copy_from_slice(&cams.eye_vp.to_cols_array());
             a[32] = self.render.0 as f32;
             a[33] = self.render.1 as f32;
+            a[34] = if debug() == 2 { 1.0 } else { 0.0 };
             queue.write_buffer(&self.avatar_uniforms, 0, bytemuck::cast_slice(&a));
             let avatar_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("DLSS avatar motion"),
@@ -438,8 +476,16 @@ mod imp {
                     })],
                     ..Default::default()
                 });
-                pass.set_pipeline(&self.blit);
-                pass.set_bind_group(0, out_group, &[]);
+                match &self.debug_view {
+                    Some((pipeline, Some(group))) => {
+                        pass.set_pipeline(pipeline);
+                        pass.set_bind_group(0, group, &[]);
+                    }
+                    _ => {
+                        pass.set_pipeline(&self.blit);
+                        pass.set_bind_group(0, out_group, &[]);
+                    }
+                }
                 pass.draw(0..3, 0..1);
             }
             Some([first.finish(), dlss])
