@@ -85,6 +85,7 @@ pub mod sound_parcels;
 pub mod staff;
 pub mod status;
 pub mod teleport_invites;
+pub mod temp_attachments;
 pub mod terrain;
 pub mod tphistory;
 pub mod transcripts;
@@ -242,6 +243,8 @@ pub struct World {
     pub hud_zoom: f32,
     pub hud_scales: hud_scale::HudScales,
     pub hud_locks: hud_lock::HudLocks,
+    /// Names of our temporary attachments (temp_attachments.rs).
+    pub temp_attachment_names: temp_attachments::TempAttachmentNames,
     pub hover_height: hover_height::HoverHeight,
     /// The favourites in the account's order (`favorites.rs`).
     pub favorites: favorites::Favorites,
@@ -596,6 +599,7 @@ impl World {
             hud_zoom: 1.0,
             hud_scales: Default::default(),
             hud_locks: Default::default(),
+            temp_attachment_names: Default::default(),
             hover_height: Default::default(),
             favorites: Default::default(),
             notification_history: Default::default(),
@@ -1541,6 +1545,7 @@ impl World {
                 if let Some(f) = self.social.friends.iter_mut().find(|f| f.id == *friend) {
                     f.rights_given = *rights;
                 }
+                self.status.rights_set_by_hand(*friend, *rights);
             }
             _ => {}
         }
@@ -1919,7 +1924,11 @@ impl World {
                 self.contact_sets = contact_sets::ContactSets::load(account.join(contact_sets::CONTACT_SETS_FILE));
                 self.groups.load_favorites(account.join(groups::FAVORITE_GROUPS_FILE));
                 self.group_data.load_read(account.join(group_data::NOTICES_READ_FILE));
-                self.status.invisible = status::Invisible::load(account.join(status::INVISIBLE_FILE), &self.social.friends);
+                self.status.invisible = status::Invisible::load(account.join(status::INVISIBLE_FILE));
+                let hidden = self.status.resume_invisible(&mut self.social, &mut self.groups.out);
+                if hidden > 0 {
+                    log::info!("invisible: hidden again from {hidden} friend(s) the login still showed us to");
+                }
                 let open = account.join(open_ims::FILE);
                 self.reopen_ims = open_ims::load(&open);
                 self.open_ims_path = Some(open);
@@ -2928,7 +2937,10 @@ impl World {
             NetEvent::Land(ev) => {
                 if let aurora_net::land::LandEvent::AttachmentScripts(result) = &ev {
                     match result {
-                        Ok((_, attachments)) => self.rlva_controller_resources(attachments),
+                        Ok((_, attachments)) => {
+                            self.temp_attachment_names.learn(attachments);
+                            self.rlva_controller_resources(attachments)
+                        }
                         Err(_) => self.rlva_controller_resources(&[]),
                     }
                 }
@@ -3446,7 +3458,7 @@ impl World {
         if self.receive_hand_contacts(&c, Instant::now()) {
             return;
         }
-        if self.script_debug.route(&c, self.agent_id) || self.anti_spam_chat(&c) {
+        if self.script_debug.route(&c, self.agent_id, Instant::now()) || self.anti_spam_chat(&c) {
             return;
         }
         let kind = match c.source_type {

@@ -614,6 +614,15 @@ pub struct Settings {
     /// off by default; Preferences > Chat). "/n" before the text works
     /// without it.
     pub show_chat_channel: bool,
+    /// Our own objects' script errors in the nearby chat, with a red
+    /// warning sign, instead of opening the Script debug window, which
+    /// still keeps them (ShowScriptErrorsLocation 0; on, the human's choice
+    /// for #1263, the window in the Legacy Viewer; Preferences > Chat).
+    pub script_errors_in_chat: bool,
+    /// They are also said on `script_errors_channel` (off; #1263, not in
+    /// the Legacy Viewer).
+    pub script_errors_to_channel: bool,
+    pub script_errors_channel: i32,
     /// What objects say in the nearby chat on one small row like the
     /// viewer's notices (#475, off by default; Preferences > Chat). Not in
     /// the Legacy Viewer.
@@ -815,6 +824,9 @@ pub struct Settings {
     /// Complete name plates for friends only: the others stop at the
     /// compact pill (off by default).
     pub plates_friends_only_full: bool,
+    /// A friend's name plate takes a light tint of the friends' color of
+    /// Preferences › Colors (on by default): friends stand out in a crowd.
+    pub plates_friend_tint: bool,
     /// A name plate under the pointer shows full while it stays there (on
     /// by default).
     pub plates_hover_expand: bool,
@@ -1231,7 +1243,7 @@ pub(crate) const TONEMAP_MIX: f32 = 0.7;
 /// an S32 of seconds).
 pub(crate) const GROUP_SNOOZE_MAX_MINUTES: u32 = i32::MAX as u32 / 60;
 
-const SETTINGS_VERSION: u32 = 26;
+const SETTINGS_VERSION: u32 = 27;
 
 /// `settings.json` from a newer build: the document, what this build loaded
 /// from it, and the top-level keys to leave as they were unless changed here
@@ -1258,8 +1270,9 @@ pub struct ColorSettings {
     // name tags
     /// Display names colored by who the avatar is to us (me, friend, Linden,
     /// blocked), on the plates and the classic tags; off, every name is in
-    /// the theme's ink (the human's choice, 2026-10-14). Firestorm always
-    /// colors them (LLVOAvatar::getNameTagColor).
+    /// the theme's ink. On by default since 2026-10-28 (the human's choice:
+    /// friends stand out in a crowd), as the Legacy Viewer always colors them
+    /// (LLVOAvatar::getNameTagColor).
     pub relation_names: bool,
     pub tag_me: Rgba,
     pub tag_friend: Rgba,
@@ -1312,7 +1325,7 @@ pub struct ColorSettings {
 impl Default for ColorSettings {
     fn default() -> Self {
         ColorSettings {
-            relation_names: false,
+            relation_names: true,
             tag_me: hex(0xFFFFFF),
             tag_friend: hex(0x818CF8),
             tag_muted: hex(0x6F7BA0),
@@ -1638,6 +1651,9 @@ impl Default for Settings {
             font_scale: 1.0,
             chat_timestamps: true,
             show_chat_channel: false,
+            script_errors_in_chat: true,
+            script_errors_to_channel: false,
+            script_errors_channel: 1,
             compact_automated_chat: false,
             compact_im_system_lines: false,
             chat_keep_focus: true,
@@ -1751,6 +1767,7 @@ impl Default for Settings {
             classic_controls: false,
             camera_shots: Vec::new(),
             plates_friends_only_full: false,
+            plates_friend_tint: true,
             plates_hover_expand: true,
             plates_jiggle: false,
             plates_click_combo: false,
@@ -2281,6 +2298,11 @@ impl Settings {
             // launch): now a choice, off, the window waits for the frame
             // rate's click
             self.show_perf = false;
+        }
+        if self.settings_version < 27 {
+            // names colored by relation are the default again: every earlier
+            // file wrote the former default, off
+            self.colors.relation_names = true;
         }
         if !self.audio.mic_gain.is_finite() {
             self.audio.mic_gain = 1.0;
@@ -3599,8 +3621,8 @@ mod tests {
     }
 
     #[test]
-    fn names_by_relation_stay_colored_for_classic_tag_users_only() {
-        assert!(!Settings::default().sanitized().colors.relation_names);
+    fn names_by_relation_are_colored_by_default_and_for_earlier_files() {
+        assert!(Settings::default().sanitized().colors.relation_names);
         // a file from before the switch has no such field
         for classic in [false, true] {
             let mut file = serde_json::to_value(Settings {
@@ -3611,12 +3633,19 @@ mod tests {
             .expect("synthetic saved settings");
             file["colors"].as_object_mut().expect("colors").remove("relation_names");
             let old: Settings = serde_json::from_value(file).expect("read synthetic settings");
-            assert_eq!(old.sanitized().colors.relation_names, classic);
+            assert!(old.sanitized().colors.relation_names);
         }
-        // changed after the migration: kept
-        let mut on = Settings::default();
-        on.colors.relation_names = true;
-        assert!(on.sanitized().colors.relation_names);
+        // a file that wrote the former default, off
+        let mut off = Settings {
+            settings_version: 26,
+            ..Settings::default()
+        };
+        off.colors.relation_names = false;
+        assert!(off.sanitized().colors.relation_names);
+        // switched off after the migration: kept
+        let mut off = Settings::default();
+        off.colors.relation_names = false;
+        assert!(!off.sanitized().colors.relation_names);
     }
 
     #[test]

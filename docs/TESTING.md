@@ -2127,7 +2127,7 @@ Drop, particle filters) is `AURORA_DEMO_WORN=menu`.
 | Variable | Effect |
 |---|---|
 | `AURORA_DEMO_HUDS=<mode>` | Worn HUDs: display, touch, move, edit |
-| `AURORA_DEMO_WORN=<mode>` | Object worn on the body: menus, Edit, Inspect, inventory double-clicks, pause while edited, temporary detach |
+| `AURORA_DEMO_WORN=<mode>` | Object worn on the body: menus, Edit, Inspect, inventory double-clicks, pause while edited, temporary detach, temporary attachments in Appearance |
 
 ### Details
 
@@ -2220,13 +2220,21 @@ The lock applies to the whole linkset, survives reattachment/relogin for
 ordinary inventory HUDs, and is stored per account in `hud_locks.json`.
 Temporary attachments without a stable inventory item keep an instance lock.
 
-**`AURORA_DEMO_WORN=1|menu|edit|move|freeze|inspect|inventory|library|sound|temporary-detach|temporary-drop`** — our avatar wears on its
+**`AURORA_DEMO_WORN=1|menu|edit|move|freeze|inspect|inventory|library|sound|temporary|temporary-detach|temporary-drop`** — our avatar wears on its
 back (Spine point) a two-prim object, touchable, modifiable, linked to an
 inventory item ("Demo backpack", in the current outfit). No
 access to a grid.
 
 - `1`: worn object only, to test by hand the right click on the object,
   in the inventory and in Appearance › Current outfit.
+- `temporary`: at frame 600 an experience attaches a temporary object
+  ("Arena wristband") to the left hand, its AttachItemID its own object id,
+  and Appearance opens on Worn: the "Temporary attachments (1)" section
+  opens by itself, named by the demo's AttachmentResources answer, with
+  "Worn on Left Hand". Its right click offers Touch, Edit and Detach;
+  Detach sends ObjectDetach and the demo simulator kills the object. The
+  log writes `demo temporary attachments` with the one found. Capture at
+  frame 720.
 - `temporary-detach` / `temporary-drop`: the backpack becomes a temporary
   attachment at frame 600, with a nil AttachItemID; its linked prim starts
   a dance. At frame 900 the simulator kills the root or unparents it,
@@ -3350,6 +3358,7 @@ both open states and the selection count. Capture at frame 620.
 | `AURORA_DEMO_BLEND_AO=1` | A face whose two halves differ in alpha mode, under a hat brim, ahead and left of the start position (#882) |
 | `AURORA_DEMO_LASHES=1` | With `AURORA_DEMO_HAIR`: a red ball worn inside our hair, as eyelashes behind a fringe |
 | `AURORA_DEMO_HAIR_CARDS=<n>[,layered[,outer]]` | Our avatar wears one face of `n` soft strand cards, overlapping in a shuffled order, or layered as a hair is made (#935) |
+| `AURORA_DEMO_SHEER=1` | Our avatar wears a sheer knit dress over a red layer drawn after it (#1300) |
 | `AURORA_DEMO_BUMP=tall`, `wide` or `sphere` | The normal-mapped test panel stretched 4:1, its normal map denser across or along it; or a low-poly ball with a baked normal map (tangent frame) |
 | `AURORA_DEMO_MASK_ZERO=1` | The holed test panel with a Mask legacy material whose cutoff is 0: drawn whole |
 | `AURORA_DEMO_RIGGED_PROP=1` | A rigged mesh chain rezzed on a cube ahead of the start position, and the same chain worn by our avatar |
@@ -3452,6 +3461,16 @@ both open states and the selection count. Capture at frame 620.
     (`AURORA_BLEND_EARLY_DISCARD`): it only pays off where empty
     areas are in one piece on screen. `32,24,90,256` (large empty
     stretches) shows it, `32,24,60,16` (fine strands) gains nothing.
+- **`AURORA_DEMO_SHEER=1`** (with or without `AURORA_DEMO_HAIR`): our
+  avatar also wears two rigged shells around the torso, 1.5 cm apart: a
+  white dress whose alpha wavers between 0.25 and 0.75 from one 4-texel
+  stitch to the next (a sheer knit), and under it a red layer (95 %
+  opaque), attached first on the same point so that it is drawn after the
+  dress, as a body add-on worn under clothes (#1300). By default the dress
+  hides the red layer everywhere and shows the body behind it, as the
+  Legacy Viewer; with `AURORA_RIGGED_BLEND=split` the red layer shows
+  through the dress in speckles, wherever its alpha is under one half. The
+  default camera looks at our avatar's back.
 - **`AURORA_DEMO_MASK_ZERO=1`**: the "Auto: mask" panel of the plaza (round
   holes of alpha 0) gets a Mask legacy material with a cutoff of 0 and the
   hover text "Mask (cutoff 0)". The Legacy Viewer keeps every texel at or
@@ -5650,7 +5669,15 @@ Human grid validation: remember MFA for account A and B, restart the viewer, the
   lines: unchanged with `:on` alone, compact with their icons (a phone, the
   "i") with `:on:imlines` (the sub-option "Compact the conversations'
   system lines too", off by default). Above the chat bar, the notices
-  carry their topic's icon too.
+  carry their topic's icon too. After the HUD's owner-say comes its script
+  error (#1263): in red under a red warning sign, in a group of its own, in
+  every style and in the compact rows; the Script debug window does not
+  open, yet lists it. The tip jar's script error is not ours: shown nowhere.
+  With Preferences › Chat › Script errors › "Show script errors in the
+  nearby chat" off, the error leaves the chat and the window opens.
+  `AURORA_DEMO_OPTIONS=chat:script-errors` opens that section: the switch
+  on, "Also say them on a chat channel" off, its channel (1) among its
+  sub-settings.
 - **`AURORA_DEMO_CONV=bubbles[:busy|group|local|legacy]`**: the Conversations
   window as a messenger, placed at 700 x 560 px. Without a suffix, the
   conversation with an online friend over two days: their bubbles on the
@@ -7731,7 +7758,7 @@ What the inventory must show with these scenarios:
 | `AURORA_BLOOM=0`, `1` or `alt` | Bloom off, on or one second in two for this launch |
 | `AURORA_AUTO_EXPOSURE=0`, `1` or `alt` | Automatic exposure of non-classic skies off, on or one second in two |
 | `AURORA_SPECULAR_AA=0`, `1` or `alt` | Specular anti-aliasing off, on or one second in two for this launch |
-| `AURORA_RIGGED_BLEND=runs`, `copy`, `depth05`, `write`, `sorted` or `alt` | Depth of the blended faces of rigged meshes: what is half covered writing its depth as drawn, then the fainter texels (default); where nearly opaque before their colour, then point by point where half covered (#966); from 1/255 on a copy (#948); where half covered before their colour; from 1/255; none (sorted with the others); or `runs` by turns |
+| `AURORA_RIGGED_BLEND=split`, `runs`, `copy`, `depth05`, `write`, `sorted` or `alt` | Depth of the blended faces of rigged meshes: object by object, what is half covered writing its depth as drawn, then the fainter texels, then their depth from 1/255 on a copy (default); the same without the fainter texels' depth (#1024); where nearly opaque before their colour, then point by point where half covered (#966); from 1/255 on a copy (#948); where half covered before their colour; from 1/255; none (sorted with the others); or `split` by turns |
 | `AURORA_MESH_ORDER=asset` | Mesh faces keep the triangle order of the asset instead of the Legacy Viewer's vertex cache order |
 | `AURORA_BLEND_AO=new`, `none`, `old` or `alt` | Which blended faces take the screen-space occlusion and indirect light: those at least half covered (default), none, all, or `none` by turns |
 | `AURORA_DEMO_VIEWER_STATS=1` | Writes once to the log the viewer statistics report the grid would receive (demo mode, nothing sent) |
@@ -8130,24 +8157,36 @@ What the inventory must show with these scenarios:
   in the line), like `AURORA_LIGHT_TILES=alt` — alternate only one of the
   two variables at a time, they change at the same seconds. The gain
   depends on the content: see `AURORA_DEMO_HAIR`.
-- **`AURORA_RIGGED_BLEND=runs|copy|depth05|write|sorted|alt`**: by default the
+- **`AURORA_RIGGED_BLEND=split|runs|copy|depth05|write|sorted|alt`**: by
+  default the
   blended faces of rigged meshes (mesh hair, eyelashes, clothes, animesh)
   are drawn before the other blended faces, skeleton by skeleton back to
   front, each skeleton's in the Legacy Viewer's order: the last attachment
   point first, on one point the last attached first (by the local id of
   the linkset's root), the prims of a linkset and the faces of a prim in
   turn, the triangles of a mesh face in the Legacy Viewer's order
-  (`AURORA_MESH_ORDER`). Run by run (a new run for each mesh worn on a
-  point that already has one in the run), their texels at least half
+  (`AURORA_MESH_ORDER`). Object by object, on a copy of the scene depth,
+  their texels at least half
   covered are drawn first, each writing its depth as it is drawn, as the
   Legacy Viewer's alpha pass does from 1/255; then their fainter texels,
-  depth tested, writing nothing. A strand hides what is drawn after it
-  behind it only where it is at least half covered: a hair made inner
+  depth tested; then the depth of those fainter texels, from 1/255. An
+  object hides what is drawn after it and behind it wherever it has a
+  texel, as in the Legacy Viewer (a sheer dress hides a body add-on drawn
+  after it, #1300, `AURORA_DEMO_SHEER`), but none of its own strands
+  behind a soft edge: a hair made inner
   layer first composes as its creator saw it, an inner layer drawn after
   the outer one no longer shows over it (#935: dark patches the shape of
-  its triangles with `runs`, `AURORA_DEMO_HAIR_CARDS=<n>,layered,outer`), a
-  soft edge hides nothing, and their nearly transparent fringe does not
-  hide the glass, water and particles drawn after them (#556). `runs`: as
+  its triangles with `runs`, `AURORA_DEMO_HAIR_CARDS=<n>,layered,outer`),
+  the cards of one face leave no shards, and the scene depth then takes
+  them only where they are at least half covered, so that their nearly
+  transparent fringe does not
+  hide the glass, water and particles drawn after them (#556). `split`: as
+  #1024, run by run (a new run for each mesh worn on a point that already
+  has one in the run), on the scene depth, the fainter texels writing no
+  depth: they hide nothing drawn after them, so a mesh drawn after a sheer
+  dress and under it shows through it in speckles wherever the dress is
+  under one half (#1300), while the fringes of hair blend over a body
+  drawn after it. `runs`: as
   #966, their depth written where they are nearly opaque (95 %) before any
   of their colour; then, attachment point by attachment point, their
   colour drawn depth tested and their depth written where at least half
@@ -8168,13 +8207,14 @@ What the inventory must show with these scenarios:
   Legacy Viewer (#499): a ring around fur or hair where the glass behind is
   missing. `sorted`: everything sorted by the distance of its object and
   nothing writing depth (eyelashes showed through mesh hair). `alt`:
-  `runs` during one `perf summary` line out of three (`xmode=old`). See
-  `AURORA_DEMO_HAIR`, `AURORA_DEMO_HAIR_CARDS`, `AURORA_DEMO_LASHES` and
-  `AURORA_DEMO_HALO`. Cost, `AURORA_DEMO_CROWD=40` with
-  `AURORA_DEMO_HAIR=8` (eight meshes on one point per avatar, one run
-  each) at 120 fps: `g_transparent` about 0.21 ms with `runs`, 0.50 ms by
-  default; with `AURORA_DEMO_HAIR=1` (one mesh per avatar), 0.076 and
-  0.082 ms.
+  `split` during one `perf summary` line out of three (`xmode=old`). See
+  `AURORA_DEMO_HAIR`, `AURORA_DEMO_HAIR_CARDS`, `AURORA_DEMO_LASHES`,
+  `AURORA_DEMO_SHEER` and `AURORA_DEMO_HALO`. Cost, `AURORA_DEMO_CROWD=40`
+  with `AURORA_DEMO_HAIR=8` (eight meshes on one point per avatar, one run
+  each) at 120 fps: `g_transparent` about 0.21 ms with `runs`, 0.50 ms with
+  `split`; with `AURORA_DEMO_HAIR=1` (one mesh per avatar), 0.076 and
+  0.082 ms. By default, against `split` (60 fps cap, `alt`): 0.52 → 0.66 ms
+  with eight meshes each, 0.083 → 0.131 ms with one.
 - **`AURORA_MESH_ORDER=asset`**: the triangles of every mesh face are drawn
   in the order the Legacy Viewer draws them, reordered for the vertex cache
   when the mesh is loaded (`LLVolumeFace::cacheOptimize`,
