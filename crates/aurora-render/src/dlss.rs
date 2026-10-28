@@ -74,12 +74,14 @@ mod imp {
     }
 
     /// `AURORA_DLSS_DEBUG=motion`: the motion vectors shown instead of
-    /// DLSS's image; `coverage`: the same, the avatars' pixels at full motion.
+    /// DLSS's image; `coverage`: the same, the avatars' pixels at full motion;
+    /// `reproject`: last frame's image moved by them, against this one's.
     fn debug() -> u32 {
         static DEBUG: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
         *DEBUG.get_or_init(|| match std::env::var("AURORA_DLSS_DEBUG").as_deref() {
             Ok("motion") => 1,
             Ok("coverage") => 2,
+            Ok("reproject") => 3,
             _ => 0,
         })
     }
@@ -148,6 +150,14 @@ mod imp {
         })
     }
 
+    struct Reproject {
+        prev: wgpu::Texture,
+        prev_view: wgpu::TextureView,
+        sampler: wgpu::Sampler,
+        jitter: wgpu::Buffer,
+        last_jitter: [f32; 2],
+    }
+
     pub(crate) struct Dlss {
         sdk: Arc<Mutex<DlssSdk>>,
         mode: DlssPerfQualityMode,
@@ -169,6 +179,9 @@ mod imp {
         blit: wgpu::RenderPipeline,
         /// AURORA_DLSS_DEBUG's view, and its group on the motion vectors
         debug_view: Option<(wgpu::RenderPipeline, Option<wgpu::BindGroup>)>,
+        /// AURORA_DLSS_DEBUG=reproject: last frame's drawn image, its
+        /// sampler, the jitters' difference and last frame's jitter
+        reproject: Option<Reproject>,
         frame: u32,
         reset: bool,
     }
@@ -210,9 +223,14 @@ mod imp {
             });
             let blit = fullscreen(device, "DLSS output", &blit_shader, surface_format);
             let debug_view = (debug() > 0).then(|| {
+                let source = if debug() == 3 {
+                    include_str!("shaders/dlss_reproject.wgsl")
+                } else {
+                    include_str!("shaders/dlss_debug.wgsl")
+                };
                 let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("DLSS debug"),
-                    source: wgpu::ShaderSource::Wgsl(include_str!("shaders/dlss_debug.wgsl").into()),
+                    source: wgpu::ShaderSource::Wgsl(source.into()),
                 });
                 (fullscreen(device, "DLSS debug", &shader, surface_format), None)
             });
@@ -247,6 +265,7 @@ mod imp {
                 prev_palettes: None,
                 blit,
                 debug_view,
+                reproject: None,
                 frame: 0,
                 reset: true,
             })
@@ -317,7 +336,35 @@ mod imp {
                 1,
                 wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             );
-            if let Some((pipeline, group)) = &mut self.debug_view {
+            if debug() == 3 {
+                let (prev, prev_view) = crate::renderer::make_view(
+                    device,
+                    "DLSS last frame's image",
+                    self.render.0,
+                    self.render.1,
+                    // made again at the drawn image's format (encode)
+                    wgpu::TextureFormat::Rgba8Unorm,
+                    1,
+                    wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+                );
+                self.reproject = Some(Reproject {
+                    prev,
+                    prev_view,
+                    sampler: device.create_sampler(&wgpu::SamplerDescriptor {
+                        label: Some("DLSS reproject"),
+                        mag_filter: wgpu::FilterMode::Linear,
+                        min_filter: wgpu::FilterMode::Linear,
+                        ..Default::default()
+                    }),
+                    jitter: device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some("DLSS reproject"),
+                        size: 16,
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    }),
+                    last_jitter: [0.0; 2],
+                });
+            } else if let Some((pipeline, group)) = &mut self.debug_view {
                 *group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
                     label: Some("DLSS debug"),
                     layout: &pipeline.get_bind_group_layout(0),
@@ -382,6 +429,18 @@ mod imp {
             avatars: &mut dyn FnMut(&mut wgpu::RenderPass),
             target: &wgpu::TextureView,
         ) -> Option<[wgpu::CommandBuffer; 2]> {
+            // the copy needs the drawn image's own format (the surface's)
+            if let Some(r) = self.reproject.as_mut().filter(|r| r.prev.format() != color.texture().format()) {
+                (r.prev, r.prev_view) = crate::renderer::make_view(
+                    device,
+                    "DLSS last frame's image",
+                    self.render.0,
+                    self.render.1,
+                    color.texture().format(),
+                    1,
+                    wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+                );
+            }
             let (Some(context), Some((_, out_view, out_group)), Some((_, mv_view)), Some((_, bias_view))) = (
                 self.context.as_mut(),
                 self.output.as_ref(),
@@ -530,7 +589,45 @@ mod imp {
                     })],
                     ..Default::default()
                 });
+                let reproject = match (&self.debug_view, &self.reproject) {
+                    (Some((pipeline, _)), Some(r)) => {
+                        let d = [r.last_jitter[0] - jitter[0], r.last_jitter[1] - jitter[1], 0.0, 0.0];
+                        queue.write_buffer(&r.jitter, 0, bytemuck::cast_slice(&d));
+                        let view = |v| wgpu::BindingResource::TextureView(v);
+                        Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: Some("DLSS reproject"),
+                            layout: &pipeline.get_bind_group_layout(0),
+                            entries: &[
+                                wgpu::BindGroupEntry {
+                                    binding: 0,
+                                    resource: view(mv_view),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 1,
+                                    resource: view(color),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 2,
+                                    resource: view(&r.prev_view),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 3,
+                                    resource: wgpu::BindingResource::Sampler(&r.sampler),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 4,
+                                    resource: r.jitter.as_entire_binding(),
+                                },
+                            ],
+                        }))
+                    }
+                    _ => None,
+                };
                 match &self.debug_view {
+                    Some((pipeline, _)) if reproject.is_some() => {
+                        pass.set_pipeline(pipeline);
+                        pass.set_bind_group(0, reproject.as_ref(), &[]);
+                    }
                     Some((pipeline, Some(group))) => {
                         pass.set_pipeline(pipeline);
                         pass.set_bind_group(0, group, &[]);
@@ -541,6 +638,19 @@ mod imp {
                     }
                 }
                 pass.draw(0..3, 0..1);
+            }
+            // this frame's image is next frame's last, for the reproject view
+            if let Some(r) = &mut self.reproject {
+                encoder.copy_texture_to_texture(
+                    color.texture().as_image_copy(),
+                    r.prev.as_image_copy(),
+                    wgpu::Extent3d {
+                        width: self.render.0,
+                        height: self.render.1,
+                        depth_or_array_layers: 1,
+                    },
+                );
+                r.last_jitter = jitter;
             }
             Some([first.finish(), dlss])
         }

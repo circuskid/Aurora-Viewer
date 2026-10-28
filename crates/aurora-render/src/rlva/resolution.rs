@@ -34,7 +34,11 @@ impl Scaled {
             size.1,
             format,
             1,
-            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            // COPY_SRC: DLSS's reproject view keeps a copy (dlss.rs)
+            wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::COPY_SRC,
         );
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("RLVa resolution"),
