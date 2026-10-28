@@ -99,7 +99,7 @@ struct Frame {
     spot_vp: array<mat4x4<f32>, 2>,
     spot_lights: vec4<i32>,
     spot_fade: vec4<f32>,
-    contact: vec4<f32>,         // x: 1 = the contact shadows' mask is read (main view), y: 1 = blended faces opaque enough cast it
+    contact: vec4<f32>,         // x: 1 = the contact shadows' mask is read (main view), y: 1 = blended faces opaque enough cast it, z: texture LOD bias (DLSS)
 };
 
 struct DrawRecord {
@@ -345,7 +345,8 @@ fn srgb_to_linear(c: vec3<f32>) -> vec3<f32> {
 
 fn sample_tex(idx: u32, uv: vec2<f32>) -> vec4<f32> {
     let loc = tex_loc[idx];
-    return textureSample(tex_pages[loc >> 16u], tex_sampler, uv, loc & 0xffffu);
+    // frame.contact.z: the texture LOD bias of an upscaled view (DLSS, dlss.rs)
+    return textureSampleBias(tex_pages[loc >> 16u], tex_sampler, uv, loc & 0xffffu, frame.contact.z);
 }
 
 fn sample_tex_level(idx: u32, uv: vec2<f32>, lod: f32) -> vec4<f32> {

@@ -5150,6 +5150,9 @@ impl Backend {
             air.clip_plane = [0.0, 0.0, 1.0, -f.water_height];
             self.queue.write_buffer(&self.refl_buffers[7], 0, bytemuck::bytes_of(&air));
         }
+        if let Some(dlss) = self.dlss.as_ref().filter(|_| snapshot.is_none()) {
+            main.contact[2] = dlss.mip_bias();
+        }
         if self.contact_now {
             main.contact[0] = 1.0;
             // the blended faces opaque enough are in the depth it read

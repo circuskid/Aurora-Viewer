@@ -251,6 +251,15 @@ mod imp {
                 .map_or([0.0; 2], |c| c.suggested_jitter(self.frame, [self.render.0, self.render.1]))
         }
 
+        /// Texture LOD bias while DLSS runs: textures picked for the
+        /// window's pixels, not the smaller drawn ones (NVIDIA's suggested
+        /// log2(render / window) - 1).
+        pub fn mip_bias(&self) -> f32 {
+            self.context
+                .as_ref()
+                .map_or(0.0, |c| c.suggested_mip_bias([self.render.0, self.render.1]))
+        }
+
         /// Motion vectors, DLSS and its output into `target`. DLSS's own
         /// command buffer runs between what `encoder` holds so far and what
         /// comes after: `encoder` is replaced by a fresh one, and the two
@@ -422,6 +431,10 @@ mod imp {
         }
 
         pub fn jitter(&self) -> [f32; 2] {
+            match *self {}
+        }
+
+        pub fn mip_bias(&self) -> f32 {
             match *self {}
         }
 
