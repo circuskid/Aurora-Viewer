@@ -579,7 +579,7 @@ impl Renderer {
         wgpu::BufferDescriptor {
             label: Some("joint palettes"),
             size: (matrices.max(1) * 64) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         }
     }

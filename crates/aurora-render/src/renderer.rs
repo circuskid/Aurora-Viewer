@@ -1492,6 +1492,8 @@ pub(crate) struct Backend {
     settings: RenderSettings,
     taa: Option<Taa>,
     prev_view_proj: Option<Mat4>,
+    /// last frame's view and projection without the jitter (DLSS's avatars)
+    prev_cam: Option<(Mat4, Mat4)>,
     frame_index: u64,
     /// Texture animation clock (tex_anim.rs) and its value for this frame.
     anim_clock: crate::tex_anim::AnimClock,
@@ -2778,7 +2780,24 @@ impl Backend {
         });
         let egui = egui_wgpu::Renderer::new(&device, format, egui_wgpu::RendererOptions::default());
         let timer = timestamps.then(|| GpuTimer::new(&device, &queue));
-        let dlss = crate::dlss::Dlss::new(&device, &adapter, format);
+        let dlss_source = format!(
+            "{}\n{}\n{}",
+            crate::common_shader_source(),
+            include_str!("shaders/object.wgsl"),
+            include_str!("shaders/env.wgsl")
+        );
+        let dlss = crate::dlss::Dlss::new(
+            &device,
+            &adapter,
+            format,
+            &crate::dlss::Mesh {
+                frame: &frame_layout,
+                records: &records_layout,
+                textures: &tex_layout,
+                buffers: &[Some(vertex_layout()), Some(skin_layout())],
+                source: &dlss_source,
+            },
+        );
 
         let mut r = Backend {
             device,
@@ -2862,6 +2881,7 @@ impl Backend {
             settings,
             taa: None,
             prev_view_proj: None,
+            prev_cam: None,
             frame_index: 0,
             anim_clock,
             anim_now: [0; 4],
@@ -4428,6 +4448,7 @@ impl Backend {
         } else {
             self.taa = None;
             self.prev_view_proj = None;
+            self.prev_cam = None;
         }
         if targets_dirty {
             self.rebuild_targets();
@@ -7195,8 +7216,14 @@ impl Backend {
             view_proj: fu.proj * fu.view,
             unjittered: unjittered_vp,
             prev: self.prev_view_proj.unwrap_or(unjittered_vp),
+            eye_vp: eye_view_proj(f.proj, f.view, Vec3::from_slice(&main.eye[..3]), false),
+            prev_eye_vp: {
+                let (view, proj) = self.prev_cam.unwrap_or((f.view, f.proj));
+                eye_view_proj(proj, view, Vec3::from_slice(&main.eye[..3]), false)
+            },
         };
         self.prev_view_proj = Some(unjittered_vp);
+        self.prev_cam = Some((f.view, f.proj));
         self.last_inv_vp = unjittered_vp.inverse();
 
         // ---- automatic exposure, from the resolved scene and the glow of
@@ -7359,6 +7386,18 @@ impl Backend {
                     &scaled.view,
                     &self.targets.depth_ss,
                     &dlss_cams,
+                    &scene.palettes,
+                    &mut |pass: &mut wgpu::RenderPass| {
+                        bind_mesh(pass, &self.groups.a);
+                        for r in [rg.opaque, rg.opaque_2s, rg.mask, rg.mask_2s] {
+                            if r.1 > 0 {
+                                pass.multi_draw_indexed_indirect(&self.indirect, r.0, r.1);
+                            }
+                        }
+                        for b in 0..4 {
+                            draw_bin(pass, None, b, b);
+                        }
+                    },
                     &surface_view,
                 );
             }

@@ -19,11 +19,25 @@ pub(crate) struct Cameras {
     /// this frame's and last frame's cameras, without the jitter
     pub unjittered: Mat4,
     pub prev: Mat4,
+    /// both without the jitter, relative to this frame's eye (the avatars')
+    pub eye_vp: Mat4,
+    pub prev_eye_vp: Mat4,
+}
+
+/// What the avatars' motion pass draws with: the scene's layouts and vertex
+/// buffers, and the scene shader source (common, object, env).
+#[cfg_attr(not(feature = "dlss"), allow(dead_code))]
+pub(crate) struct Mesh<'a> {
+    pub frame: &'a wgpu::BindGroupLayout,
+    pub records: &'a wgpu::BindGroupLayout,
+    pub textures: &'a wgpu::BindGroupLayout,
+    pub buffers: &'a [Option<wgpu::VertexBufferLayout<'a>>],
+    pub source: &'a str,
 }
 
 #[cfg(feature = "dlss")]
 mod imp {
-    use super::Cameras;
+    use super::{Cameras, Mesh};
     use dlss_wgpu::super_resolution::{DlssSuperResolution, DlssSuperResolutionExposure, DlssSuperResolutionRenderParameters};
     use dlss_wgpu::{DlssFeatureFlags, DlssPerfQualityMode, DlssSdk, FeatureSupport};
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -121,13 +135,17 @@ mod imp {
         motion: Option<(wgpu::Texture, wgpu::TextureView)>,
         motion_pipeline: wgpu::RenderPipeline,
         motion_uniforms: wgpu::Buffer,
+        avatar_pipeline: wgpu::RenderPipeline,
+        avatar_uniforms: wgpu::Buffer,
+        /// last frame's joint palettes (a copy at the end of each frame)
+        prev_palettes: Option<wgpu::Buffer>,
         blit: wgpu::RenderPipeline,
         frame: u32,
         reset: bool,
     }
 
     impl Dlss {
-        pub fn new(device: &wgpu::Device, adapter: &wgpu::Adapter, surface_format: wgpu::TextureFormat) -> Option<Self> {
+        pub fn new(device: &wgpu::Device, adapter: &wgpu::Adapter, surface_format: wgpu::TextureFormat, mesh: &Mesh) -> Option<Self> {
             let mode = wanted()?;
             if !SUPPORTED.load(Ordering::Relaxed) {
                 return None;
@@ -155,6 +173,13 @@ mod imp {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             });
+            let avatar_pipeline = avatar_pipeline(device, mesh);
+            let avatar_uniforms = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("DLSS avatar motion"),
+                size: 144,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
             log::info!("DLSS: on, mode {mode:?}");
             Some(Self {
                 sdk,
@@ -167,6 +192,9 @@ mod imp {
                 motion: None,
                 motion_pipeline,
                 motion_uniforms,
+                avatar_pipeline,
+                avatar_uniforms,
+                prev_palettes: None,
                 blit,
                 frame: 0,
                 reset: true,
@@ -274,6 +302,8 @@ mod imp {
             color: &wgpu::TextureView,
             depth: &wgpu::TextureView,
             cams: &Cameras,
+            palettes: &wgpu::Buffer,
+            avatars: &mut dyn FnMut(&mut wgpu::RenderPass),
             target: &wgpu::TextureView,
         ) -> Option<[wgpu::CommandBuffer; 2]> {
             let (Some(context), Some((_, out_view, out_group)), Some((_, mv_view))) =
@@ -302,6 +332,43 @@ mod imp {
                     },
                 ],
             });
+            // last frame's poses: a new (or grown) palette buffer starts
+            // from this frame's, without motion
+            if self.prev_palettes.as_ref().is_none_or(|b| b.size() != palettes.size()) {
+                let prev = device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("DLSS last frame's palettes"),
+                    size: palettes.size(),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                encoder.copy_buffer_to_buffer(palettes, 0, &prev, 0, palettes.size());
+                self.prev_palettes = Some(prev);
+            }
+            let prev_palettes = self.prev_palettes.as_ref()?;
+            let mut a = [0f32; 36];
+            a[0..16].copy_from_slice(&cams.prev_eye_vp.to_cols_array());
+            a[16..32].copy_from_slice(&cams.eye_vp.to_cols_array());
+            a[32] = self.render.0 as f32;
+            a[33] = self.render.1 as f32;
+            queue.write_buffer(&self.avatar_uniforms, 0, bytemuck::cast_slice(&a));
+            let avatar_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("DLSS avatar motion"),
+                layout: &self.avatar_pipeline.get_bind_group_layout(3),
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 10,
+                        resource: self.avatar_uniforms.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 11,
+                        resource: prev_palettes.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 12,
+                        resource: wgpu::BindingResource::TextureView(depth),
+                    },
+                ],
+            });
             {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("DLSS motion vectors"),
@@ -319,7 +386,13 @@ mod imp {
                 pass.set_pipeline(&self.motion_pipeline);
                 pass.set_bind_group(0, &group, &[]);
                 pass.draw(0..3, 0..1);
+                // the avatars, over the camera's motion
+                pass.set_pipeline(&self.avatar_pipeline);
+                pass.set_bind_group(3, &avatar_group, &[]);
+                avatars(&mut pass);
             }
+            // this frame's poses are next frame's last
+            encoder.copy_buffer_to_buffer(palettes, 0, prev_palettes, 0, palettes.size());
             let jitter = context.suggested_jitter(self.frame, [self.render.0, self.render.1]);
             let params = DlssSuperResolutionRenderParameters {
                 color,
@@ -373,6 +446,80 @@ mod imp {
         }
     }
 
+    /// The opaque draws again, with last frame's poses beside this frame's
+    /// (dlss_avatar_motion.wgsl): the scene's layouts and our group 3.
+    fn avatar_pipeline(device: &wgpu::Device, mesh: &Mesh) -> wgpu::RenderPipeline {
+        let source = format!("{}\n{}", mesh.source, include_str!("shaders/dlss_avatar_motion.wgsl"));
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("DLSS avatar motion"),
+            source: wgpu::ShaderSource::Wgsl(source.into()),
+        });
+        let entry = |binding, visibility, ty| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility,
+            ty,
+            count: None,
+        };
+        let own = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("DLSS avatar motion"),
+            entries: &[
+                entry(
+                    10,
+                    wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                ),
+                entry(
+                    11,
+                    wgpu::ShaderStages::VERTEX,
+                    wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                ),
+                entry(
+                    12,
+                    wgpu::ShaderStages::FRAGMENT,
+                    wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                ),
+            ],
+        });
+        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("DLSS avatar motion"),
+            bind_group_layouts: &[Some(mesh.frame), Some(mesh.records), Some(mesh.textures), Some(&own)],
+            immediate_size: 0,
+        });
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("DLSS avatar motion"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &module,
+                entry_point: Some("vs_avatar_motion"),
+                compilation_options: Default::default(),
+                buffers: mesh.buffers,
+            },
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &module,
+                entry_point: Some("fs_avatar_motion"),
+                compilation_options: Default::default(),
+                targets: &[Some(MOTION_FORMAT.into())],
+            }),
+            multiview_mask: None,
+            cache: None,
+        })
+    }
+
     fn fullscreen(device: &wgpu::Device, label: &str, shader: &wgpu::ShaderModule, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some(label),
@@ -422,7 +569,7 @@ mod imp {
     pub(crate) enum Dlss {}
 
     impl Dlss {
-        pub fn new(_: &wgpu::Device, _: &wgpu::Adapter, _: wgpu::TextureFormat) -> Option<Self> {
+        pub fn new(_: &wgpu::Device, _: &wgpu::Adapter, _: wgpu::TextureFormat, _: &super::Mesh) -> Option<Self> {
             None
         }
 
@@ -447,6 +594,8 @@ mod imp {
             _: &wgpu::TextureView,
             _: &wgpu::TextureView,
             _: &Cameras,
+            _: &wgpu::Buffer,
+            _: &mut dyn FnMut(&mut wgpu::RenderPass),
             _: &wgpu::TextureView,
         ) -> Option<[wgpu::CommandBuffer; 2]> {
             match *self {}
