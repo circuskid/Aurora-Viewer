@@ -4386,6 +4386,16 @@ impl Backend {
     /// Apply quality settings (rebuilds pipelines / targets only when
     /// needed). The anisotropy belongs to the scene's texture table.
     pub fn apply_settings(&mut self, s: RenderSettings) {
+        // DLSS is the anti-aliasing: it wants the raw frame, and an edge
+        // smoothed before it (MSAA, SMAA, FXAA) changes with each jitter
+        let s = if self.dlss.is_some() {
+            RenderSettings {
+                aa: AntiAliasing::None,
+                ..s
+            }
+        } else {
+            s
+        };
         let samples = match s.aa {
             AntiAliasing::Msaa(n) => self.msaa_supported.iter().copied().filter(|&m| m <= n).max().unwrap_or(1),
             _ => 1,
