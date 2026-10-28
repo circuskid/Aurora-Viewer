@@ -46,6 +46,7 @@ mod imp {
     /// NGX application id of this local build (any fixed UUID).
     const PROJECT_ID: uuid::Uuid = uuid::uuid!("5b0c4a8e-6f1d-4d7a-9a52-3e1f0c2d7b91");
     const MOTION_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+    const BIAS_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
     const OUTPUT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
     /// The device was opened with the NGX extensions and DLSS can run.
@@ -80,6 +81,18 @@ mod imp {
             Ok("motion") => 1,
             Ok("coverage") => 2,
             _ => 0,
+        })
+    }
+
+    /// `AURORA_DLSS_AVATAR_BIAS=<0..1>`: DLSS told to trust this frame over
+    /// its history on the avatars' pixels, by that much (a test: a shimmer
+    /// that goes away comes from their history, one that stays from the
+    /// drawn image itself).
+    fn avatar_bias() -> Option<f32> {
+        static BIAS: std::sync::OnceLock<Option<f32>> = std::sync::OnceLock::new();
+        *BIAS.get_or_init(|| {
+            let bias: f32 = std::env::var("AURORA_DLSS_AVATAR_BIAS").ok()?.trim().parse().ok()?;
+            Some(bias.clamp(0.0, 1.0))
         })
     }
 
@@ -144,6 +157,9 @@ mod imp {
         render: (u32, u32),
         output: Option<(wgpu::Texture, wgpu::TextureView, wgpu::BindGroup)>,
         motion: Option<(wgpu::Texture, wgpu::TextureView)>,
+        /// the avatars' reactive mask (AURORA_DLSS_AVATAR_BIAS), drawn with
+        /// their motion
+        bias: Option<(wgpu::Texture, wgpu::TextureView)>,
         motion_pipeline: wgpu::RenderPipeline,
         motion_uniforms: wgpu::Buffer,
         avatar_pipeline: wgpu::RenderPipeline,
@@ -174,7 +190,20 @@ mod imp {
                 label: Some("DLSS motion vectors"),
                 source: wgpu::ShaderSource::Wgsl(include_str!("shaders/dlss_motion.wgsl").into()),
             });
-            let motion_pipeline = fullscreen(device, "DLSS motion vectors", &motion_shader, MOTION_FORMAT);
+            // the bias target is the avatar pipeline's: left as cleared here
+            let motion_pipeline = fullscreen_targets(
+                device,
+                "DLSS motion vectors",
+                &motion_shader,
+                &[
+                    Some(MOTION_FORMAT.into()),
+                    Some(wgpu::ColorTargetState {
+                        format: BIAS_FORMAT,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::empty(),
+                    }),
+                ],
+            );
             let blit_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("DLSS output"),
                 source: wgpu::ShaderSource::Wgsl(include_str!("shaders/rlva_resolution.wgsl").into()),
@@ -210,6 +239,7 @@ mod imp {
                 render: (0, 0),
                 output: None,
                 motion: None,
+                bias: None,
                 motion_pipeline,
                 motion_uniforms,
                 avatar_pipeline,
@@ -298,6 +328,15 @@ mod imp {
                 }));
             }
             self.motion = Some(motion);
+            self.bias = Some(crate::renderer::make_view(
+                device,
+                "DLSS avatar bias",
+                self.render.0,
+                self.render.1,
+                BIAS_FORMAT,
+                1,
+                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            ));
             self.reset = true;
             log::info!("DLSS: {}x{} drawn, {}x{} shown", self.render.0, self.render.1, window.0, window.1);
             Some(self.render)
@@ -343,9 +382,12 @@ mod imp {
             avatars: &mut dyn FnMut(&mut wgpu::RenderPass),
             target: &wgpu::TextureView,
         ) -> Option<[wgpu::CommandBuffer; 2]> {
-            let (Some(context), Some((_, out_view, out_group)), Some((_, mv_view))) =
-                (self.context.as_mut(), self.output.as_ref(), self.motion.as_ref())
-            else {
+            let (Some(context), Some((_, out_view, out_group)), Some((_, mv_view)), Some((_, bias_view))) = (
+                self.context.as_mut(),
+                self.output.as_ref(),
+                self.motion.as_ref(),
+                self.bias.as_ref(),
+            ) else {
                 return None;
             };
             let mut u = [0f32; 52];
@@ -388,6 +430,7 @@ mod imp {
             a[32] = self.render.0 as f32;
             a[33] = self.render.1 as f32;
             a[34] = if debug() == 2 { 1.0 } else { 0.0 };
+            a[35] = avatar_bias().unwrap_or(0.0);
             queue.write_buffer(&self.avatar_uniforms, 0, bytemuck::cast_slice(&a));
             let avatar_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("DLSS avatar motion"),
@@ -410,15 +453,26 @@ mod imp {
             {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("DLSS motion vectors"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: mv_view,
-                        depth_slice: None,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
+                    color_attachments: &[
+                        Some(wgpu::RenderPassColorAttachment {
+                            view: mv_view,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        }),
+                        Some(wgpu::RenderPassColorAttachment {
+                            view: bias_view,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        }),
+                    ],
                     ..Default::default()
                 });
                 pass.set_pipeline(&self.motion_pipeline);
@@ -437,7 +491,7 @@ mod imp {
                 depth,
                 motion_vectors: mv_view,
                 exposure: DlssSuperResolutionExposure::Automatic,
-                bias: None,
+                bias: avatar_bias().map(|_| bias_view),
                 dlss_output: out_view,
                 reset: self.reset,
                 // the projection moved the image by +jitter (x right, y
@@ -559,7 +613,7 @@ mod imp {
                 module: &module,
                 entry_point: Some("fs_avatar_motion"),
                 compilation_options: Default::default(),
-                targets: &[Some(MOTION_FORMAT.into())],
+                targets: &[Some(MOTION_FORMAT.into()), Some(BIAS_FORMAT.into())],
             }),
             multiview_mask: None,
             cache: None,
@@ -567,6 +621,24 @@ mod imp {
     }
 
     fn fullscreen(device: &wgpu::Device, label: &str, shader: &wgpu::ShaderModule, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
+        fullscreen_targets(
+            device,
+            label,
+            shader,
+            &[Some(wgpu::ColorTargetState {
+                format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        )
+    }
+
+    fn fullscreen_targets(
+        device: &wgpu::Device,
+        label: &str,
+        shader: &wgpu::ShaderModule,
+        targets: &[Option<wgpu::ColorTargetState>],
+    ) -> wgpu::RenderPipeline {
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some(label),
             layout: None,
@@ -580,11 +652,7 @@ mod imp {
                 module: shader,
                 entry_point: Some("fs_main"),
                 compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
+                targets,
             }),
             primitive: Default::default(),
             depth_stencil: None,
