@@ -34,14 +34,11 @@ Aurora team, so these are overridden:
   upstream**, and we never touch TASKS.md for them except inside our own PR's diff.
 - 🔴 **Every PR, issue or comment upstream is drafted and shown to G.W. first**
   (global *Safety* rule: a project we don't own).
-- ⏸ **OPEN, G.W.'s call before the first post:** AGENTS.md §10 forbids any
-  AI mention ("no Co-Authored-By: Claude", no "Generated with") in commits,
-  PRs and comments. Our global rule ends every post on a project we don't own
-  with `Posted by an AI agent on behalf of @circuskid.` The two can't both
-  hold. Their AI policy (aurora-viewer.org/ai-policy, read 2026-10-28) says
-  nothing about outside contributors. Until G.W. rules, nothing goes upstream.
-- Commits on upstream PR branches carry **no** `Co-Authored-By` and **no**
-  `Session:` trailer (§10). Commits on `circuskid` follow our usual trailers.
+- 🔴 **Upstream, follow §10: no AI mention anywhere** (G.W., 2026-10-28). No
+  `Posted by an AI agent` line on PRs, issues or comments (an exception to the
+  global *Safety* rule, which names this repo), and no `Co-Authored-By` or
+  `Session:` trailer on upstream PR branches. The draft-first gate above still
+  holds. Commits on `circuskid` follow our usual trailers.
 - Their reference sources: `../phoenix-firestorm` = `~/Projects/phoenix-firestorm`,
   a `--depth 1` clone, read-only, not one of our projects. Refresh it with
   `git -C ~/Projects/phoenix-firestorm pull --depth 1`.

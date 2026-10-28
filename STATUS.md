@@ -22,6 +22,5 @@ how far behind upstream we are (0 = current; upstream merges many PRs a day).
 
 ### NOT QUEUED
 
-- ⏸ **G.W.'s call: how AI attribution works upstream.** AGENTS.md §10 bans any
-  AI mention, and our global rule requires one on a project we don't own.
-  Nothing goes upstream until he rules.
+- Nothing. Upstream attribution was ruled 2026-10-28: follow AGENTS.md §10
+  (`.claude/CLAUDE.md`).
