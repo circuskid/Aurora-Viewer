@@ -539,6 +539,9 @@ pub struct Settings {
     /// the user's choice only, not the window's state at exit. Off, the
     /// frame rate of the bars opens it.
     pub show_perf: bool,
+    /// Conversations and the mini-map open with the session: the window's
+    /// last open or close, or the switch of Preferences › Layout › Startup
+    /// turned since (`ui::StartupWindows`).
     pub show_chat: bool,
     pub show_minimap: bool,
     /// FSUseStandalonePlaceDetailsFloater: landmarks, place links and history
@@ -881,6 +884,10 @@ pub struct Settings {
     /// Firestorm's traffic indicator (ShowNetStats, off by default): a
     /// small curve of the network in the system island.
     pub show_net_stats: bool,
+    /// The L$ balance in the top bar (the Legacy Viewer's
+    /// FSShowCurrencyBalanceInStatusbar, on by default; #1340): hidden, it
+    /// stays out of sight on a stream.
+    pub show_balance: bool,
     /// People › Near you as Firestorm's radar table (`ui/people/radar.rs`)
     /// instead of the rows grouped by range and the sheet of
     /// `ui/people/nearby.rs`.
@@ -1071,6 +1078,11 @@ pub struct Settings {
     /// Share of the tone mapped color over the exposed linear one, on skies
     /// that are not classic (RenderTonemapMix, 0.7 like the Legacy Viewer).
     pub tonemap_mix: f32,
+    /// "HDR and Emissive" (RenderDisableVintageMode, on by default, off in
+    /// the Legacy Viewer's Low and LowMid levels): off, no exposure, tone
+    /// mapping nor sharpening, no emissive on opaque PBR faces and 8-bit
+    /// reflection probes (`RenderSettings::hdr`).
+    pub hdr_emissive: bool,
     /// Optional frame rate cap (on by default at 120 images per second).
     pub fps_cap: bool,
     pub fps_limit: u32,
@@ -1243,7 +1255,7 @@ pub(crate) const TONEMAP_MIX: f32 = 0.7;
 /// an S32 of seconds).
 pub(crate) const GROUP_SNOOZE_MAX_MINUTES: u32 = i32::MAX as u32 / 60;
 
-const SETTINGS_VERSION: u32 = 27;
+const SETTINGS_VERSION: u32 = 28;
 
 /// `settings.json` from a newer build: the document, what this build loaded
 /// from it, and the top-level keys to leave as they were unless changed here
@@ -1741,6 +1753,7 @@ impl Default for Settings {
             immersive_name_tags: false,
             immersive_huds: true,
             show_net_stats: false,
+            show_balance: true,
             classic_people: false,
             classic_restart_alert: false,
             classic_chat_lines: false,
@@ -1809,6 +1822,7 @@ impl Default for Settings {
             specular_aa: true,
             tonemapper: 1,
             tonemap_mix: TONEMAP_MIX,
+            hdr_emissive: true,
             fps_cap: true,
             fps_limit: 120,
             background_fps_cap: true,
@@ -2304,6 +2318,11 @@ impl Settings {
             // file wrote the former default, off
             self.colors.relation_names = true;
         }
+        if self.settings_version < 28 {
+            // the levels now set HDR and Emissive: a profile still exactly
+            // on Potato or Low turns it off, any other keeps it on
+            crate::graphics_presets::upgrade_hdr_emissive(&mut self);
+        }
         if !self.audio.mic_gain.is_finite() {
             self.audio.mic_gain = 1.0;
         }
@@ -2549,6 +2568,7 @@ impl Settings {
             } else {
                 Tonemapper::KhronosNeutral
             },
+            hdr: self.hdr_emissive,
             shadow_resolution: self.shadow_params().0,
             ssao: self.ssao,
             ao_method: if self.ao_method == 1 {
