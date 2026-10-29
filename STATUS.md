@@ -44,7 +44,15 @@ behind. Dropped because the maintainer accepted the Legacy Viewer rule
   the real prerequisite is per-pixel motion vectors (`crates/aurora-render`
   has none; TAA reprojects camera motion only); FSR 2/3.1 is MIT, candidate
   crate `sp-fidelity` (unreviewed); the Legacy Viewer has no upscaler.
-  None of it is queued.
+  None of it is queued. **FSR SDK v2.4.0** (2026-10-28) changes little:
+  FSR 4.1.2 (ML) now runs on RX 6000/7000/9000 but stays AMD-only,
+  Windows-only, shipped as signed `.dll`s with no source. Its
+  `license.md` lists those DLLs under the MIT section, not the
+  binary-only one (read at the tag); MIT on a binary still gives a GPLv3
+  build no Corresponding Source, so FSR 4 could only ever be an optional
+  Windows runtime load, which is upstream's call. The vendor-neutral path
+  is unchanged: FSR 3.1.6 source, MIT. Also seen: crate `wgpu-ffx`
+  (FSR 3 for wgpu, unreviewed).
 
 ### NOT QUEUED
 
