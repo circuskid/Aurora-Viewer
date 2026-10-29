@@ -17,6 +17,15 @@ c5a428a7 into `circuskid`, taking upstream's side of every conflict (its
 `.claude/CLAUDE.md` and this file. All seven fork workflows are still
 `disabled_manually`, and the sync added no new workflow.
 
+**One PR open upstream: Aurora-Viewer/Aurora-Viewer#1483** (2026-10-29),
+inventory Left / Right arrows open, close and climb folders (Legacy
+`LLFolderView::handleKeyHere`). A tester request with no issue; G.W.
+validated it in demo. Fork branch `feat/inventory-arrow-fold` = local
+`claude/elastic-lederberg-6a602f`, worktree
+`.claude/worktrees/elastic-lederberg-6a602f`. At checkpoint its CI waited on
+the maintainer's first-contributor approval; no labels, no screenshots
+(G.W. dropped them).
+
 Latest package: tag `v0.8.3.1793280767`, built from upstream
 `v0.8.3-beta.20261029.1` plus 30 commits (`_upstream=0.8.3-beta.20261029.1`).
 The binary reports `0.8.3-beta.20261029.1+circuskid.1793280767`, and the grid
@@ -31,7 +40,11 @@ At checkpoint `upstream/main` was 3 commits ahead (not merged).
 1. **Upstream drift.** `git fetch upstream && git rev-list --count
    circuskid..upstream/main`. Since we carry no code, a sync should be
    conflict-free; ship when G.W. wants a build (steps in `.claude/CLAUDE.md`).
-2. **Grid follow-ups G.W. owns:** the voice test on Linux for #1407
+2. **#1483 state.** `gh pr view 1483 --repo Aurora-Viewer/Aurora-Viewer
+   --json state,mergeable,statusCheckRollup,comments`. A review: fix in the
+   worktree above (one push per review). Merged: remove that worktree and
+   its branch.
+3. **Grid follow-ups G.W. owns:** the voice test on Linux for #1407
    (planned 2026-10-30). The maintainer sets its TASKS.md line to 🟡 in a
    docs PR of their own; nothing for us to push.
 
@@ -58,6 +71,13 @@ clone with no tags (`git clone --no-tags --shared`, then delete what
   went 2026-10-29). Still around, probably done: `aurora-linux-improvements-5a6f8e`
   (#1397's branch, merged) and `new-viewer-update-d7fc5f` (old 0.8.2 merge);
   check before removing.
+- **The fork cannot label PRs or publish captures upstream** (`push: false`;
+  `pr-captures.ps1` pushes upstream's `captures` branch). The title's type
+  carries the label; for screenshots, push them to the fork's own `captures`
+  branch and link the raw URLs.
+- **Clippy `-D warnings` on Linux fails on existing Windows-only dead code**
+  (`crash/`, `raw_mouse.rs`, `url_scheme.rs`…). Not ours (AGENTS.md rule 3):
+  check only that the touched files are clean, and say so in the PR.
 
 ### DECIDED — do not reopen
 
