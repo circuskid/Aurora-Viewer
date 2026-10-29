@@ -45,6 +45,28 @@ Aurora team, so these are overridden:
   and `Closes`/`Refs`. Get them right before the first push: a fix pushed after
   review re-runs first-contributor CI, which waits for maintainer approval
   (missed on #1332, 2026-10-28).
+- **What the maintainer's review checked on #1397** (2026-10-29). Their
+  review is a PR comment in the AGENTS.md §11 shape (`## Review`, `Verdict:`),
+  not a GitHub review. Get these right in the first draft:
+  - **The title's type is the type label's** (`feat` ↔ `feature`, `fix` ↔
+    `fix`), with an area (§9). A Linux path that was missing is a `feature`,
+    even when its issue reads like a bug. We cannot add labels (`gh pr edit
+    --add-label` is refused for our account), so the maintainer sets them;
+    the title must already match.
+  - **Legacy Viewer claims go field by field.** Say which behaviours follow
+    the Legacy Viewer source and which are Aurora additions, in the PR body
+    and in the TASKS.md line. A blanket "as in the Legacy Viewer" gets
+    checked against the `.cpp` and corrected.
+  - **Re-wrap any docs paragraph you edit** to the file's width.
+  - **Read every `cfg(windows)` arm you touch**: Linux clippy cannot see
+    them, and Windows CI fails on what it would flag (an unreachable match
+    arm failed #1397).
+  - Say in the Tests section that `check.ps1` was not run (no `pwsh`) and
+    what ran instead; the maintainer accepts that.
+- **Our PRs that touch the same area answer each other's nits.** When a
+  review nit is fixed by another of our open PRs (the `.desktop` `Icon=` line,
+  fixed by the desktop-identity PR), leave it out of this one and point to
+  the other instead of making the two PRs conflict.
 - Their reference sources: `../phoenix-firestorm` = `~/Projects/phoenix-firestorm`,
   a `--depth 1` clone, read-only, not one of our projects. Refresh it with
   `git -C ~/Projects/phoenix-firestorm pull --depth 1`.
