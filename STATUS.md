@@ -51,9 +51,8 @@ clone with no tags (`git clone --no-tags --shared`, then delete what
 - **Each push re-runs first-contributor CI**, which waits for the
   maintainer to approve it, so batch the fixes for one review into one push.
 - **The maintainer merges, not us**; the next sync brings merged PRs in.
-- The PR worktrees (`linux-app-id-b86aee`, `linux-thread-priority-0343b7`,
-  `linux-pulseaudio-pr`, `inventory-regex-filters-0221ca`) are merged and
-  can be removed.
+  Then remove the PR's worktree and local branch (the four of #1405–#1411
+  went 2026-10-29).
 
 ### DECIDED — do not reopen
 
