@@ -17,9 +17,7 @@ all seven fork workflows still `disabled_manually`.
 
 Latest package: tag `v0.8.2.1793232360`, pkgbuilds b4f56ac, built with
 `makepkg` and `check()` green (binary says `0.8.2+circuskid.1793232360`).
-Not installed yet: `paru` (or `sudo pacman -U` on the built
-`.pkg.tar.zst` in `~/Projects/pkgbuilds/aurora-viewer/`) is G.W.'s step.
-Installed before that: `v0.8.2.1793212147`.
+Installed on this host 2026-10-28 (`pacman -Q` and `--version` agree).
 
 ### FIRST — the two-minute check
 
