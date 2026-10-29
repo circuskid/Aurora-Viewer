@@ -21,8 +21,9 @@ Installed on this host 2026-10-28 (`pacman -Q` and `--version` agree).
 
 ### FIRST — the two-minute check
 
-`git fetch upstream && git rev-list --count circuskid..upstream/main` — 0
-at this checkpoint (upstream merges many PRs a day).
+`git fetch upstream && git rev-list --count circuskid..upstream/main` — 1
+at this checkpoint (d555fb67, inventory hover actions; upstream merges many
+PRs a day).
 
 ### THEN — nothing queued
 
@@ -70,3 +71,12 @@ behind. Dropped because the maintainer accepted the Legacy Viewer rule
   `~/Projects/aurora-viewer`. Not measured with `/context` itself.
 - Upstream attribution was ruled 2026-10-28: follow AGENTS.md §10
   (`.claude/CLAUDE.md`).
+- **Login-screen portrait pixelated** (2026-10-28): solved, nothing to do.
+  The login screen shows `~/.config/auroraviewer/accounts/<agent>/login_portrait.png`,
+  rewritten at every login from our own profile picture (`App::picture_pixels`).
+  The beta saved the first coarse level of the progressive download; upstream
+  Aurora-Viewer/Aurora-Viewer#1364 (in v0.8.2) rewrites it as finer levels
+  arrive. G.W. confirmed sharp after a 0.8.2 login. Not a texture-cache bug.
+  Leftover, not filed: each login still writes the coarse copy first, so
+  quitting before refinement leaves it blurry until the next full login.
+  Fixing that is an upstream PR (draft to G.W. first); offered, not asked for.
