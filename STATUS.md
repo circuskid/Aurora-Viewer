@@ -21,7 +21,10 @@ Latest package: tag `v0.8.3.1793280767`, built from upstream
 `v0.8.3-beta.20261029.1` plus 30 commits (`_upstream=0.8.3-beta.20261029.1`).
 The binary reports `0.8.3-beta.20261029.1+circuskid.1793280767`, and the grid
 sees `0.8.3.0`. The workspace tests passed before the tag (6139 passed,
-0 failed, 30 ignored).
+0 failed, 30 ignored). Installed here as `aurora-viewer 0.8.3.1793280767-2`
+(pkgrel 2 fixed `package()` for upstream's desktop file and logo, #1398);
+`aurora-viewer --version` confirmed. Tree clean, nothing half-done.
+At checkpoint `upstream/main` was 3 commits ahead (not merged).
 
 ### FIRST — the two-minute check
 
@@ -52,7 +55,9 @@ clone with no tags (`git clone --no-tags --shared`, then delete what
   maintainer to approve it, so batch the fixes for one review into one push.
 - **The maintainer merges, not us**; the next sync brings merged PRs in.
   Then remove the PR's worktree and local branch (the four of #1405–#1411
-  went 2026-10-29).
+  went 2026-10-29). Still around, probably done: `aurora-linux-improvements-5a6f8e`
+  (#1397's branch, merged) and `new-viewer-update-d7fc5f` (old 0.8.2 merge);
+  check before removing.
 
 ### DECIDED — do not reopen
 
