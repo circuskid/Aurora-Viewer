@@ -20,9 +20,8 @@ demo mode 2026-10-29. Otherwise `circuskid` = `upstream/main` (602e3ae8) +
 fix (Aurora-Viewer/Aurora-Viewer#1332). All seven fork workflows still
 `disabled_manually`.
 
-Latest package: tag `v0.8.2.1793242821`, pkgbuilds 69e87fd. `makepkg`
-started 2026-10-29; until it is built and installed, this host still runs
-`0.8.2+circuskid.1793232360`.
+Latest package: tag `v0.8.2.1793242821`, pkgbuilds 69e87fd, installed on
+this host 2026-10-29 (`aurora-viewer --version` → `0.8.2+circuskid.1793242821`).
 
 ### FIRST — the two-minute check
 
