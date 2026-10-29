@@ -2,22 +2,27 @@
 
 Our fork of Aurora-Viewer/Aurora-Viewer. Rules: [.claude/CLAUDE.md](.claude/CLAUDE.md).
 
-## ▶ RESUME HERE — 2026-10-28 (night)
+## ▶ RESUME HERE — 2026-10-29
 
 Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**circuskid carries no patch of its own.** Upstream released v0.8.2 stable
-(2026-10-28 23:47Z) with our Wayland attention fix
-(Aurora-Viewer/Aurora-Viewer#1332). `circuskid` = `upstream/main` (602e3ae8)
-+ `.claude/CLAUDE.md` + this file, merge 53f13d84; fork `main` mirrors
-602e3ae8. circuskid/Aurora-Viewer#1 closed; the wayland worktree is gone;
-all seven fork workflows still `disabled_manually`.
+**circuskid carries one patch of its own: the advanced inventory search**
+(merge 11935b23, 2026-10-29; branch `claude/inventory-regex-filters-0221ca`,
+cut from `upstream/main` 602e3ae8, feature commits free of AI trailers so it
+can go upstream as a clean PR later — not drafted, G.W.'s call). Visual
+boolean rules beside quick search: chip bar, rule builder, per-account saved
+searches (`inventory-smart-searches.json`), Find similar. Reviewed by Fable,
+codex and agy; all confirmed findings fixed (671a6630). G.W. validated it in
+demo mode 2026-10-29. Otherwise `circuskid` = `upstream/main` (602e3ae8) +
+`.claude/CLAUDE.md` + this file; upstream v0.8.2 already holds our Wayland
+fix (Aurora-Viewer/Aurora-Viewer#1332). All seven fork workflows still
+`disabled_manually`.
 
-Latest package: tag `v0.8.2.1793232360`, pkgbuilds b4f56ac, built with
-`makepkg` and `check()` green (binary says `0.8.2+circuskid.1793232360`).
-Installed on this host 2026-10-28 (`pacman -Q` and `--version` agree).
+Latest package: tag `v0.8.2.1793242821`, pkgbuilds 69e87fd. `makepkg`
+started 2026-10-29; until it is built and installed, this host still runs
+`0.8.2+circuskid.1793232360`.
 
 ### FIRST — the two-minute check
 
