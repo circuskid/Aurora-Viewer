@@ -117,6 +117,7 @@ const OUTLINE: &[(&str, &[u8])] = svg_list!(
     "logout",
     "map",
     "map-2",
+    "math-not",
     "maximize",
     "message-circle-plus",
     "message-off",
@@ -454,8 +455,8 @@ const FILLED: &[(&str, &[u8])] = svg_list!(
     "zoom-scan",
 );
 
-/// Brand SVGs (white wolf silhouette from Branding/), drawn untinted or tinted.
-const BRAND_SVGS: &[(&str, &[u8])] = &[("wolf", include_bytes!("../../assets/icons/wolf.svg"))];
+/// Brand SVGs (white wolf silhouette of assets/branding/), drawn untinted or tinted.
+const BRAND_SVGS: &[(&str, &[u8])] = &[("wolf", include_bytes!("../../../../assets/branding/aurora-logo-white.svg"))];
 
 /// Raster images kept as PNG (brand logo).
 const PNGS: &[(&str, &[u8])] = &[("phoenix_18", include_bytes!("../../assets/icons/phoenix_18.png"))];
@@ -520,6 +521,11 @@ pub(crate) fn embedded(name: &str) -> bool {
 
 /// Raster size of SVG icons (crisp up to ~2x UI scale at 24 px).
 const RASTER_PX: u32 = 64;
+
+/// Raster size of the brand wolf, drawn at 18 px (twice that at most with the
+/// UI scale). Sampled down from far larger without mipmaps, its thin aurora
+/// ribbons broke into jagged dots; resvg draws them clean at this size.
+const BRAND_RASTER_PX: u32 = 40;
 
 /// Last loaded icon set, for widgets drawn without access to the skin
 /// (floater title buttons).
@@ -603,7 +609,7 @@ impl Icons {
             }
         }
         for (name, bytes) in BRAND_SVGS {
-            if let Some(ci) = rasterize_svg(bytes, 128).map(center_on_content) {
+            if let Some(ci) = rasterize_svg(bytes, BRAND_RASTER_PX).map(center_on_content) {
                 map.insert((*name).to_owned(), ctx.load_texture(*name, ci, opts));
             }
         }

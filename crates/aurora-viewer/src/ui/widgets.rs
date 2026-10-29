@@ -24,6 +24,7 @@ pub mod demo;
 pub(crate) mod elide_tests;
 pub(crate) mod hero;
 pub(crate) mod keycap;
+mod modal_keys;
 pub(crate) mod pills;
 mod resize;
 pub(crate) mod scroll_offset;
@@ -33,6 +34,7 @@ mod unread;
 mod volume;
 mod workspace;
 pub use color::color_button;
+pub(crate) use modal_keys::{default_button, enter_pressed};
 pub use pills::{
     clearable_search_box, dot_pill, dot_pill_width, filter_field, filter_pill, filter_pill_at, filter_pill_width, pill_tab, pill_tab_wide,
     search_box,
@@ -306,6 +308,9 @@ pub struct Floater<'a> {
     /// Resized by its edges, its body keeps this width over height, the
     /// window adding the second value around it (see `keep_aspect`).
     pub aspect: Option<(f32, Vec2)>,
+    /// Its layer: the windows' own (`Middle`), or `Foreground` over an
+    /// overlay whose controls sit there (the photo viewfinder's poser).
+    pub order: egui::Order,
     cascade: Option<CascadeGroup>,
     partial_outside: bool,
     /// A chat window: it stays in immersive mode (`hide_windows`).
@@ -338,6 +343,7 @@ impl<'a> Floater<'a> {
             flush_body: false,
             steady_size: false,
             aspect: None,
+            order: egui::Order::Middle,
             cascade: None,
             partial_outside: false,
             chat: false,
@@ -552,6 +558,7 @@ impl<'a> Floater<'a> {
         // Window retains its normal movement and persisted layout.
         let mut w = egui::Window::new(&self.title)
             .id(window_id)
+            .order(self.order)
             .title_bar(false)
             .fade_in(false)
             .fade_out(false)
@@ -1227,6 +1234,17 @@ pub fn attention_mark(painter: &egui::Painter, p: &Palette, rect: egui::Rect, ra
         Stroke::new(1.5 + 4.0 * wash, p.violet_light),
         egui::StrokeKind::Inside,
     );
+}
+
+/// Is the floater `id` shown in front of the floater `other`? A window not
+/// shown is behind every other, whatever its layer (the poser's goes up
+/// over the photo viewfinder).
+pub fn floater_above(ctx: &egui::Context, id: &str, other: &str) -> bool {
+    let (id, other) = (egui::Id::unique(id), egui::Id::unique(other));
+    ctx.memory(|m| {
+        let place = |want: egui::Id| m.layer_ids().filter(|l| m.areas().is_visible(l)).position(|l| l.id == want);
+        place(id) > place(other)
+    })
 }
 
 /// Is the floater `id` reduced to its title bar?
@@ -2229,7 +2247,12 @@ pub fn action_button_keyed(
     let lead = if icon.is_empty() { 0.0 } else { lead };
     let content = lead + text_w + caps_w;
     let desired = Vec2::new(if size.x > 0.0 { size.x } else { content + KEYED_PAD }, size.y);
-    let (rect, resp) = ui.allocate_exact_size(desired, if enabled { Sense::click() } else { Sense::hover() });
+    let (rect, mut resp) = ui.allocate_exact_size(desired, if enabled { Sense::click() } else { Sense::hover() });
+    match kind {
+        ActionKind::Primary => modal_keys::offer(&mut resp, modal_keys::Answer::Primary),
+        ActionKind::Danger => modal_keys::offer(&mut resp, modal_keys::Answer::Danger),
+        _ => {}
+    }
     let hot = enabled && (resp.hovered() || resp.has_focus());
     let (fill, ink) = match kind {
         ActionKind::Primary => (if hot { p.violet_light } else { p.violet }, p.on_accent),
@@ -2449,15 +2472,16 @@ pub fn glass_action_icon(ui: &mut egui::Ui, p: &Palette, icon: &str, label: &str
 
 /// Primary action using the Aurora accent and the flat button geometry.
 pub fn primary_button_sized(ui: &mut egui::Ui, p: &Palette, label: &str, size: Vec2) -> egui::Response {
-    ui.add_sized(
+    let mut response = ui.add_sized(
         size,
         egui::Button::new(RichText::new(label).size(12.0).strong().color(p.on_accent))
             .fill(p.violet)
             .stroke(Stroke::new(1.0, p.violet))
             .corner_radius(ui.visuals().widgets.inactive.corner_radius)
             .truncate(),
-    )
-    .on_hover_text(label)
+    );
+    modal_keys::offer(&mut response, modal_keys::Answer::Primary);
+    response.on_hover_text(label)
 }
 
 /// Green online / grey offline.

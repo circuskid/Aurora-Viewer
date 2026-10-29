@@ -692,6 +692,7 @@ inventory-smart-age-newer = Newer than
 inventory-smart-age-older = Older than
 inventory-smart-hours = { $hours } h
 inventory-smart-types-none = Choose types
+inventory-smart-rights-none = Choose rights
 inventory-status-counts = { $count ->
     [one] { $number } item
    *[other] { $number } items
@@ -2531,8 +2532,9 @@ ui-options-flash-on-object-im = Also for objects
 ui-options-flash-on-script-dialog = Flash for script dialogs
 ui-options-flash-on-script-dialog-hint = The menus and text boxes of scripts, while Aurora is not in front
 ui-options-system-notifications = System notifications
-ui-options-system-notifications-hint = Windows notifications while Aurora is in the background: instant messages, mentions, offers, notices and alerts. Click one to come back to it.
+ui-options-system-notifications-hint = A notification on your desktop while Aurora is in the background: instant messages, mentions, offers, notices and alerts. Click one to come back to it.
 ui-options-system-notifications-when-active = Even in front
+system-notification-open = Open
 ui-options-keywords = Keyword alerts
 ui-options-keywords-on = Turn on keyword alerts
 ui-options-keywords-on-hint = Colors the messages that hold one of your words and plays a sound when they arrive
@@ -3020,6 +3022,10 @@ ui-options-letter-keys-move = Letter keys move me (WASD) instead of starting nea
 ui-options-letter-keys-move-help = Off: pressing a letter key starts typing in the nearby chat.
 ui-options-walk-backwards-without-turning = Walk backward without turning around
 ui-options-walk-backwards-without-turning-help = Avatars walking backward step back instead of turning to face where they go. Only on your screen: others see what their viewer shows. An animation overrider can still turn them.
+ui-options-automatic-fly = Fly by holding Up
+ui-options-automatic-fly-help = Holding the Jump / Up control starts flying. When off, ground jumps start immediately and repeat while held; moving up in flight still works. Use the Fly button or shortcut to start flying.
+ui-options-automatic-land = Land by holding Down
+ui-options-automatic-land-help = Holding the Crouch / Down control ends flight on contact with the ground or a platform. When off, it still crouches on the ground and moves down in flight. Use the Fly button or shortcut to end flight.
 ui-options-crouch-toggle = Crouch as a toggle
 ui-options-crouch-toggle-help = One press of the Down key crouches the avatar until the next one (or a jump, or flying). While flying, the key goes down as usual.
 ui-options-quickjump = Jump and land without the animation delay
@@ -6380,6 +6386,7 @@ photo-vf-file-tip = File: a click for the next format
 photo-vf-destination-tip = Destination: disk, inventory or profile feed (a click for the next)
 photo-vf-quality-tip = Photo quality: everything at its best for the photo (a click to switch)
 photo-vf-hud-tip = HUDs on screen and on the photo (a click to switch)
+photo-vf-poser-tip = Poser: pose the avatar without leaving the shot
 photo-vf-time-tip = Time of day for the photo: a click for the next
 photo-vf-dof-off-tip = The depth of field is off: a click turns it on
 photo-vf-dof-on = Depth of field on
@@ -6398,8 +6405,8 @@ photo-vf-ring-more = More (the next stop)
 photo-vf-af-s-tip = One click, locked, beep-beep (N)
 photo-vf-af-c-tip = Follows the pointer (N)
 photo-vf-mf-tip = Manual, with focus peaking (N)
-photo-vf-area-avatar-tip = Takes the head (V)
-photo-vf-area-point-tip = The point clicked (V)
+photo-vf-area-avatar-tip = Takes the head; Shift + click: several (V)
+photo-vf-area-point-tip = The point clicked; Shift + click: several (V)
 photo-vf-cam-orbit = Orbit
 photo-vf-cam-orbit-tip = The camera turns around the point aimed at
 photo-vf-cam-free = Free
@@ -6441,6 +6448,13 @@ photo-vf-hint-click = Click the subject: focus
 photo-vf-hint-enter = Enter held: focus, released: photo
 photo-vf-hint-help = H: help
 photo-vf-too-close = Cannot focus: too close (under 0.3 m)
+photo-vf-group-added = { $name } added to the focus · { $count ->
+    [one] { $count } subject sharp
+   *[other] { $count } subjects sharp
+}
+photo-vf-group-removed = { $name } taken out of the focus
+photo-vf-group-sky = Nothing to focus on here: the sky cannot join the focus
+photo-vf-group-point = The point
 photo-vf-no-photo = No photo: the focus failed
 photo-vf-direct-manual = Direct manual focus (MF)
 photo-vf-saved = Photo saved
@@ -6448,7 +6462,9 @@ photo-vf-folder = Folder
 photo-vf-help-title = The viewfinder, keyboard and mouse
 photo-vf-help-aim = Aim and shoot
 photo-vf-help-click = Click in the picture
-photo-vf-help-click-text = Focus there (AF-S: beep-beep once sharp)
+photo-vf-help-click-text = Focus there (AF-S: beep-beep once sharp); a HUD keeps its clicks
+photo-vf-help-shift-click = Shift + click
+photo-vf-help-shift-click-text = Adds the avatar or the point there to the focus; again on it, takes it out: every subject of a group photo stays sharp (AF-S). A click alone starts over with one
 photo-vf-help-alt-click = Alt + click, Ctrl + Alt + drag
 photo-vf-help-alt-click-text = The camera as usual: focus on a point, orbit, Ctrl + Alt + Shift to pan
 photo-vf-help-enter-down = Enter held
@@ -6492,6 +6508,8 @@ photo-vf-dial-exposure = exposure
 photo-vf-dial-distance = distance
 photo-vf-cheat-click-key = Click
 photo-vf-cheat-click = focus
+photo-vf-cheat-shift-click-key = Shift + click
+photo-vf-cheat-shift-click = group focus
 photo-vf-cheat-enter-key = Enter
 photo-vf-cheat-enter = shutter (held: focus)
 photo-vf-cheat-wheel-key = Wheel
@@ -6504,6 +6522,9 @@ photo-vf-cheat-tilt = tilt
 photo-vf-cheat-camera-key = Alt + click, Ctrl + Alt + drag
 photo-vf-cheat-camera = camera
 photo-vf-cheat-keys = { $menu } menu · { $af } AF · L AE-L · I display · H help
+photo-vf-hints-hide = Hide this list
+photo-vf-hints-hide-tip = Hide the controls list (the quick menu's Controls list shows it again)
+photo-vf-hints-hidden = Controls list hidden · { $menu }: the quick menu shows it again
 photo-focal-reset = Back to the viewer's field of view
 photo-free-camera = Free camera
 photo-free-camera-hint = The avatar stays put; { $key } or closing the window brings the camera back.
@@ -10310,6 +10331,7 @@ shape-female = Female
 shape-height = Height: { $value }
 shape-meters = Meters
 shape-feet = Feet
+shape-t-pose = T-pose
 shape-search = Filter parameters…
 shape-hints = Visual previews
 shape-loading = Loading the worn shape…
@@ -11097,13 +11119,19 @@ poser-consent-refused = Refused · retry in 10 min
 poser-consent-no-answer = No answer · retry in 10 min
 poser-physics = Physics
 poser-settings = Poser settings
-poser-undo = Undo
-poser-redo = Redo
+poser-undo = Undo (Ctrl+Z)
+poser-redo = Redo (Ctrl+Y)
 poser-library = Pose library
 poser-library-search = Find a pose…
 poser-library-meta = Pose · { $date }
-poser-active-status = Posing · { $count } edited joints
-poser-stopped-status = Stopped · { $count } edited joints
+poser-active-status = Posing · { $count ->
+    [one] { $count } edited joint
+   *[other] { $count } edited joints
+    }
+poser-stopped-status = Stopped · { $count ->
+    [one] { $count } edited joint
+   *[other] { $count } edited joints
+    }
 poser-t-pose = T-pose
 poser-start = Start posing
 poser-photo-notice = Only you can see these poses. To show a pose to others, upload it as an animation.
@@ -11276,6 +11304,15 @@ poser-position = Local position (metres)
 poser-rotation = Local rotation (degrees)
 poser-markers = Show joint markers and gizmos
 poser-stop-on-close = Stop posing when closed
+poser-confirm-close = Confirm before closing loses the pose
+poser-close-title = Close the poser?
+poser-close-confirm = Closing stops the pose: its { $count ->
+    [one] { $count } edited joint is
+   *[other] { $count } edited joints are
+    } lost. Minimize the window to keep them.
+poser-close-dont-ask = Don't ask again
+poser-close-minimize = Minimize
+poser-close-anyway = Close anyway
 poser-load = Load .anim
 poser-save = Save .anim
 poser-import = Prepare import

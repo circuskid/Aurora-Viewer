@@ -695,6 +695,7 @@ inventory-smart-age-newer = Plus récent que
 inventory-smart-age-older = Plus ancien que
 inventory-smart-hours = { $hours } h
 inventory-smart-types-none = Choisir les types
+inventory-smart-rights-none = Choisir les droits
 inventory-status-counts = { $count ->
     [one] { $number } élément
    *[other] { $number } éléments
@@ -2534,8 +2535,9 @@ ui-options-flash-on-object-im = Aussi pour les objets
 ui-options-flash-on-script-dialog = Clignoter pour les dialogues
 ui-options-flash-on-script-dialog-hint = Les menus et zones de texte des scripts, quand Aurora n'est pas au premier plan
 ui-options-system-notifications = Notifications système
-ui-options-system-notifications-hint = Notifications de Windows quand Aurora est en arrière-plan : messages instantanés, mentions, offres, avis et alertes. Un clic dessus vous y ramène.
+ui-options-system-notifications-hint = Une notification sur votre bureau quand Aurora est en arrière-plan : messages instantanés, mentions, offres, avis et alertes. Un clic dessus vous y ramène.
 ui-options-system-notifications-when-active = Même au premier plan
+system-notification-open = Ouvrir
 ui-options-keywords = Alertes par mots-clés
 ui-options-keywords-on = Activer les alertes par mots-clés
 ui-options-keywords-on-hint = Colore les messages qui contiennent l'un de vos mots et joue un son à leur arrivée
@@ -3023,6 +3025,10 @@ ui-options-letter-keys-move = Les lettres me déplacent (WASD) au lieu de démar
 ui-options-letter-keys-move-help = Désactivé : appuyer sur une lettre commence à écrire dans le chat local.
 ui-options-walk-backwards-without-turning = Marcher à reculons sans me retourner
 ui-options-walk-backwards-without-turning-help = Les avatars qui marchent à reculons reculent au lieu de se retourner vers où ils vont. Seulement sur votre écran : les autres voient ce que montre leur viewer. Un AO peut quand même les retourner.
+ui-options-automatic-fly = Décoller en maintenant Monter
+ui-options-automatic-fly-help = Maintenir la commande Sauter / Monter déclenche le vol. Désactivée, le saut au sol est immédiat et se répète tant que la commande reste appuyée ; la montée en vol fonctionne toujours. Utilisez le bouton Vol ou son raccourci pour décoller.
+ui-options-automatic-land = Atterrir en maintenant Descendre
+ui-options-automatic-land-help = Maintenir la commande S'accroupir / Descendre arrête le vol au contact du sol ou d'une plateforme. Désactivée, elle permet toujours de s'accroupir au sol et de descendre en vol. Utilisez le bouton Vol ou son raccourci pour arrêter de voler.
 ui-options-crouch-toggle = S'accroupir en bascule
 ui-options-crouch-toggle-help = Une pression sur la touche Descendre accroupit l'avatar jusqu'à la suivante (ou un saut, ou le vol). En vol, la touche descend comme d'habitude.
 ui-options-quickjump = Sauter et atterrir sans délai d'animation
@@ -6385,6 +6391,7 @@ photo-vf-file-tip = Fichier : un clic pour le format suivant
 photo-vf-destination-tip = Destination : disque, inventaire ou profil (un clic pour la suivante)
 photo-vf-quality-tip = Qualité photo : tout au mieux pour la photo (un clic pour basculer)
 photo-vf-hud-tip = Les HUD à l'écran et sur la photo (un clic pour basculer)
+photo-vf-poser-tip = Poseur : poser l'avatar sans quitter le cadrage
 photo-vf-time-tip = Moment de la journée pour la photo : un clic pour le suivant
 photo-vf-dof-off-tip = La profondeur de champ est désactivée : un clic l'active
 photo-vf-dof-on = Profondeur de champ activée
@@ -6403,8 +6410,8 @@ photo-vf-ring-more = Plus (le cran suivant)
 photo-vf-af-s-tip = Un clic, verrouillée, bip-bip (N)
 photo-vf-af-c-tip = Suit le pointeur (N)
 photo-vf-mf-tip = Manuelle, avec le peaking (N)
-photo-vf-area-avatar-tip = Accroche la tête (V)
-photo-vf-area-point-tip = Le point cliqué (V)
+photo-vf-area-avatar-tip = Accroche la tête ; Maj + clic : plusieurs (V)
+photo-vf-area-point-tip = Le point cliqué ; Maj + clic : plusieurs (V)
 photo-vf-cam-orbit = Orbite
 photo-vf-cam-orbit-tip = La caméra tourne autour du point visé
 photo-vf-cam-free = Libre
@@ -6446,6 +6453,13 @@ photo-vf-hint-click = Clic sur le sujet : mise au point
 photo-vf-hint-enter = Entrée enfoncée : mise au point, relâchée : photo
 photo-vf-hint-help = H : aide
 photo-vf-too-close = Mise au point impossible : trop près (moins de 0,3 m)
+photo-vf-group-added = { $name } ajouté à la mise au point · { $count ->
+    [one] { $count } sujet net
+   *[other] { $count } sujets nets
+}
+photo-vf-group-removed = { $name } retiré de la mise au point
+photo-vf-group-sky = Rien sur quoi faire le point ici : le ciel ne peut pas rejoindre la mise au point
+photo-vf-group-point = Le point
 photo-vf-no-photo = Pas de photo : la mise au point a échoué
 photo-vf-direct-manual = Mise au point manuelle directe (MF)
 photo-vf-saved = Photo enregistrée
@@ -6453,7 +6467,9 @@ photo-vf-folder = Dossier
 photo-vf-help-title = Le viseur, au clavier et à la souris
 photo-vf-help-aim = Viser et déclencher
 photo-vf-help-click = Clic dans l'image
-photo-vf-help-click-text = Mise au point à cet endroit (AF-S : bip-bip quand c'est net)
+photo-vf-help-click-text = Mise au point à cet endroit (AF-S : bip-bip quand c'est net) ; un HUD garde ses clics
+photo-vf-help-shift-click = Maj + clic
+photo-vf-help-shift-click-text = Ajoute l'avatar ou le point visé à la mise au point ; à nouveau dessus, l'en retire : tous les sujets d'une photo de groupe restent nets (AF-S). Un clic seul repart d'un seul
 photo-vf-help-alt-click = Alt + clic, Ctrl + Alt + glisser
 photo-vf-help-alt-click-text = La caméra comme d'habitude : viser un point, tourner autour, Ctrl + Alt + Maj pour se décaler
 photo-vf-help-enter-down = Entrée enfoncée
@@ -6497,6 +6513,8 @@ photo-vf-dial-exposure = exposition
 photo-vf-dial-distance = distance
 photo-vf-cheat-click-key = Clic
 photo-vf-cheat-click = mise au point
+photo-vf-cheat-shift-click-key = Maj + clic
+photo-vf-cheat-shift-click = mise au point de groupe
 photo-vf-cheat-enter-key = Entrée
 photo-vf-cheat-enter = déclencher (maintenue : mise au point)
 photo-vf-cheat-wheel-key = Molette
@@ -6509,6 +6527,9 @@ photo-vf-cheat-tilt = inclinaison
 photo-vf-cheat-camera-key = Alt + clic, Ctrl + Alt + glisser
 photo-vf-cheat-camera = caméra
 photo-vf-cheat-keys = { $menu } menu · { $af } AF · L AE-L · I affichage · H aide
+photo-vf-hints-hide = Masquer l'aide-mémoire
+photo-vf-hints-hide-tip = Masque l'aide-mémoire (« Aide-mémoire » du menu rapide le réaffiche)
+photo-vf-hints-hidden = Aide-mémoire masqué · { $menu } : le menu rapide le réaffiche
 photo-focal-reset = Revenir au champ de vision du viewer
 photo-free-camera = Caméra libre
 photo-free-camera-hint = L'avatar reste sur place ; { $key } ou la fermeture de la fenêtre ramène la caméra.
@@ -10306,6 +10327,7 @@ shape-female = Féminin
 shape-height = Taille : { $value }
 shape-meters = Mètres
 shape-feet = Pieds
+shape-t-pose = T-pose
 shape-search = Filtrer les paramètres…
 shape-hints = Aperçus visuels
 shape-loading = Chargement de la silhouette portée…
@@ -11093,13 +11115,19 @@ poser-consent-refused = Refusé · nouvel essai dans 10 min
 poser-consent-no-answer = Sans réponse · nouvel essai dans 10 min
 poser-physics = Physique
 poser-settings = Réglages du poseur
-poser-undo = Annuler
-poser-redo = Rétablir
+poser-undo = Annuler (Ctrl+Z)
+poser-redo = Rétablir (Ctrl+Y)
 poser-library = Bibliothèque de poses
 poser-library-search = Rechercher une pose…
 poser-library-meta = Pose · { $date }
-poser-active-status = En pose · { $count } articulations modifiées
-poser-stopped-status = Arrêté · { $count } articulations modifiées
+poser-active-status = En pose · { $count ->
+    [one] { $count } articulation modifiée
+   *[other] { $count } articulations modifiées
+    }
+poser-stopped-status = Arrêté · { $count ->
+    [one] { $count } articulation modifiée
+   *[other] { $count } articulations modifiées
+    }
 poser-t-pose = Pose en T
 poser-start = Démarrer la pose
 poser-photo-notice = Vous seul voyez ces poses. Pour montrer une pose aux autres, importez-la comme animation.
@@ -11272,6 +11300,15 @@ poser-position = Position locale (mètres)
 poser-rotation = Rotation locale (degrés)
 poser-markers = Afficher les repères et les gizmos
 poser-stop-on-close = Arrêter la pose à la fermeture
+poser-confirm-close = Confirmer quand la fermeture perd la pose
+poser-close-title = Fermer le poseur ?
+poser-close-confirm = La fermeture arrête la pose : { $count ->
+    [one] { $count } articulation modifiée est perdue
+   *[other] { $count } articulations modifiées sont perdues
+    }. Minimisez la fenêtre pour les garder.
+poser-close-dont-ask = Ne plus demander
+poser-close-minimize = Minimiser
+poser-close-anyway = Fermer quand même
 poser-load = Charger .anim
 poser-save = Enregistrer .anim
 poser-import = Préparer l’import
