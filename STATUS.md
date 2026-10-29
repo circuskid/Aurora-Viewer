@@ -51,8 +51,15 @@ behind. Dropped because the maintainer accepted the Legacy Viewer rule
   binary-only one (read at the tag); MIT on a binary still gives a GPLv3
   build no Corresponding Source, so FSR 4 could only ever be an optional
   Windows runtime load, which is upstream's call. The vendor-neutral path
-  is unchanged: FSR 3.1.6 source, MIT. Also seen: crate `wgpu-ffx`
-  (FSR 3 for wgpu, unreviewed).
+  is unchanged: FSR 3.1.6 source, MIT. **Crate `wgpu-ffx` 0.1.0**
+  (FSR 3 upscaler for wgpu, by wgpu maintainer cwfitzgerald; reviewed
+  2026-10-28): MIT, GPLv3-compatible, a credible base but not usable
+  as-is. Pins wgpu 29 (Aurora is on 30; migration PR #24 unmerged),
+  ghosting fix PR #28 unmerged, `dispatch()` blocks on an error scope and
+  `panic!`s every frame, allocates a staging buffer per frame, no
+  reactive-mask generation, reference shader permutations only, output
+  Rgba16Float only, "experimental". Fork-and-fix or wait; motion vectors
+  come first either way.
 
 ### NOT QUEUED
 
