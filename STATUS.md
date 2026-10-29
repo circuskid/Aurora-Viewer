@@ -43,8 +43,8 @@ this host 2026-10-29 (`aurora-viewer --version` → `0.8.2+circuskid.1793242821`
    `ui/inventory/aurora.rs` and `aurora/rows.rs`, next to our patch, so
    build and run the inventory tests after any sync.
 
-#1411 is the feature rebased on upstream/main 0dca8c46 (table below); once
-it merges, the next sync supersedes our merge 11935b23.
+#1411 = the feature rebased on 0dca8c46 (table below); app Auto-fix is on,
+but G.W. sees any reply first. Merged, it supersedes our merge 11935b23.
 
 ### THEN — answer reviews on the Linux PRs
 
