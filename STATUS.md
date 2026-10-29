@@ -77,7 +77,7 @@ behind. Dropped because the maintainer accepted the Legacy Viewer rule
 
 - **Linux notification click-to-raise: unshelved 2026-10-29 by G.W., left to
   the maintainer.** Not implemented; the notifications PR
-  (`fix/linux-desktop-notifications`) explains it and asks. A click opens the
+  (Aurora-Viewer/Aurora-Viewer#1397, opened 2026-10-29) explains it and asks. A click opens the
   right conversation but cannot bring the window forward: winit 0.30.13's
   Wayland `focus_window` is an empty function, and raising needs the
   xdg-activation token a server may send with the click (`ActivationToken`).
