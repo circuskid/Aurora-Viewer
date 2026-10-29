@@ -75,17 +75,15 @@ behind. Dropped because the maintainer accepted the Legacy Viewer rule
 
 ### NOT QUEUED
 
-- **Linux notification click-to-raise: shelved 2026-10-29 by G.W.** ("not
-  worth it"). Only that part: the notifications change itself
-  (`fix/linux-desktop-notifications` on `origin`, upstream-clean) goes on to
-  validation. A click opens the right conversation but cannot bring the window
-  forward: winit 0.30.13's Wayland `focus_window` is an empty function, and
-  raising needs the xdg-activation token a server may send with the click
-  (`ActivationToken`). Measured with `dbus-monitor` on a `notify-send` probe:
-  quickshell 0.3.2 sends only `ActionInvoked` then `NotificationClosed`, so
-  even our own activation code would not raise it on this desktop. Reopen only
-  if quickshell starts sending the token (or atoll makes it), or winit gains a
-  Wayland activate-with-token.
+- **Linux notification click-to-raise: unshelved 2026-10-29 by G.W., left to
+  the maintainer.** Not implemented; the notifications PR
+  (`fix/linux-desktop-notifications`) explains it and asks. A click opens the
+  right conversation but cannot bring the window forward: winit 0.30.13's
+  Wayland `focus_window` is an empty function, and raising needs the
+  xdg-activation token a server may send with the click (`ActivationToken`).
+  Measured with `dbus-monitor` on a `notify-send` probe: quickshell 0.3.2 sends
+  only `ActionInvoked` then `NotificationClosed`, so on this desktop even our
+  own activation code would not raise it. Act on the maintainer's answer.
 - AGENTS.md twice? Not seen: the loaded instructions in a worktree session
   show AGENTS.md once. The real gap is the other way: a worktree cut from
   `upstream/main` has no `.claude/CLAUDE.md` or STATUS.md of ours, so the
