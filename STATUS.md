@@ -25,9 +25,16 @@ this host 2026-10-29 (`aurora-viewer --version` → `0.8.2+circuskid.1793242821`
 
 ### FIRST — the two-minute check
 
-`git fetch upstream && git rev-list --count circuskid..upstream/main` — 1
-at this checkpoint (d555fb67, inventory hover actions; upstream merges many
-PRs a day).
+`git fetch upstream && git rev-list --count circuskid..upstream/main` — 3
+at this checkpoint (tip 0dca8c46; upstream merges many PRs a day).
+`git merge-tree --write-tree --name-only circuskid upstream/main` predicts
+the next sync: at this checkpoint only `TASKS.md` conflicts (our 🟡
+advanced-search line vs upstream's new lines; keep both). Upstream now also
+edits `ui/inventory/aurora.rs` and `aurora/rows.rs`, which sit next to our
+patch, so build and run the inventory tests after any sync.
+
+Worktree `.claude/worktrees/inventory-regex-filters-0221ca` is merged and
+can be removed; keep the branch until an upstream PR is drafted or declined.
 
 ### THEN — nothing queued
 
