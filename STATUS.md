@@ -2,37 +2,34 @@
 
 Our fork of Aurora-Viewer/Aurora-Viewer. Rules: [.claude/CLAUDE.md](.claude/CLAUDE.md).
 
-## ▶ RESUME HERE — 2026-10-28 (evening)
+## ▶ RESUME HERE — 2026-10-28 (night)
 
 Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**Our one patch is now upstream.** The Wayland attention fix (flash only a
-minimized window on Linux; on Wayland winit's xdg_activation made Hyprland
-switch workspace and steal focus) merged upstream as
-Aurora-Viewer/Aurora-Viewer#1332 on 2026-10-28 19:33Z (merge 32f1b57a);
-upstream issue #1330 is closed. Installed build is still our tag
-`v0.8.2.1793212147` (pkgbuilds d66c37c); aurora-viewer is in
-`~/.config/circuskid-repo/packages`, so `paru` picks up later releases.
+**circuskid carries no patch of its own.** Upstream released v0.8.2 stable
+(2026-10-28 23:47Z) with our Wayland attention fix
+(Aurora-Viewer/Aurora-Viewer#1332). `circuskid` = `upstream/main` (602e3ae8)
++ `.claude/CLAUDE.md` + this file, merge 53f13d84; fork `main` mirrors
+602e3ae8. circuskid/Aurora-Viewer#1 closed; the wayland worktree is gone;
+all seven fork workflows still `disabled_manually`.
+
+Latest package: tag `v0.8.2.1793232360`, pkgbuilds b4f56ac, built with
+`makepkg` and `check()` green (binary says `0.8.2+circuskid.1793232360`).
+Not installed yet: `paru` (or `sudo pacman -U` on the built
+`.pkg.tar.zst` in `~/Projects/pkgbuilds/aurora-viewer/`) is G.W.'s step.
+Installed before that: `v0.8.2.1793212147`.
 
 ### FIRST — the two-minute check
 
-`git fetch upstream && git rev-list --count circuskid..upstream/main` — 21
-at this checkpoint (upstream merges many PRs a day), and
-`gh issue view 1 -R circuskid/Aurora-Viewer --json state` — OPEN.
+`git fetch upstream && git rev-list --count circuskid..upstream/main` — 0
+at this checkpoint (upstream merges many PRs a day).
 
-### THEN — the post-merge cleanup, not started
+### THEN — nothing queued
 
-1. Merge `upstream/main` into `circuskid` (it now contains our fix, so
-   `circuskid` = upstream + STATUS/`.claude` only), push.
-2. `gh workflow list -R circuskid/Aurora-Viewer --all` — check none of
-   upstream's workflows got enabled on the fork.
-3. Close circuskid/Aurora-Viewer#1, naming #1332.
-4. Remove the worktree `.claude/worktrees/wayland-attention-focus-d6e595`
-   (branch `fix/wayland-attention-focus`, d7c4ad3b, fully merged).
-5. Packaging: ship the next build from `circuskid` per
-   `circuskid-release` when the user wants one.
+Ship a new build when G.W. wants one (steps in `.claude/CLAUDE.md`). Any
+upstream contribution: branch from `upstream/main`, draft to G.W. first.
 
 If PR review is ever reopened, the rejected alternative was: skip the flash
 only on Wayland (`RawWindowHandle::Wayland`), keep X11 flashing whenever
