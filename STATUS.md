@@ -57,7 +57,7 @@ per `.claude/CLAUDE.md`.
 | #1397 notifications | `fix/linux-desktop-notifications` | `aurora-linux-improvements-5a6f8e` | 25b91982 |
 | #1405 desktop identity | `feat/linux-desktop-identity` | `linux-app-id-b86aee` | a68637fa |
 | #1406 jobs at lower priority | `perf/linux-thread-priority` | `linux-thread-priority-0343b7` | f86b1106 |
-| #1407 PulseAudio / PipeWire | `feat/linux-pulseaudio-host` | none: `git worktree add` it | af9ebaad |
+| #1407 PulseAudio / PipeWire | `feat/linux-pulseaudio-host` | `linux-pulseaudio-pr` | f62c66dd: review answered; G.W. tests voice on the grid 2026-10-30 |
 | #1408 local time | `fix/linux-local-time` | `linux-local-time-4c73c4` | 8e3883eb |
 | #1411 advanced inventory search | `feat/inventory-advanced-search` | `inventory-regex-filters-0221ca` | 6f5ec3a5 |
 
