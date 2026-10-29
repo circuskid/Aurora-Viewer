@@ -8,79 +8,52 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**circuskid carries one patch of its own: the advanced inventory search**
-(merge 11935b23, 2026-10-29; branch `claude/inventory-regex-filters-0221ca`,
-cut from `upstream/main` 602e3ae8, feature commits free of AI trailers so it
-went upstream clean as Aurora-Viewer/Aurora-Viewer#1411, opened 2026-10-29). Visual
-boolean rules beside quick search: chip bar, rule builder, per-account saved
-searches (`inventory-smart-searches.json`), Find similar. Reviewed by Fable,
-codex and agy; all confirmed findings fixed (671a6630). G.W. validated it in
-demo mode 2026-10-29. Otherwise `circuskid` = `upstream/main` (602e3ae8) +
-`.claude/CLAUDE.md` + this file; upstream v0.8.2 already holds our Wayland
-fix (Aurora-Viewer/Aurora-Viewer#1332). All seven fork workflows still
-`disabled_manually`.
+**circuskid carries no patch of its own.** Every PR we sent upstream is
+merged: #1397 (notifications), #1405 (desktop identity), #1406 (jobs at
+lower priority), #1407 (PulseAudio / PipeWire), #1408 (local time), #1411
+(advanced inventory search). The 2026-10-29 sync merged `upstream/main`
+c5a428a7 into `circuskid`, taking upstream's side of every conflict (its
+#1411 supersedes our merge 11935b23). The tree is `upstream/main` plus
+`.claude/CLAUDE.md` and this file. All seven fork workflows are still
+`disabled_manually`, and the sync added no new workflow.
 
-Latest package: tag `v0.8.2.1793242821`, pkgbuilds 69e87fd, installed on
-this host 2026-10-29 (`aurora-viewer --version` → `0.8.2+circuskid.1793242821`).
+Latest package: tag `v0.8.3.1793280767`, built from upstream
+`v0.8.3-beta.20261029.1` plus 30 commits (`_upstream=0.8.3-beta.20261029.1`).
+The binary reports `0.8.3-beta.20261029.1+circuskid.1793280767`, and the grid
+sees `0.8.3.0`. The workspace tests passed before the tag (6139 passed,
+0 failed, 30 ignored).
 
 ### FIRST — the two-minute check
 
-1. **Our PRs upstream** (five open, #1397 merged). Did the maintainer review or merge any?
+1. **Upstream drift.** `git fetch upstream && git rev-list --count
+   circuskid..upstream/main`. Since we carry no code, a sync should be
+   conflict-free; ship when G.W. wants a build (steps in `.claude/CLAUDE.md`).
+2. **Grid follow-ups G.W. owns:** the voice test on Linux for #1407
+   (planned 2026-10-30). The maintainer sets its TASKS.md line to 🟡 in a
+   docs PR of their own; nothing for us to push.
 
-   ```
-   for n in 1405 1406 1407 1408 1411; do gh pr view $n -R Aurora-Viewer/Aurora-Viewer --json number,state,mergeable,comments --jq '"\(.number) \(.state) \(.mergeable) comments=\(.comments|length)"'; done
-   ```
+### Gotcha — dev builds on `circuskid` panic
 
-   At this checkpoint (2026-10-29) all five are OPEN. #1407 has 2 comments
-   (the maintainer's review and our reply); the others have 0. A new
-   `## Review` comment is the next work: read it in full, then fix on that
-   PR's branch. **#1397 was merged upstream 2026-10-29** (08c86c31).
-2. **Upstream drift.** `git fetch upstream && git rev-list --count
-   circuskid..upstream/main` gave 6 at this checkpoint (it includes #1397).
-   `git merge-tree --write-tree --name-only circuskid upstream/main` predicts
-   the next sync: only `TASKS.md` conflicts. Keep both sides: our 🟡
-   advanced-search line and upstream's new lines. Upstream also edits
-   `ui/inventory/aurora.rs` and `aurora/rows.rs`, next to our patch, so
-   build and run the inventory tests after any sync.
+Our stamp tags (`v0.8.2.<stamp>`, four numbers) match the
+`v[0-9]*.[0-9]*.[0-9]*` pattern of `crates/aurora-version/build.rs`, whose
+parser rejects them, so any `cargo build`/`cargo test` on a commit that
+descends from one stops in that build script. `AURORA_VERSION_TAG` does not
+help: `describe` still finds the stamp tag and the build refuses the
+mismatch. The PKGBUILD deletes the tags in its clone. To run the tests,
+clone with no tags (`git clone --no-tags --shared`, then delete what
+`--branch` fetched) and point `CARGO_TARGET_DIR` at the worktree's `target/`.
 
-#1411 = the feature rebased on 0dca8c46 (table below); app Auto-fix is on,
-but G.W. sees any reply first. Merged, it supersedes our merge 11935b23.
+### THEN — the next upstream PR
 
-### THEN — answer reviews on the Linux PRs
-
-None of these PRs is merged into `circuskid`, so our package has none of
-them yet. Each PR is cut from `upstream/main` and kept free of AI trailers,
-per `.claude/CLAUDE.md`.
-
-| PR | Branch | Worktree (`.claude/worktrees/`) | Head |
-|---|---|---|---|
-| #1405 desktop identity | `feat/linux-desktop-identity` | `linux-app-id-b86aee` | a68637fa |
-| #1406 jobs at lower priority | `perf/linux-thread-priority` | `linux-thread-priority-0343b7` | f86b1106 |
-| #1407 PulseAudio / PipeWire | `feat/linux-pulseaudio-host` | `linux-pulseaudio-pr` | f62c66dd: review answered; G.W. tests voice on the grid 2026-10-30 |
-| #1408 local time | `fix/linux-local-time` | `linux-local-time-4c73c4` | 8e3883eb |
-| #1411 advanced inventory search | `feat/inventory-advanced-search` | `inventory-regex-filters-0221ca` | 6f5ec3a5 |
-
-- **To answer a review**: fix on the branch, then `git commit -m … -- <paths>`
-  with no trailers, then `git push origin HEAD`. Draft any PR comment to
-  G.W. first. To catch up, merge `upstream/main` into the branch. Never
-  rebase it and never force-push it.
+- Cut from `upstream/main`, no AI trailers (`.claude/CLAUDE.md`). To answer
+  a review: fix on the branch, commit with no trailers, `git push origin
+  HEAD`. Draft any PR comment to G.W. first. Never rebase or force-push.
 - **Each push re-runs first-contributor CI**, which waits for the
-  maintainer to approve it. So batch the fixes for one review into a
-  single push.
-- **The PRs answer each other's nits.** #1397's `Icon=` nit is fixed by
-  #1405, so #1397 points to #1405 for it.
-- **The maintainer merges, not us**; the next sync brings merged PRs into
-  `circuskid`. Merge one in earlier only if G.W. wants it in a build.
-- **Verified 2026-10-29** with all four new branches merged on
-  upstream/main 0dca8c46: the merge is clean, fmt passes, and 6089 tests
-  pass with 0 failures. Clippy reports only dead-code lints, in files none
-  of the branches touch. `check.ps1` was not run (no `pwsh`); every PR body
-  says so.
-- **#1406's gain** is probably nil here (pool = `cores − 2`, 32 threads);
-  it could show on 4–8 cores. A measurement (`taskset -c 0-3`,
-  `AURORA_DEMO_STREAM=4000`, 10 runs each) was offered, not asked for.
-
-Ship a new build when G.W. wants one (steps in `.claude/CLAUDE.md`).
+  maintainer to approve it, so batch the fixes for one review into one push.
+- **The maintainer merges, not us**; the next sync brings merged PRs in.
+- The PR worktrees (`linux-app-id-b86aee`, `linux-thread-priority-0343b7`,
+  `linux-pulseaudio-pr`, `inventory-regex-filters-0221ca`) are merged and
+  can be removed.
 
 ### DECIDED — do not reopen
 
