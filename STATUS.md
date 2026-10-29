@@ -17,14 +17,16 @@ c5a428a7 into `circuskid`, taking upstream's side of every conflict (its
 `.claude/CLAUDE.md` and this file. All seven fork workflows are still
 `disabled_manually`, and the sync added no new workflow.
 
-**One PR open upstream: Aurora-Viewer/Aurora-Viewer#1483** (2026-10-29),
-inventory Left / Right arrows open, close and climb folders (Legacy
-`LLFolderView::handleKeyHere`). A tester request with no issue; G.W.
-validated it in demo. Fork branch `feat/inventory-arrow-fold` = local
-`claude/elastic-lederberg-6a602f`, worktree
-`.claude/worktrees/elastic-lederberg-6a602f`. At checkpoint its CI waited on
-the maintainer's first-contributor approval; no labels, no screenshots
-(G.W. dropped them).
+**Two PRs open upstream** (2026-10-29; validated by G.W. in demo; no issue,
+no labels; CI waits on the maintainer's first-contributor approval):
+- **#1483** inventory Left / Right arrows climb folders (Legacy
+  `LLFolderView::handleKeyHere`); branch `feat/inventory-arrow-fold`, worktree
+  `.claude/worktrees/elastic-lederberg-6a602f`.
+- **#1497** search field in the wolf menu ("home" → Go home, Set Home to
+  Here); branch `feat/menu-search`, worktree
+  `.claude/worktrees/menu-search-drag-reorder-84e3ca`; demo
+  `AURORA_DEMO_MENU_SEARCH=<q>`. Outfit-editor drag reorder: dropped
+  (upstream has it, Legacy does not).
 
 Latest package: tag `v0.8.3.1793280767`, built from upstream
 `v0.8.3-beta.20261029.1` plus 30 commits (`_upstream=0.8.3-beta.20261029.1`).
@@ -40,9 +42,9 @@ At checkpoint `upstream/main` was 3 commits ahead (not merged).
 1. **Upstream drift.** `git fetch upstream && git rev-list --count
    circuskid..upstream/main`. Since we carry no code, a sync should be
    conflict-free; ship when G.W. wants a build (steps in `.claude/CLAUDE.md`).
-2. **#1483 state.** `gh pr view 1483 --repo Aurora-Viewer/Aurora-Viewer
-   --json state,mergeable,statusCheckRollup,comments`. A review: fix in the
-   worktree above (one push per review). Merged: remove that worktree and
+2. **#1483 and #1497 state.** `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer
+   --json state,mergeable,statusCheckRollup,comments`. A review: fix in its
+   worktree (one push per review). Merged: remove that worktree and
    its branch.
 3. **Grid follow-ups G.W. owns:** the voice test on Linux for #1407
    (planned 2026-10-30). The maintainer sets its TASKS.md line to 🟡 in a
