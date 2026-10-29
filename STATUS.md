@@ -25,26 +25,63 @@ this host 2026-10-29 (`aurora-viewer --version` → `0.8.2+circuskid.1793242821`
 
 ### FIRST — the two-minute check
 
-`git fetch upstream && git rev-list --count circuskid..upstream/main` — 3
-at this checkpoint (tip 0dca8c46; upstream merges many PRs a day).
-`git merge-tree --write-tree --name-only circuskid upstream/main` predicts
-the next sync: at this checkpoint only `TASKS.md` conflicts (our 🟡
-advanced-search line vs upstream's new lines; keep both). Upstream now also
-edits `ui/inventory/aurora.rs` and `aurora/rows.rs`, which sit next to our
-patch, so build and run the inventory tests after any sync.
+1. **Our five open Linux PRs upstream.** Did the maintainer review or merge any?
 
-Worktree `.claude/worktrees/inventory-regex-filters-0221ca` is merged and
-can be removed; keep the branch until an upstream PR is drafted or declined.
+   ```
+   for n in 1397 1405 1406 1407 1408; do gh pr view $n -R Aurora-Viewer/Aurora-Viewer --json number,state,mergeable,comments --jq '"\(.number) \(.state) \(.mergeable) comments=\(.comments|length)"'; done
+   ```
 
-### THEN — nothing queued
+   At this checkpoint (2026-10-29) all five are OPEN and MERGEABLE. #1397 has
+   1 comment, the maintainer's review, which has been addressed; the others
+   have 0 comments. A new `## Review` comment is the next work. Read it in
+   full, then fix on that PR's branch.
+2. **Upstream drift.** `git fetch upstream && git rev-list --count
+   circuskid..upstream/main` gave 4 at this checkpoint (tip f629385e).
+   `git merge-tree --write-tree --name-only circuskid upstream/main` predicts
+   the next sync: only `TASKS.md` conflicts. Keep both sides: our 🟡
+   advanced-search line and upstream's new lines. Upstream also edits
+   `ui/inventory/aurora.rs` and `aurora/rows.rs`, next to our patch, so
+   build and run the inventory tests after any sync.
 
-Ship a new build when G.W. wants one (steps in `.claude/CLAUDE.md`). Any
-upstream contribution: branch from `upstream/main`, draft to G.W. first.
+Worktree `inventory-regex-filters-0221ca` now holds `feat/inventory-advanced-search`
+(61542f37, same three feature commits, no PR) beside the original branch;
+keep both until an upstream PR is drafted or declined.
 
-If PR review is ever reopened, the rejected alternative was: skip the flash
-only on Wayland (`RawWindowHandle::Wayland`), keep X11 flashing whenever
-behind. Dropped because the maintainer accepted the Legacy Viewer rule
-(`LLWindowSDL::flashIcon`, minimized only).
+### THEN — answer reviews on the Linux PRs
+
+None of these PRs is merged into `circuskid`, so our package has none of
+them yet. Each PR is cut from `upstream/main` and kept free of AI trailers,
+per `.claude/CLAUDE.md`.
+
+| PR | Branch | Worktree (`.claude/worktrees/`) | Head |
+|---|---|---|---|
+| #1397 notifications | `fix/linux-desktop-notifications` | `aurora-linux-improvements-5a6f8e` | 25b91982 |
+| #1405 desktop identity | `feat/linux-desktop-identity` | `linux-app-id-b86aee` | a68637fa |
+| #1406 jobs at lower priority | `perf/linux-thread-priority` | `linux-thread-priority-0343b7` | f86b1106 |
+| #1407 PulseAudio / PipeWire | `feat/linux-pulseaudio-host` | none: `git worktree add` it | af9ebaad |
+| #1408 local time | `fix/linux-local-time` | `linux-local-time-4c73c4` | 8e3883eb |
+
+- **To answer a review**: fix on the branch, then `git commit -m … -- <paths>`
+  with no trailers, then `git push origin HEAD`. Draft any PR comment to
+  G.W. first. To catch up, merge `upstream/main` into the branch. Never
+  rebase it and never force-push it.
+- **Each push re-runs first-contributor CI**, which waits for the
+  maintainer to approve it. So batch the fixes for one review into a
+  single push.
+- **The PRs answer each other's nits.** #1397's `Icon=` nit is fixed by
+  #1405, so #1397 points to #1405 for it.
+- **The maintainer merges, not us**; the next sync brings merged PRs into
+  `circuskid`. Merge one in earlier only if G.W. wants it in a build.
+- **Verified 2026-10-29** with all four new branches merged on
+  upstream/main 0dca8c46: the merge is clean, fmt passes, and 6089 tests
+  pass with 0 failures. Clippy reports only dead-code lints, in files none
+  of the branches touch. `check.ps1` was not run (no `pwsh`); every PR body
+  says so.
+- **#1406's gain** is probably nil here (pool = `cores − 2`, 32 threads);
+  it could show on 4–8 cores. A measurement (`taskset -c 0-3`,
+  `AURORA_DEMO_STREAM=4000`, 10 runs each) was offered, not asked for.
+
+Ship a new build when G.W. wants one (steps in `.claude/CLAUDE.md`).
 
 ### DECIDED — do not reopen
 
@@ -77,13 +114,23 @@ behind. Dropped because the maintainer accepted the Legacy Viewer rule
 
 - **Linux notification click-to-raise: unshelved 2026-10-29 by G.W., left to
   the maintainer.** Not implemented; the notifications PR
-  (Aurora-Viewer/Aurora-Viewer#1397, opened 2026-10-29) explains it and asks. A click opens the
+  (Aurora-Viewer/Aurora-Viewer#1397, opened 2026-10-29) explains it and asks; no answer yet. A click opens the
   right conversation but cannot bring the window forward: winit 0.30.13's
   Wayland `focus_window` is an empty function, and raising needs the
   xdg-activation token a server may send with the click (`ActivationToken`).
   Measured with `dbus-monitor` on a `notify-send` probe: quickshell 0.3.2 sends
   only `ActionInvoked` then `NotificationClosed`, so on this desktop even our
   own activation code would not raise it. Act on the maintainer's answer.
+
+---
+
+## Finished — read on demand
+
+- If the review of the attention flash is ever reopened, this alternative was
+  rejected: skip the flash only on Wayland (`RawWindowHandle::Wayland`) and
+  keep X11 flashing whenever the window is behind. It was dropped because the
+  maintainer accepted the Legacy Viewer rule (`LLWindowSDL::flashIcon`,
+  minimized only).
 - AGENTS.md twice? Not seen: the loaded instructions in a worktree session
   show AGENTS.md once. The real gap is the other way: a worktree cut from
   `upstream/main` has no `.claude/CLAUDE.md` or STATUS.md of ours, so the
