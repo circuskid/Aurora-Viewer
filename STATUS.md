@@ -11,7 +11,7 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 **circuskid carries one patch of its own: the advanced inventory search**
 (merge 11935b23, 2026-10-29; branch `claude/inventory-regex-filters-0221ca`,
 cut from `upstream/main` 602e3ae8, feature commits free of AI trailers so it
-can go upstream as a clean PR later — not drafted, G.W.'s call). Visual
+went upstream clean as Aurora-Viewer/Aurora-Viewer#1411, opened 2026-10-29). Visual
 boolean rules beside quick search: chip bar, rule builder, per-account saved
 searches (`inventory-smart-searches.json`), Find similar. Reviewed by Fable,
 codex and agy; all confirmed findings fixed (671a6630). G.W. validated it in
@@ -25,15 +25,15 @@ this host 2026-10-29 (`aurora-viewer --version` → `0.8.2+circuskid.1793242821`
 
 ### FIRST — the two-minute check
 
-1. **Our five open Linux PRs upstream.** Did the maintainer review or merge any?
+1. **Our six open PRs upstream.** Did the maintainer review or merge any?
 
    ```
-   for n in 1397 1405 1406 1407 1408; do gh pr view $n -R Aurora-Viewer/Aurora-Viewer --json number,state,mergeable,comments --jq '"\(.number) \(.state) \(.mergeable) comments=\(.comments|length)"'; done
+   for n in 1397 1405 1406 1407 1408 1411; do gh pr view $n -R Aurora-Viewer/Aurora-Viewer --json number,state,mergeable,comments --jq '"\(.number) \(.state) \(.mergeable) comments=\(.comments|length)"'; done
    ```
 
-   At this checkpoint (2026-10-29) all five are OPEN and MERGEABLE. #1397 has
-   1 comment, the maintainer's review, which has been addressed; the others
-   have 0 comments. A new `## Review` comment is the next work. Read it in
+   At this checkpoint (2026-10-29) all six are OPEN (#1411 just opened).
+   #1397 has 1 comment, the maintainer's review, which has been addressed;
+   the others have 0 comments. A new `## Review` comment is the next work. Read it in
    full, then fix on that PR's branch.
 2. **Upstream drift.** `git fetch upstream && git rev-list --count
    circuskid..upstream/main` gave 4 at this checkpoint (tip f629385e).
@@ -43,9 +43,8 @@ this host 2026-10-29 (`aurora-viewer --version` → `0.8.2+circuskid.1793242821`
    `ui/inventory/aurora.rs` and `aurora/rows.rs`, next to our patch, so
    build and run the inventory tests after any sync.
 
-Worktree `inventory-regex-filters-0221ca` now holds `feat/inventory-advanced-search`
-(61542f37, same three feature commits, no PR) beside the original branch;
-keep both until an upstream PR is drafted or declined.
+#1411 is the feature rebased on upstream/main 0dca8c46 (table below); once
+it merges, the next sync supersedes our merge 11935b23.
 
 ### THEN — answer reviews on the Linux PRs
 
@@ -60,6 +59,7 @@ per `.claude/CLAUDE.md`.
 | #1406 jobs at lower priority | `perf/linux-thread-priority` | `linux-thread-priority-0343b7` | f86b1106 |
 | #1407 PulseAudio / PipeWire | `feat/linux-pulseaudio-host` | none: `git worktree add` it | af9ebaad |
 | #1408 local time | `fix/linux-local-time` | `linux-local-time-4c73c4` | 8e3883eb |
+| #1411 advanced inventory search | `feat/inventory-advanced-search` | `inventory-regex-filters-0221ca` | 6f5ec3a5 |
 
 - **To answer a review**: fix on the branch, then `git commit -m … -- <paths>`
   with no trailers, then `git push origin HEAD`. Draft any PR comment to
