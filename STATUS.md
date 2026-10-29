@@ -25,18 +25,18 @@ this host 2026-10-29 (`aurora-viewer --version` → `0.8.2+circuskid.1793242821`
 
 ### FIRST — the two-minute check
 
-1. **Our six open PRs upstream.** Did the maintainer review or merge any?
+1. **Our PRs upstream** (five open, #1397 merged). Did the maintainer review or merge any?
 
    ```
-   for n in 1397 1405 1406 1407 1408 1411; do gh pr view $n -R Aurora-Viewer/Aurora-Viewer --json number,state,mergeable,comments --jq '"\(.number) \(.state) \(.mergeable) comments=\(.comments|length)"'; done
+   for n in 1405 1406 1407 1408 1411; do gh pr view $n -R Aurora-Viewer/Aurora-Viewer --json number,state,mergeable,comments --jq '"\(.number) \(.state) \(.mergeable) comments=\(.comments|length)"'; done
    ```
 
-   At this checkpoint (2026-10-29) all six are OPEN (#1411 just opened).
-   #1397 has 1 comment, the maintainer's review, which has been addressed;
-   the others have 0 comments. A new `## Review` comment is the next work. Read it in
-   full, then fix on that PR's branch.
+   At this checkpoint (2026-10-29) all five are OPEN. #1407 has 2 comments
+   (the maintainer's review and our reply); the others have 0. A new
+   `## Review` comment is the next work: read it in full, then fix on that
+   PR's branch. **#1397 was merged upstream 2026-10-29** (08c86c31).
 2. **Upstream drift.** `git fetch upstream && git rev-list --count
-   circuskid..upstream/main` gave 4 at this checkpoint (tip f629385e).
+   circuskid..upstream/main` gave 6 at this checkpoint (it includes #1397).
    `git merge-tree --write-tree --name-only circuskid upstream/main` predicts
    the next sync: only `TASKS.md` conflicts. Keep both sides: our 🟡
    advanced-search line and upstream's new lines. Upstream also edits
@@ -54,7 +54,6 @@ per `.claude/CLAUDE.md`.
 
 | PR | Branch | Worktree (`.claude/worktrees/`) | Head |
 |---|---|---|---|
-| #1397 notifications | `fix/linux-desktop-notifications` | `aurora-linux-improvements-5a6f8e` | 25b91982 |
 | #1405 desktop identity | `feat/linux-desktop-identity` | `linux-app-id-b86aee` | a68637fa |
 | #1406 jobs at lower priority | `perf/linux-thread-priority` | `linux-thread-priority-0343b7` | f86b1106 |
 | #1407 PulseAudio / PipeWire | `feat/linux-pulseaudio-host` | `linux-pulseaudio-pr` | f62c66dd: review answered; G.W. tests voice on the grid 2026-10-30 |
@@ -112,15 +111,16 @@ Ship a new build when G.W. wants one (steps in `.claude/CLAUDE.md`).
 
 ### NOT QUEUED
 
-- **Linux notification click-to-raise: unshelved 2026-10-29 by G.W., left to
-  the maintainer.** Not implemented; the notifications PR
-  (Aurora-Viewer/Aurora-Viewer#1397, opened 2026-10-29) explains it and asks; no answer yet. A click opens the
+- **Linux notification click-to-raise: the maintainer answered 2026-10-29**
+  on Aurora-Viewer/Aurora-Viewer#1397 (merged): keep the ⬜ "later" line, and
+  make it a separate PR once it can be tested on a server that sends
+  `ActivationToken`. A click opens the
   right conversation but cannot bring the window forward: winit 0.30.13's
   Wayland `focus_window` is an empty function, and raising needs the
   xdg-activation token a server may send with the click (`ActivationToken`).
   Measured with `dbus-monitor` on a `notify-send` probe: quickshell 0.3.2 sends
   only `ActionInvoked` then `NotificationClosed`, so on this desktop even our
-  own activation code would not raise it. Act on the maintainer's answer.
+  own activation code would not raise it. Blocked on such a server.
 
 ---
 
