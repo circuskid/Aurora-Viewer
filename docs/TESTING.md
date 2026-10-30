@@ -542,6 +542,7 @@ when unfocused") is ignored during a screenshot.
 | `AURORA_DEMO_RCLICK="x,y"` or `tag` | Right click (context menu) |
 | `AURORA_DEMO_PIE=1` | Right-click pie menu |
 | `AURORA_DEMO_TEXT_MENU=1` | Right-click menu of a text field (Cut, Copy, Paste…) |
+| `AURORA_DEMO_MENU_SEARCH=<query>` | Wolf menu filtered by its search field |
 | `AURORA_DEMO_POINTER=<points>` | Moves, clicks or holds the pointer over the interface |
 | `AURORA_DEMO_HOVER=1` or `"x,y"` | Cursor swept, or resting on a pixel, on hover |
 | `AURORA_DEMO_CLICKS=<ms>` | Clicks on the world at a regular rate |
@@ -992,6 +993,15 @@ when unfocused") is ignored during a screenshot.
   menu state: a walked chord must never open a context menu, and an ordinary
   subsequent right click must still work. Interactive objects, HUDs, media,
   build tools, modified clicks and ground double-click actions retain priority.
+- **`AURORA_DEMO_MENU_SEARCH=<query>`**: the wolf menu of the top islands
+  (the default bars; the click misses the wolf of the Legacy bars) is
+  clicked at frames 540–541 and `query` is typed into its search field at
+  560 (the field takes the keyboard when the menu opens). Capture frame
+  620: the matching entries of every sub-menu under their path heading
+  (`home`: Go home under Me, Set Home to Here under World), or the "No
+  entry matches" line. A broad query (`e`) scrolls under the field, and a
+  path met again (Me after Me › Avatar health) gets a divider, not its
+  heading a second time.
 - **`AURORA_DEMO_DOUBLECLICK=walk|run|tp[,x,y]`**: the double-click action
   of the session (the saved one is left alone), and a double click of the
   left button at pixel (x, y) at frames 700 to 703 (ground ahead and to the
@@ -3528,6 +3538,7 @@ both open states and the selection count. Capture at frame 620.
 | `AURORA_DEMO_LASHES=1` | With `AURORA_DEMO_HAIR`: a red ball worn inside our hair, as eyelashes behind a fringe |
 | `AURORA_DEMO_HAIR_CARDS=<n>[,layered[,outer]]` | Our avatar wears one face of `n` soft strand cards, overlapping in a shuffled order, or layered as a hair is made (#935) |
 | `AURORA_DEMO_SHEER=1` | Our avatar wears a sheer knit dress over a red layer drawn after it (#1300) |
+| `AURORA_DEMO_SOFT_MASK=1` | Our avatar wears a skin-tone Mask disc on the groin; soft fringe must stay visible (#1492) |
 | `AURORA_DEMO_BUMP=tall`, `wide` or `sphere` | The normal-mapped test panel stretched 4:1, its normal map denser across or along it; or a low-poly ball with a baked normal map (tangent frame) |
 | `AURORA_DEMO_MASK_ZERO=1` | The holed test panel with a Mask legacy material whose cutoff is 0: drawn whole |
 | `AURORA_DEMO_RIGGED_PROP=1` | A rigged mesh chain rezzed on a cube ahead of the start position, and the same chain worn by our avatar |
@@ -3640,6 +3651,14 @@ both open states and the selection count. Capture at frame 620.
   Legacy Viewer; with `AURORA_RIGGED_BLEND=split` the red layer shows
   through the dress in speckles, wherever its alpha is under one half. The
   default camera looks at our avatar's back.
+- **`AURORA_DEMO_SOFT_MASK=1`** (with or without `AURORA_DEMO_HAIR`): our
+  avatar wears a skin-tone disc on the groin (attach point 53), rigged to
+  `mPelvis`. Its texture classifies as Mask (opaque centre, two-texel soft
+  fringe). The Legacy Viewer never auto-masks rigged faces
+  (`LLFace::canRenderAsMask`), so the fringe stays blended and visible;
+  auto-Mask at cutoff 0.5 would punch it out. Look from below / the side:
+  a solid peach disc with a soft edge, not a hard cutout or a missing
+  attachment (#1492 / Physics Cock Max class).
 - **`AURORA_DEMO_MASK_ZERO=1`**: the "Auto: mask" panel of the plaza (round
   holes of alpha 0) gets a Mask legacy material with a cutoff of 0 and the
   hover text "Mask (cutoff 0)". The Legacy Viewer keeps every texel at or
@@ -3942,13 +3961,16 @@ both open states and the selection count. Capture at frame 620.
 | Variable | Effect |
 |---|---|
 | `AURORA_DEMO_TOOLBAR=1` | Open the "Toolbar buttons" window; the bars mockup's custom state, side toolbars, labels. |
-| `AURORA_DEMO_AREA_SEARCH=1\|filters\|parcel\|sale\|search\|menu` | Open Area Search with named objects and sale entries; `menu` opens its right-click menu. |
+| `AURORA_DEMO_AREA_SEARCH=1\|filters\|ranges\|scope\|fields\|columns\|all-columns\|link\|parcel\|sale\|search\|menu` | Open Area Search with named objects and sale entries; `menu` opens its right-click menu. |
 | `AURORA_DEMO_TEXTURE_LIBRARY=<mode>` | Compact inventory library with synthetic folders, eight types and thumbnails. |
 
 `AURORA_DEMO_AREA_SEARCH`: `1` opens the object list; `parcel` restricts it to
-the agent's parcel, `sale` shows sale entries, `filters` expands the filters, and
+the agent's parcel, `sale` shows sale entries, `filters` opens Filters (required/excluded properties, permissions, click action and scope), and
 `search` searches the localized fountain name, and `menu` right-clicks the
-second row to open the result menu. Capture after frame 740, in English and French. Check the column
+second row to open the result menu. `fields` expands the six-field Search form,
+`ranges` opens distance and sale price, `scope` is an alias for Filters, `columns` opens the Columns popout, `all-columns` shows all ten result columns,
+and `link` round-trips a fountain search through the SLapp parser.
+Capture after frame 740 in English, French and Japanese, at normal and 150% UI scale. Check the column
 sorting, combined text and flag filters, the in-field crosses that clear only
 their filled text filter and return keyboard focus to it, Reset, Refresh preserving filters,
 selection, Inspect, Zoom/double click, Copy UUID, and the toolbar button reopening
@@ -3960,6 +3982,19 @@ Filter my objects (the owner field, opened). Edit, Delete (with its question),
 Return, Inspect, Touch, Derender & blacklist and Sit work on the demo objects. On the grid, compare the received roots with the Legacy
 Viewer, check parcel boundaries and neighboring regions, linked prim names,
 group-owned objects, late name replies, derez/movement and region changes.
+Check all six text fields and whole-field regex (including invalid patterns),
+owner permission masks, required/excluded flags, min/max price and precise
+distance, each click action and current parcel. Every edit updates results immediately
+without hiding the table. Results, Search, Filters and Ranges are left-aligned tabs;
+the table remains below every selected form. Results hides the form to give
+the table more room. Columns
+remains a right-aligned popout. Reset at the bottom right clears the current section's
+settings; the table's Reset clears all search fields and filter options. Save as
+default persists options without search text. Column visibility survives
+reopening/restarting; LI and prim count sort numerically. Copy as link restores
+the search rules when clicked in chat. Include attachments with child prims
+excluded: attachment roots must still appear, and their children only when
+enabled. Grid validation is performed by the human, without sharing credentials.
 Keep a Build/Inspect selection while requests are arriving: it must stay selected.
 Objects outside the viewer's received scene cannot be enumerated by this window.
 
@@ -4108,7 +4143,7 @@ before (`amis`, `groupes`, `repere`, `historique`…) are still accepted.
 | `AURORA_DEMO_PEOPLE=<mode>[:width]` | People scenarios, including nearby/friends lists and contact-set visual editors |
 | `AURORA_DEMO_PEOPLE_FILTER=<text>` | Initial name filter for a People demo scenario |
 | `AURORA_DEMO_ANTI_SPAM=1` | Synthetic offer, script prompt and sound floods with Protections controls |
-| `AURORA_DEMO_RLVA=enabled` | Scripted restrictions and the global opt-in in Preferences > Protections |
+| `AURORA_DEMO_RLVA=enabled` | Scripted restrictions and the global opt-in in Preferences > RLVa |
 | `AURORA_DEMO_OPTIONS=<page>[/<tab>][:<what>]` | Opens preferences on a page, search, modified settings, open cogs, reset, or a graphics profile dialog/list |
 | `AURORA_DEMO_GRIDS=1\|pages` | Opens the grid manager with synthetic metadata |
 | `AURORA_DEMO_TOOLBOX=1`, `edit` or `<target>:<tool>` | Opens the Dev Toolbox (Customize, or a target and a tool pressed) |
@@ -4243,7 +4278,7 @@ before (`amis`, `groupes`, `repere`, `historique`…) are still accepted.
 
 ### Details
 
-- **`AURORA_DEMO_RLVA`**: `enabled` opens Preferences > Protections and
+- **`AURORA_DEMO_RLVA`**: `enabled` opens Preferences > RLVa and
   applies synthetic object restrictions at frame 700. `disabled` delivers
   the same commands while the global opt-in stays off; `released` enables
   them, then switches RLVa off at frame 760. Capture after frame 800 in EN
@@ -7081,7 +7116,7 @@ the Appearance window then opens on its Worn tab with the five objects
 worn. `cold` hides the five items from the inventory until FetchItems asks
 for them (`5 to look up`), as a cold inventory cache.
 
-**`AURORA_DEMO_APPEARANCE=gallery|gallery-fit|gallery-fill|outfits|multi-gallery|multi-outfits|folders|folders-outfits|worn|save|edit|layers|layers-drag|layers-hold|wearables|wearables-outfits|wearables-edit|menu|duplicates`**
+**`AURORA_DEMO_APPEARANCE=gallery|gallery-fit|gallery-fill|outfits|multi-gallery|multi-outfits|folders|folders-outfits|worn|save|edit|layers|layers-drag|layers-hold|wearables|wearables-outfits|wearables-edit|menu|duplicates|broken`**
 — opens Appearance with four synthetic outfits:
 
 - `gallery`: the gallery (the right click includes rename, favourites, image
@@ -7122,6 +7157,11 @@ for them (`5 to look up`), as a cold inventory cache.
   click menus;
 - `duplicates`: replays folder answers with repeated links and
   originals coming from other parents.
+- `broken`: the list with the third outfit expanded; it and the current
+  outfit hold a "Deleted scarf" link whose original the server answered
+  missing, as on the grid after the original was deleted. The scarf shows
+  greyed, without an icon; Wear, Add and Take off on any outfit work, skip
+  it, and the rewritten current outfit drops it (no "still loading").
 - `layers`: the outfit editor with three worn tattoos, listed furthest
   from the body first as in the Legacy Viewer: Lipstick, Freckles, Star.
   A tattoo row drags within the tattoos (a violet marker shows where it
@@ -7358,6 +7398,11 @@ offline; the files and snapshots uploaded in demo stay offline.
   The log reports the selection count and visibility at both capture points.
   Manually check held arrows, direction reversal, open-folder boundaries,
   filtered lists, folder windows and arrow editing in search/rename fields.
+- `keyboard-fold`, `aurora-keyboard-fold`: click the demo object at frame
+  650, press Left at 665 (its folder is selected) and 680 (that folder
+  closes), then Right at 700 (it opens again). Capture at 690 (the folder
+  closed and selected) and 720 (open). The log reports the selection and
+  the folder's state at both points.
 - `clipboard`: expanded inventory to test Ctrl+C / Ctrl+X / Ctrl+V on
   items, folders and multiple selections. Choose the destination
   folder (or one of its items) before pasting. The search and
@@ -8336,15 +8381,18 @@ What the inventory must show with these scenarios:
   low-poly meshes showed their facets, more or less visible with the sky's
   ambient light (#993). Under the smooth normal, a triangle rises above the
   smooth tangent plane on one side, and its own samples occluded it there
-  (a ring along the silhouette of the torus, a band at the avatar's neck):
-  on each slice the horizons on that side go down by the angle between the
-  two planes (`facet_lift`, at most 45°), so only what stands above the
-  triangle occludes. `depth` goes back to the depth's normal (the prepass
-  then draws the depth alone, the image as before), `alt` every other
-  second. The Legacy method does not change. To compare,
-  `AURORA_DEMO_DEBUG=ao` with `AURORA_AO=gtao:2` and
-  `AURORA_DEMO_CAMERA=close,800,620,40`: the back and the skirt of our
-  avatar, faceted before, and the torus behind the plaza.
+  (a ring along the silhouette of the torus, a band at the avatar's neck),
+  and the neighbours across a concave crease drew the mesh's edges as
+  lines: each sample occludes only as much as it stands above the
+  triangle's own plane (`above_facet`: nothing on it, fully from 30°
+  above it), its height still measured from the smooth plane, so the
+  occlusion does not change from one triangle to the next. `depth` goes
+  back to the depth's normal (the prepass then draws the depth alone, the
+  image as before), `alt` every other second. The Legacy method does not
+  change. To compare, `AURORA_DEMO_DEBUG=ao` with `AURORA_AO=gtao:2`: the
+  back, the waist and the skirt of our avatar, and the large sphere behind
+  the material panels, where the lines of the mesh's creases showed;
+  `AURORA_DEMO_SKY=1,0.8,1.2` for a sky with strong ambient light.
 - **`AURORA_SSIL=1|0|alt`**: Preferences › Graphics › Indirect light
   (GTAO) for this launch, without changing the saved setting; it needs the
   GTAO method. A pass after GTAO's gathers the light on a visibility

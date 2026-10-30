@@ -46,7 +46,20 @@ pub struct Inventory {
     pub held: Option<Vec<Uuid>>,
     /// Bumped whenever folders or items change (cached views rebuild).
     pub generation: u64,
+    /// Link originals the server answered do not exist, or still unreadable
+    /// after `ITEM_FETCH_ATTEMPTS`: broken links, which outfits skip instead
+    /// of waiting for them (LLViewerInventoryItem::getIsBrokenLink).
+    pub missing_items: HashSet<Uuid>,
+    /// Failed item reads (network, server error), by attempt.
+    pub item_failures: HashMap<Uuid, u8>,
+    /// Failed item reads to ask for again (`take_item_retries`).
+    pub item_retries: HashSet<Uuid>,
 }
+
+/// Reads of one item before it counts as a broken link's original. A failed
+/// read proves nothing; the Legacy Viewer treats a link still unresolved once
+/// its background fetch ended as broken (LLAppearanceMgr::updateAppearanceFromCOF).
+pub const ITEM_FETCH_ATTEMPTS: u8 = 3;
 
 fn first_id(v: &Llsd, key: &str) -> Uuid {
     v.at(0)[key].as_uuid()
@@ -227,30 +240,33 @@ impl Inventory {
 
     /// Items fetched by id (FetchInventory2), listed in their folder when
     /// that folder is loaded.
+    ///
+    /// A moved or renamed item is taken out of its old place and inserted at
+    /// its sorted place: a folder is not sorted again for each item, which
+    /// cost ~1 ms per move into a 5,000-item Trash, twice per moved item
+    /// (#1580). Lists stay ordered like `sort_children`'s.
     pub fn add_items(&mut self, items: Vec<InvItem>) {
         self.generation += 1;
-        let mut changed = HashSet::new();
         for mut it in items {
             self.preserve_favorite(&mut it);
             if let Some(old) = self.items.get(&it.id)
-                && old.parent != it.parent
+                && (old.parent != it.parent || old.name != it.name)
                 && let Some(folder) = self.folders.get_mut(&old.parent)
             {
                 folder.items.retain(|id| *id != it.id);
-                changed.insert(old.parent);
             }
+            let items = &self.items;
             if let Some(f) = self.folders.get_mut(&it.parent)
                 && f.state == FetchState::Fetched
+                && !f.items.contains(&it.id)
             {
-                if !f.items.contains(&it.id) {
-                    f.items.push(it.id);
-                }
-                changed.insert(it.parent);
+                let key = it.name.to_lowercase();
+                let at = f
+                    .items
+                    .partition_point(|other| items.get(other).is_some_and(|o| o.name.to_lowercase() <= key));
+                f.items.insert(at, it.id);
             }
             self.items.insert(it.id, it);
-        }
-        for id in changed {
-            self.sort_children(id);
         }
     }
 
@@ -263,6 +279,9 @@ impl Inventory {
             self.preserve_favorite(item);
         }
         let mut changed = HashSet::new();
+        // Folders whose subfolders changed, sorted again below; moved items
+        // take their sorted place in `add_items`.
+        let mut resort = HashSet::new();
         for folder in folders {
             let id = folder.id;
             let parent = folder.parent;
@@ -270,6 +289,7 @@ impl Inventory {
                 if old.info.parent != parent || old.info.name != folder.name {
                     changed.insert(old.info.parent);
                     changed.insert(parent);
+                    resort.extend([old.info.parent, parent]);
                 }
                 let old_parent = old.info.parent;
                 if old_parent != parent
@@ -279,6 +299,7 @@ impl Inventory {
                 }
             } else {
                 changed.insert(parent);
+                resort.insert(parent);
             }
             self.upsert_folder(folder, false);
             if let Some(parent) = self.folders.get_mut(&parent)
@@ -304,7 +325,7 @@ impl Inventory {
             }
         }
         self.add_items(items);
-        for id in changed {
+        for id in resort {
             self.sort_children(id);
         }
         self.generation += 1;
@@ -345,6 +366,42 @@ impl Inventory {
                 folder.state = FetchState::Fetched;
             }
         }
+    }
+
+    /// A broken link's original: confirmed gone, and not received since.
+    pub fn broken(&self, id: &Uuid) -> bool {
+        self.missing_items.contains(id) && !self.items.contains_key(id)
+    }
+
+    /// The server answered that these items do not exist.
+    pub fn items_missing(&mut self, ids: Vec<Uuid>) {
+        self.generation += 1;
+        for id in ids {
+            self.item_failures.remove(&id);
+            self.item_retries.remove(&id);
+            self.missing_items.insert(id);
+        }
+    }
+
+    /// These item reads failed: asked again, up to `ITEM_FETCH_ATTEMPTS`.
+    pub fn items_failed(&mut self, ids: &[Uuid]) {
+        self.generation += 1;
+        for id in ids {
+            let attempts = self.item_failures.entry(*id).or_insert(0);
+            *attempts += 1;
+            if *attempts >= ITEM_FETCH_ATTEMPTS {
+                log::warn!("inventory item {id} still unreadable after {attempts} attempts: treated as a broken link");
+                self.item_retries.remove(id);
+                self.missing_items.insert(*id);
+            } else {
+                self.item_retries.insert(*id);
+            }
+        }
+    }
+
+    /// The failed item reads to send again, once each.
+    pub fn take_item_retries(&mut self) -> HashSet<Uuid> {
+        std::mem::take(&mut self.item_retries)
     }
 
     pub fn failed(&mut self, folders: &[Uuid]) {

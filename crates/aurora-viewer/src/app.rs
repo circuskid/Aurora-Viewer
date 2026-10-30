@@ -1072,6 +1072,7 @@ impl App {
         scene.lod_factor = settings.lod_factor;
         let update_demo = ui::update::UpdateDemo::from_env(&settings);
         Ok(Box::new(App {
+            area_search_ui: ui::area_search::AreaSearchUi::from_saved(&settings.area_search),
             settings,
             disk_cache,
             skin,
@@ -1286,7 +1287,6 @@ impl App {
             dof_focus: Default::default(),
             snapshots: Default::default(),
             inspect_ui: Default::default(),
-            area_search_ui: Default::default(),
             sound_explorer_ui: Default::default(),
             animation_explorer_ui: Default::default(),
             animation_explorer: Default::default(),
@@ -3077,7 +3077,10 @@ impl App {
                     self.build.replacement_task_inventory_error(object, reason);
                 }
             }
-            NetEvent::CapReply { tag, result } => self.build.on_cap_reply(&mut self.world, tag, result),
+            NetEvent::CapReply { tag, result } => {
+                self.area_search_feed.on_cost_reply(tag, &result);
+                self.build.on_cap_reply(&mut self.world, tag, result);
+            }
             NetEvent::ScriptRunning {
                 object_id,
                 item_id,
@@ -6664,7 +6667,10 @@ impl App {
         self.joystick_avatar(&mut i);
         if self.camera.free().is_some() {
             // the photo's free camera takes the movement keys: the avatar
-            // stays where it is (no walk, turn, jump or flight start)
+            // stays where it is (no walk, turn, jump or flight start).
+            // The viewfinder pad must be applied here: this path returns
+            // before `viewfinder_pad`, so Look / Glide / Forward were ignored.
+            self.apply_viewfinder_free_pad();
             self.photo_free_move(&i, dt);
             self.input = MoveInput::default();
             self.fb_since = None;
@@ -9256,7 +9262,9 @@ impl App {
                             | "resize-left"
                             | "resize-right"
                             | "keyboard"
+                            | "keyboard-fold"
                             | "aurora-keyboard"
+                            | "aurora-keyboard-fold"
                             | "aurora-keyboard-wide"
                     ) || v.starts_with("note-")
                         || v.starts_with("clipboard-")
@@ -9356,6 +9364,7 @@ impl App {
             self.gesture_demo_input(&mut raw);
             self.suggest_demo_input(&mut raw);
             self.double_click_menu_demo_input(&mut raw);
+            raw.events.extend(ui::menu::search_demo_events(self.frame_count));
             raw.events.extend(ui::widgets::demo::events(&ctx, self.frame_count));
             raw.events.extend(ui::widgets::demo::worn_events(&ctx, self.frame_count));
             raw.events
@@ -17011,6 +17020,9 @@ impl ApplicationHandler for App {
                 if view.starts_with("wearables") {
                     crate::world::appearance::seed_demo_wearables(&mut self.world.inventory, self.world.agent_id);
                 }
+                if view == "broken" {
+                    crate::world::appearance::seed_demo_broken(&mut self.world.inventory, self.world.agent_id);
+                }
                 if matches!(view.as_str(), "gallery-fit" | "gallery-fill") {
                     ui::appearance::demo_previews(&self.egui_ctx, &mut self.world.inventory, &mut self.ui_images);
                     self.settings.appearance_fill_previews = view == "gallery-fill";
@@ -17028,7 +17040,7 @@ impl ApplicationHandler for App {
                 self.panels.perf = false;
                 self.appearance_ui.open(
                     match view.as_str() {
-                        "outfits" | "multi-outfits" | "folders-outfits" | "wearables-outfits" => 1,
+                        "outfits" | "multi-outfits" | "folders-outfits" | "wearables-outfits" | "broken" => 1,
                         "worn" | "save" | "wearables" => 2,
                         _ => 0,
                     },
@@ -17043,7 +17055,7 @@ impl ApplicationHandler for App {
                 if view == "duplicates" {
                     crate::world::appearance::seed_duplicate_response(&mut self.world.inventory, self.world.agent_id);
                 }
-                if matches!(view.as_str(), "menu" | "duplicates") {
+                if matches!(view.as_str(), "menu" | "duplicates" | "broken") {
                     self.appearance_ui.open_outfit(uuid::Uuid::from_u128(704));
                 }
                 if view == "wearables-outfits" {
@@ -17512,7 +17524,10 @@ impl ApplicationHandler for App {
                         self.inventory_ui.thumbnail.open(id);
                         self.inventory_ui.thumbnail.picker_open = view == "image-picker";
                         self.inventory_ui.thumbnail.photo_open = matches!(view.as_str(), "image-photo" | "image-photo-save");
-                    } else if !matches!(view.as_str(), "keyboard" | "aurora-keyboard" | "aurora-keyboard-wide") {
+                    } else if !matches!(
+                        view.as_str(),
+                        "keyboard" | "keyboard-fold" | "aurora-keyboard" | "aurora-keyboard-fold" | "aurora-keyboard-wide"
+                    ) {
                         self.inventory_ui.demo_menu = Some(id);
                     }
                 } else if !configured_view && crate::world::inventory::demo::big().is_none() {
