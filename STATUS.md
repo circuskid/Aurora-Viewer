@@ -54,6 +54,12 @@ Fetch the upstream tag with `--no-tags`, or the stamp tags follow it in.
 Count the tests over every `test result:` line of the full output (28 of
 them): a tail of the output drops crates and undercounts.
 
+**Editing this file from a worktree session:** a hook refuses edits in
+`~/Projects/aurora-viewer` (the main checkout, on `circuskid`). Branch from
+`circuskid` in the worktree, edit and commit there, then
+`git -C ~/Projects/aurora-viewer merge --ff-only <branch>`, push `circuskid`,
+switch back and delete the branch.
+
 ### THEN — the next upstream PR
 
 - Cut from `upstream/main`, no AI trailers (`.claude/CLAUDE.md`). To answer
