@@ -122,6 +122,24 @@ switch back and delete the branch.
 
 ## Finished — read on demand
 
+- **Researched, not queued: 3D preview of inventory objects** (Discord
+  idea, 2026-10-30; no issue, no code). Fetching without rezzing is
+  impossible: the Legacy Viewer's asset table marks `AT_OBJECT` neither
+  fetchable by ID nor ID-knowable (`indra/llcommon/llassettype.cpp`,
+  enforced by `lookupIsAssetFetchByIDAllowed` in
+  `lltransfersourceasset.cpp`); mesh IDs arrive only in ObjectUpdate
+  ExtraParams once rezzed or attached. No viewer found with such a preview.
+  Workable path: "Add" to a HUD point (only the owner receives HUD
+  attachments), read the mesh IDs, fetch, detach, render with the existing
+  `aurora_render::preview`. Limits: counts against the attachment cap, and
+  **the object's scripts run on attach** (RLV, animations, perms), so warn
+  or skip scripted items. TPV policy 2.a.i (no circumventing copy limits)
+  and 2.b (export creator-only): a view-only preview with no save, export
+  or UUID copy reads as allowed — our reading, not LL's; quotes came via a
+  summarising fetch, recheck the page. Grid-only, unverified: ViewerAsset
+  refusing `object_id=`, FetchInventory2 hiding `asset_id`. Feature
+  requests go to feedback.aurora-viewer.org.
+
 - **Merged upstream PRs (eight, through 2026-10-30):** #1397
   (notifications), #1405 (desktop identity), #1406 (jobs at lower
   priority), #1407 (PulseAudio / PipeWire), #1408 (local time), #1411
