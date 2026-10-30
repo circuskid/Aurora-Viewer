@@ -36,6 +36,8 @@ mod document;
 pub use embedded::save_focused as document_save_focused;
 pub(crate) mod drag;
 mod embedded;
+mod hover;
+pub use hover::demo_events as hover_demo_events;
 mod keyboard;
 pub(crate) mod listings;
 mod markdown;
@@ -52,6 +54,7 @@ pub(crate) mod smart;
 mod smart_builder;
 pub(crate) mod smart_store;
 pub(crate) mod task_drop;
+pub(crate) mod task_selection;
 pub mod thumbnail;
 pub(crate) mod tree;
 pub(crate) mod view;
@@ -473,12 +476,14 @@ pub struct InventoryUi {
     progress: Option<progress::State>,
     copy_jobs: progress::CopyJobs,
     notice: Option<(String, std::time::Instant)>,
+    contents_notice: Option<progress::ContentsNotice>,
     pub message: String,
     pub dialog: Option<EditDialog>,
     move_to: Option<move_to::MoveTo>,
     pub links_filter: Option<Uuid>,
     pub windows: Vec<InventoryWindow>,
     pub thumbnail: thumbnail::ThumbnailUi,
+    hover: hover::State,
     pub share_picker: super::avatar_picker::AvatarPicker,
     pub share_items: Vec<Uuid>,
     pub property_edit: Option<(Uuid, PropertyEdit)>,
@@ -498,6 +503,7 @@ pub struct InventoryUi {
     pub content_save: Option<(Uuid, Vec<u8>, String)>,
     pub close_after_save: bool,
     pub wanted_images: HashSet<Uuid>,
+    pub wanted_hover_images: HashSet<Uuid>,
     /// Residents whose profile picture the give confirmation wants.
     pub wanted_pics: HashSet<Uuid>,
     pub playing: Option<(Uuid, bool)>,
@@ -867,11 +873,10 @@ pub fn item_icon(asset_type: i32, inv_type: i32, flags: u32) -> &'static str {
         (1, _) => "Inv_Sound",
         (2, _) => "Inv_CallingCard",
         (3, _) => "Inv_Landmark",
-        (5, _) => "Inv_Clothing",
+        (5 | 13, _) => wearable_icon(asset_type, flags),
         (6, _) => "Inv_Object",
         (7, _) => "Inv_Notecard",
         (10, _) => "Inv_Script",
-        (13, _) => "Inv_BodyShape",
         (20, _) => "Inv_Animation",
         (21, _) => "Inv_Gesture",
         (24, _) => "Inv_LinkItem",
@@ -880,6 +885,33 @@ pub fn item_icon(asset_type: i32, inv_type: i32, flags: u32) -> &'static str {
         (56, _) => "Inv_Settings",
         (57, _) => "Inv_Material",
         _ => "Inv_Invalid",
+    }
+}
+
+/// LLInventoryIcon::assignWearableIcon / LLWearableType::inventoryFlagsToWearableType
+/// (indra/newview/llinventoryicon.cpp, indra/llappearance/llwearabletype.cpp).
+/// Only the low byte is a wearable type; the remaining inventory flags are independent.
+fn wearable_icon(asset_type: i32, flags: u32) -> &'static str {
+    match (asset_type, flags & 0xff) {
+        (13, 0) => "Inv_BodyShape",
+        (13, 1) => "Inv_Skin",
+        (13, 2) => "Inv_Hair",
+        (13, 3) => "Inv_Eye",
+        (5, 4) => "Inv_Shirt",
+        (5, 5) => "Inv_Pants",
+        (5, 6) => "Inv_Shoe",
+        (5, 7) => "Inv_Socks",
+        (5, 8) => "Inv_Jacket",
+        (5, 9) => "Inv_Gloves",
+        (5, 10) => "Inv_Undershirt",
+        (5, 11) => "Inv_Underpants",
+        (5, 12) => "Inv_Skirt",
+        (5, 13) => "Inv_Alpha",
+        (5, 14) => "Inv_Tattoo",
+        (5, 15) => "Inv_Physics",
+        (5, 16) => "Inv_Universal",
+        (13, _) => "Inv_BodyShape",
+        _ => "Inv_Clothing",
     }
 }
 
@@ -989,22 +1021,7 @@ fn item_response(
     drag::target(ui, p, &r, inv, it.parent, st, prefs, facts, actions);
     super::widgets::demo::rez_row(&r, it.id);
     super::widgets::demo::worn_row(&r, it.id);
-    let r = r.on_hover_ui(|ui| {
-        ui.label(&it.name);
-        ui.label(inventory_path(inv, it.parent));
-        ui.label(if it.created_at > 0 {
-            aurora_net::inventory::created_date(it.created_at)
-        } else {
-            aurora_i18n::tr!("ui-inventory-unknown-date").into()
-        });
-        if !it.desc.is_empty() {
-            ui.label(&it.desc);
-        }
-        if let Some(permissions) = permissions {
-            crate::ui::widgets::divider(ui, p);
-            ui.label(permissions.tooltip());
-        }
-    });
+    st.hover.record(&r, id, permissions);
     if r.clicked() || r.secondary_clicked() {
         st.select(ui, id, r.secondary_clicked());
     }
@@ -1106,6 +1123,7 @@ fn folder_response(
     }
     drag::target(ui, p, &destination, inv, id, state, prefs, facts, actions);
     drag::navigation::folder(ui, &destination, state.ui_id, id, open);
+    state.hover.record(&r, id, None);
     if r.clicked() || r.secondary_clicked() {
         state.select(ui, id, r.secondary_clicked());
     }
@@ -1233,20 +1251,9 @@ fn status(
     actions: &mut Vec<InvAction>,
     filtered: bool,
 ) {
-    let now = std::time::Instant::now();
-    let pending_message = st.busy().then(|| st.pending_status(now));
-    let (message, color) = if !st.message.is_empty() {
-        (st.message.as_str(), p.warn)
-    } else if let Some(message) = &pending_message {
-        (message.as_str(), p.ink)
-    } else if let Some(message) = st.success_notice(now) {
-        (message, p.success)
-    } else if st.fetch_all {
-        (aurora_i18n::tr!("ui-inventory-search-loading-folders"), p.muted)
-    } else {
-        ("", p.muted)
-    };
-    let message = message.to_owned();
+    let (message, color) = st
+        .status_message(p, std::time::Instant::now())
+        .unwrap_or_else(|| (String::new(), p.muted));
     let count = if filtered {
         aurora_i18n::tr!(
             "ui-inventory-results-objects-loaded",
@@ -1789,6 +1796,7 @@ pub fn show(
     open: &mut bool,
     appearance_busy: bool,
     images: &std::collections::HashMap<Uuid, egui::TextureHandle>,
+    hover_images: &std::collections::HashMap<Uuid, egui::TextureHandle>,
     pics: &std::collections::HashMap<Uuid, egui::TextureHandle>,
     script_settings: &super::scripts::settings::ScriptSettings,
     classic: bool,
@@ -1932,6 +1940,7 @@ pub fn show(
             aurora::widen(ctx, "inventory");
         }
     }
+    st.hover.show(p, inv, prefs, hover_images, &mut st.wanted_hover_images);
     st.was_open = *open && !super::widgets::floater_minimized(ctx, "inventory");
     controls::dialogs(ctx, p, st, prefs);
     finish_hidden_rename(inv, st, prefs, &mut actions);
@@ -1977,6 +1986,7 @@ pub fn show(
         w.state.progress.clone_from(&st.progress);
         w.state.copy_jobs.clone_from(&st.copy_jobs);
         w.state.notice.clone_from(&st.notice);
+        w.state.contents_notice.clone_from(&st.contents_notice);
         w.state.merchant = st.merchant;
         w.state.marketplace_commands.clone_from(&st.marketplace_commands);
         w.state.playing = st.playing;
@@ -2052,6 +2062,9 @@ pub fn show(
                 aurora::widen(ctx, &window_id);
             }
         }
+        w.state
+            .hover
+            .show(p, &world.inventory, prefs, hover_images, &mut w.state.wanted_hover_images);
         w.state.was_open = w.open && !super::widgets::floater_minimized(ctx, &window_id);
         if let Some(root) = w.state.navigate_to.take() {
             w.root = root;
@@ -2096,6 +2109,7 @@ pub fn show(
             w.state.dialog = Some(EditDialog::Share(std::mem::take(&mut w.state.share_items), *resident));
         }
         st.wanted_images.extend(w.state.wanted_images.drain());
+        st.wanted_hover_images.extend(w.state.wanted_hover_images.drain());
         if before != (w.state.clipboard.clone(), w.state.cut) {
             st.clipboard.clone_from(&w.state.clipboard);
             st.cut = w.state.cut;
@@ -2222,6 +2236,7 @@ mod tests {
                         false,
                         &images,
                         &Default::default(),
+                        &Default::default(),
                         &scripts,
                         classic,
                     );
@@ -2290,6 +2305,7 @@ mod tests {
                         &mut open,
                         false,
                         &images,
+                        &Default::default(),
                         &Default::default(),
                         &scripts,
                         classic,

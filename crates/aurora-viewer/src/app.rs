@@ -81,6 +81,7 @@ mod imports;
 mod inspect;
 mod inventory;
 mod inventory_drag;
+mod inventory_hover;
 mod inventory_thumbnail;
 mod joystick;
 mod land_moderation;
@@ -262,6 +263,8 @@ pub struct App {
     down: HashSet<Input>,
     shift: bool,
     ctrl: bool,
+    /// Command held, on macOS only (aurora_media::Modifiers::command).
+    command: bool,
     screen: Screen,
     login_form: LoginForm,
     // Bug report form (disabled, see main.rs):
@@ -609,6 +612,7 @@ pub struct App {
     notif_ui: ui::notifications::NotifUi,
     /// A friendship offer in the middle of the screen (#465).
     friend_prompt: ui::friend_prompt::FriendPromptUi,
+    region_message_prompt: ui::region_message_prompt::RegionMessagePromptUi,
     /// The region restart alert (app/region_restart.rs).
     region_restart: region_restart::State,
     /// Taskbar flashes and system notifications (app/attention.rs).
@@ -704,6 +708,7 @@ pub struct App {
     /// Other interface images by asset id (profiles: 1st life picture,
     /// group insignias).
     ui_images: std::collections::HashMap<uuid::Uuid, egui::TextureHandle>,
+    inventory_hover_images: inventory_hover::Images,
     ui_image_masks: std::collections::HashMap<uuid::Uuid, crate::world::rlva::effects::AlphaMask>,
     rlva_overlay_slots: std::collections::HashMap<uuid::Uuid, u32>,
     /// Avatar profile windows.
@@ -931,6 +936,9 @@ fn wanted_interface_colors(settings: &Settings) -> crate::interface_colors::Inte
 /// graphics level first, so that the single settings after it still change
 /// it. Applied at start, and again after a new profile's level is chosen.
 fn apply_test_overrides(settings: &mut Settings) {
+    if std::env::var_os("AURORA_DEMO").is_some() && ui::bars::demo::get().graphics_profiles {
+        crate::graphics_presets::saved::demo(settings);
+    }
     if let Some(level) = std::env::var("AURORA_GRAPHICS_PRESET")
         .ok()
         .and_then(|v| crate::graphics_presets::Preset::from_name(&v))
@@ -1098,6 +1106,7 @@ impl App {
             down: HashSet::new(),
             shift: false,
             ctrl: false,
+            command: false,
             screen: Screen::Login,
             login_form: LoginForm::default(),
             // Bug report form (disabled, see main.rs):
@@ -1307,6 +1316,7 @@ impl App {
             audio_ui: Default::default(),
             notif_ui: Default::default(),
             friend_prompt: Default::default(),
+            region_message_prompt: Default::default(),
             region_restart: Default::default(),
             attention: Default::default(),
             reconnect_place: None,
@@ -1364,6 +1374,7 @@ impl App {
             login_portrait_source: None,
             ui_coarse: Default::default(),
             ui_images: Default::default(),
+            inventory_hover_images: Default::default(),
             ui_image_masks: Default::default(),
             rlva_overlay_slots: Default::default(),
             profile_ui: Default::default(),
@@ -1749,7 +1760,8 @@ impl App {
                     amount = format!("{}", amount)
                 ));
             }
-            // the simulator's MoneyBalanceReply names a gift (the money tracker)
+            // the simulator's MoneyBalanceReply names a gift (the money
+            // tracker, the card in the payee's conversation)
             if let NetCommand::PayResident {
                 to,
                 group,
@@ -1758,7 +1770,7 @@ impl App {
             } = &cmd
             {
                 let item = if message.is_empty() { "Payment" } else { message.as_str() };
-                self.record_money(&NetEvent::MoneyTransaction {
+                let reply = NetEvent::MoneyTransaction {
                     id: uuid::Uuid::new_v4(),
                     success: true,
                     kind: 5001,
@@ -1769,7 +1781,9 @@ impl App {
                     amount: *amount,
                     item: item.to_owned(),
                     description: String::new(),
-                });
+                };
+                self.record_money(&reply);
+                self.world.payment(&reply);
             }
             // a sit on any prim, and the stand up from it (app/own_motion.rs);
             // the stand up's animations still come from demo::respond
@@ -2496,6 +2510,7 @@ impl App {
         self.portal_demo_peer = None;
         self.follow_recovery = None;
         self.inventory_ui = Default::default();
+        self.contents_copies = Default::default();
         self.texture_library.reset();
         self.library_drag = Default::default();
         self.library_demo_seeded = false;
@@ -2633,7 +2648,7 @@ impl App {
         } = ev
         {
             self.record_money(&ev);
-            self.world.payment_received(&ev);
+            self.world.payment(&ev);
             self.pay_ui.on_transaction(success, kind, dest, description);
             return;
         }
@@ -4075,6 +4090,7 @@ impl App {
                     control: false,
                     alt: false,
                     shift: false,
+                    command: false,
                 };
                 let distance = (point - hud_ray.0).dot(hud_ray.1);
                 if self
@@ -4150,6 +4166,7 @@ impl App {
                     control: self.ctrl,
                     alt: self.alt,
                     shift: self.shift,
+                    command: self.command,
                 };
                 if self
                     .media
@@ -6244,6 +6261,7 @@ impl App {
             control: self.ctrl,
             alt: self.alt,
             shift: self.shift,
+            command: self.command,
         });
         if self.mouse_mode != MouseMode::None {
             self.mouse_mode = MouseMode::None;
@@ -7009,6 +7027,7 @@ impl App {
         images.extend(self.buy_land_ui.wanted_images.drain());
         images.extend(self.contacts_ui.wanted_images.drain());
         images.extend(self.chat_ui.wanted_images.drain());
+        images.extend(self.notif_ui.wanted_images.drain());
         images.extend(self.pay_ui.wanted_images.drain());
         images.extend(self.people_ui.wanted_images.drain());
         images.extend(self.contacts_people_ui.wanted_images.drain());
@@ -7064,6 +7083,7 @@ impl App {
                 self.note_ui_copy(image, w);
             }
         }
+        self.update_inventory_hover_images(renderer);
     }
 
     /// What a profile picture's pixels give besides its texture: the Aurora
@@ -7677,6 +7697,7 @@ impl App {
         self.world.received_items.enabled = self.settings.sort_received_items;
         self.world.inventory_offers.show_accepted = self.settings.show_accepted_in_inventory;
         self.world.payments.open_for_friends = self.settings.payment_opens_conversation;
+        self.world.payments.open_when_paying = self.settings.payment_sent_opens_conversation;
         self.world.received_items.enabled_since = self.settings.received_items_since;
         if self.demo
             && self.frame_count == 700
@@ -8612,6 +8633,7 @@ impl App {
                         control: self.ctrl,
                         alt: self.alt,
                         shift: self.shift,
+                        command: self.command,
                     };
                     self.media.build_mode = self.build.open;
                     let displayed = gfx.renderer.hover_pick(self.cursor_pos.0, self.cursor_pos.1);
@@ -9016,7 +9038,8 @@ impl App {
                 &mut gfx.renderer,
                 &mut scene.textures,
                 &mut self.world,
-                world_dt,
+                dt,
+                frozen,
                 self.camera.position,
                 max_particles,
                 self.settings.draw_distance,
@@ -9322,6 +9345,12 @@ impl App {
             self.portal_drop_demo_input(&mut raw);
             self.give_demo_input(&mut raw, vp, (w, h));
             self.contents_drop_demo_input(&mut raw, vp, (w, h));
+            if self.frame_count == 420
+                && std::env::var("AURORA_DEMO_ACTIONS").as_deref() == Ok("open-multi")
+                && let Some(c) = &self.interactions.contents
+            {
+                ui::object_actions::contents_demo_select_all(&self.egui_ctx, c.target.object, &mut raw);
+            }
             self.wearable_drop_demo_input(&mut raw);
             ui::inventory::drag::demo::input(&ctx, self.frame_count, &self.world.inventory, &self.inventory_ui, &mut raw);
             self.gesture_demo_input(&mut raw);
@@ -9353,6 +9382,12 @@ impl App {
                 .extend(ui::inventory::document_demo_events(&ctx, self.frame_count, &mut self.inventory_ui));
             raw.events
                 .extend(ui::inventory::clipboard_demo_events(&ctx, self.frame_count, &mut self.inventory_ui));
+            raw.events.extend(ui::inventory::hover_demo_events(
+                &ctx,
+                self.frame_count,
+                &self.world.inventory,
+                &mut self.inventory_ui,
+            ));
             raw.events
                 .extend(ui::inventory::delete_demo_events(&ctx, self.frame_count, &self.inventory_ui));
             ui::inventory::aurora_demo(&ctx, self.frame_count);
@@ -10018,6 +10053,22 @@ impl App {
                 self.notif_ui.open = true;
                 self.notif_ui.center.tab = ui::notification_center::Tab::History;
             }
+            // the notice's attachment saved from its card
+            if self.frame_count == crate::demo::notifs::SAVE_AT
+                && mode == "group-notice-saved"
+                && let Some(id) = self
+                    .world
+                    .notifications
+                    .list
+                    .iter()
+                    .find(|n| n.offered_attachment().is_some())
+                    .map(|n| n.id)
+            {
+                let (commands, _) = self.world.respond_notification(id, crate::world::notifications::Response::Accept);
+                for command in commands {
+                    self.send(command);
+                }
+            }
             if self.frame_count == crate::demo::notifs::ANSWER_AT && matches!(mode.as_str(), "history" | "legacy-history") {
                 // a few cards answered or closed: they go to the history
                 let ids: Vec<(u64, bool)> = self.world.notifications.listed().map(|n| (n.id, n.interactive())).collect();
@@ -10062,12 +10113,24 @@ impl App {
                 self.friend_prompt.put_off();
             }
         }
+        if self.demo && crate::demo::region_message::enabled() {
+            for event in crate::demo::region_message::events(self.frame_count) {
+                if let Some(e) = self.world.apply(event) {
+                    self.on_app_event(e);
+                }
+            }
+        }
         if self.demo && crate::demo::object_im::settings().is_some() {
             let agent = self.world.agent_id;
             for event in crate::demo::object_im::events(self.frame_count, agent) {
                 if let Some(e) = self.world.apply(event) {
                     self.on_app_event(e);
                 }
+            }
+        }
+        if self.demo && crate::demo::freeze_world::on() {
+            for event in crate::demo::freeze_world::events(self.frame_count) {
+                self.world.apply(event);
             }
         }
         if self.demo && crate::demo::seat_kill::on() {
@@ -11854,6 +11917,16 @@ impl App {
                 self.settings.save();
                 self.snapshots.settings_changed = true;
             }
+            BarAction::SavedGraphicsPreset(name) => {
+                if crate::graphics_presets::saved::select(&mut self.settings, &name) {
+                    self.settings.save();
+                    self.snapshots.settings_changed = true;
+                }
+            }
+            BarAction::FpsCap(enabled) => {
+                self.settings.fps_cap = enabled;
+                self.settings.save();
+            }
             BarAction::CameraPreset(preset) => {
                 if self.world.rlva.camera_preset_locked(uuid::Uuid::nil()) {
                     return;
@@ -13255,6 +13328,7 @@ impl App {
                 } else {
                     self.world.parcel_name.as_str()
                 };
+                let mut contents_actions = Vec::new();
                 let icons = &self.skin.icons;
                 let layout = &self.skin.layout;
                 let maturity = self
@@ -13367,6 +13441,9 @@ impl App {
                     perf: &self.perf,
                     net_loss: crate::net_profile::loss_percent(&self.net_profile.last),
                     graphics_preset: crate::graphics_presets::Preset::matching(&self.settings),
+                    graphics_saved: crate::graphics_presets::saved::choices(&self.settings),
+                    fps_cap: self.settings.fps_cap,
+                    fps_limit: self.settings.fps_limit,
                     camera_preset: self.settings.camera.preset,
                     interface_hidden: self.interface.hidden,
                     interface_keys: self.interface_keys(),
@@ -13801,6 +13878,12 @@ impl App {
                     // Focused web/media pages already received the native
                     // keys; their history must not also change world objects.
                     if self.media.focus.is_none() && self.profile_ui.focused_web().is_none() && self.search_ui.focused_web().is_none() {
+                        contents_actions.extend(ui::object_actions::contents_shortcuts(
+                            &ctx,
+                            &self.interactions,
+                            &self.world,
+                            &self.build,
+                        ));
                         crate::build::ui::shortcuts(&ctx, &mut self.build, &mut self.world, &mut self.settings.build);
                     }
                     self.build
@@ -14421,6 +14504,7 @@ impl App {
                     &mut open,
                     self.appearance_ui.pending.is_some(),
                     &self.ui_images,
+                    &self.inventory_hover_images.ready,
                     &self.avatar_pics,
                     &self.settings.script_editor,
                     // the inventory scenarios were written for the Legacy window,
@@ -14609,14 +14693,13 @@ impl App {
                 }
                 self.show_pay(&ctx, &p, &mut a);
                 self.show_money_tracker(&ctx, &p, &mut a);
-                for action in ui::object_actions::show_contents(&ctx, &p, &self.skin.icons, &mut self.interactions, &self.world) {
-                    match action {
-                        ui::object_actions::ContentsAction::Script(object, item) => {
-                            self.open_script(aurora_net::scripts::ScriptTarget { object, item })
-                        }
-                        ui::object_actions::ContentsAction::Notecard(object, item) => self.open_task_notecard(object, item),
-                        ui::object_actions::ContentsAction::Copy(request) => self.copy_contents(*request),
-                    }
+                for action in contents_actions {
+                    self.apply_contents_action(action);
+                }
+                for action in
+                    ui::object_actions::show_contents(&ctx, &p, &self.skin.icons, &mut self.interactions, &self.world, &self.build)
+                {
+                    self.apply_contents_action(action);
                 }
                 self.show_task_notecards(&ctx, &p);
                 self.show_scripts(&ctx, &p);
@@ -14655,8 +14738,32 @@ impl App {
                 // the toasts it replaces (AURORA_DEMO_FRIEND_PROMPT: on for the run)
                 let prompt_on = self.settings.friend_request_prompt || (self.demo && crate::demo::friend_prompt::mode().is_some());
                 let prompt_allowed = !toasts_hidden && !dnd && self.world.notifications.started;
+                // #1404: a message to the whole region there too, first: the
+                // friendship offers wait behind it
+                // (AURORA_DEMO_REGION_MESSAGE: on for the run)
+                let region_on = self.settings.region_message_prompt || (self.demo && crate::demo::region_message::enabled());
+                let mut region_action = None;
+                let region_shown = self
+                    .region_message_prompt
+                    .next(&mut self.world.notifications, region_on, prompt_allowed);
+                if let Some((id, from)) = region_shown {
+                    let name = Some(self.world.social.display_name_of(&from))
+                        .filter(|n| n != "…")
+                        .or_else(|| self.world.avatar_name(&from));
+                    if name.is_none() {
+                        self.world.social.want_name(from);
+                    }
+                    let env = ui::region_message_prompt::PromptEnv {
+                        name,
+                        motion: !self.settings.reduce_motion,
+                    };
+                    region_action = self
+                        .region_message_prompt
+                        .show(&ctx, &p, &self.skin.icons, &self.world.notifications, id, &env);
+                }
                 let mut prompt_action = None;
-                if let Some((id, from)) = self.friend_prompt.next(&mut self.world.notifications, prompt_on, prompt_allowed) {
+                let friend_allowed = prompt_allowed && region_shown.is_none();
+                if let Some((id, from)) = self.friend_prompt.next(&mut self.world.notifications, prompt_on, friend_allowed) {
                     self.notif_ui.wanted_pics.insert(from);
                     let name = Some(self.world.social.display_name_of(&from))
                         .filter(|n| n != "…")
@@ -14681,6 +14788,7 @@ impl App {
                 let classic_bars = self.bars_look().0;
                 let mut toast_env = ui::notifications::ToastEnv {
                     pics: &self.avatar_pics,
+                    images: &self.ui_images,
                     emoji: &mut self.emoji,
                     hidden: toasts_hidden,
                     message_seconds: f64::from(self.settings.im_toast_seconds),
@@ -14729,6 +14837,11 @@ impl App {
                 match prompt_action {
                     Some(ui::friend_prompt::PromptAction::Answer(id, r)) => answers.push((id, r)),
                     Some(ui::friend_prompt::PromptAction::Profile(id)) => self.profile_ui.open(&mut self.world, id),
+                    None => {}
+                }
+                match region_action {
+                    Some(ui::region_message_prompt::PromptAction::Answer(id, r)) => answers.push((id, r)),
+                    Some(ui::region_message_prompt::PromptAction::Profile(id)) => self.profile_ui.open(&mut self.world, id),
                     None => {}
                 }
                 for (id, r) in answers {
@@ -15500,9 +15613,9 @@ impl ApplicationHandler for App {
         }
         let mut attrs = crate::cli::with_desktop_id(Window::default_attributes())
             .with_title(crate::cli::window_title())
-            // Vulkan initialization and the first frame take time: Windows
-            // must not expose the unpainted client area while they run.
-            .with_visible(false)
+            // Metal needs a visible layer to present its first drawable.
+            // Other platforms keep the unpainted client area hidden.
+            .with_visible(cfg!(target_os = "macos"))
             // Automated captures must not steal the user's keyboard focus.
             .with_active(!capture)
             .with_inner_size(winit::dpi::LogicalSize::new(w, h))
@@ -15520,6 +15633,9 @@ impl ApplicationHandler for App {
             }
         };
         crate::window_hold::install(&window);
+        // Cmd+Q asks like the close button (mac_quit.rs)
+        #[cfg(target_os = "macos")]
+        crate::mac_quit::route_quit_to_close();
         let size = window.inner_size();
         if std::env::var_os("AURORA_NOVSYNC").is_some() {
             self.settings.vsync = false;
@@ -15538,10 +15654,12 @@ impl ApplicationHandler for App {
             Ok(r) => r,
             Err(e) => {
                 log::error!("renderer initialisation failed: {e}");
-                eprintln!(
-                    "{}",
+                let message = if cfg!(target_os = "macos") {
+                    aurora_i18n::tr!("app-aurora-viewer-unable-to-initialize-metal", e = format!("{}", e))
+                } else {
                     aurora_i18n::tr!("app-aurora-viewer-unable-to-initialize-vulkan", e = format!("{}", e))
-                );
+                };
+                eprintln!("{message}");
                 // the window is still hidden: without this the viewer just
                 // vanished (#894)
                 graphics_start::report(&e.to_string(), capture);
@@ -16890,6 +17008,9 @@ impl ApplicationHandler for App {
                 if view.starts_with("layers") {
                     crate::world::appearance::seed_demo_layers(&mut self.world.inventory, self.world.agent_id);
                 }
+                if view.starts_with("wearables") {
+                    crate::world::appearance::seed_demo_wearables(&mut self.world.inventory, self.world.agent_id);
+                }
                 if matches!(view.as_str(), "gallery-fit" | "gallery-fill") {
                     ui::appearance::demo_previews(&self.egui_ctx, &mut self.world.inventory, &mut self.ui_images);
                     self.settings.appearance_fill_previews = view == "gallery-fill";
@@ -16907,11 +17028,11 @@ impl ApplicationHandler for App {
                 self.panels.perf = false;
                 self.appearance_ui.open(
                     match view.as_str() {
-                        "outfits" | "multi-outfits" | "folders-outfits" => 1,
-                        "worn" | "save" => 2,
+                        "outfits" | "multi-outfits" | "folders-outfits" | "wearables-outfits" => 1,
+                        "worn" | "save" | "wearables" => 2,
                         _ => 0,
                     },
-                    view == "edit" || view.starts_with("layers"),
+                    matches!(view.as_str(), "edit" | "wearables-edit") || view.starts_with("layers"),
                 );
                 if view == "save" {
                     self.appearance_ui.begin_save_as(&self.world.inventory);
@@ -16924,6 +17045,9 @@ impl ApplicationHandler for App {
                 }
                 if matches!(view.as_str(), "menu" | "duplicates") {
                     self.appearance_ui.open_outfit(uuid::Uuid::from_u128(704));
+                }
+                if view == "wearables-outfits" {
+                    self.appearance_ui.open_outfit(uuid::Uuid::from_u128(705));
                 }
                 if crate::world::appearance::demo_outfit_mode("locate") {
                     self.appearance_ui.locate_current(&self.world.inventory);
@@ -17897,6 +18021,7 @@ impl ApplicationHandler for App {
                 self.shift = m.state().shift_key();
                 self.ctrl = m.state().control_key();
                 self.alt = m.state().alt_key();
+                self.command = cfg!(target_os = "macos") && m.state().super_key();
                 if !self.ctrl || self.alt {
                     self.build.reset_selection_wheel();
                 }
@@ -18069,6 +18194,7 @@ impl ApplicationHandler for App {
                             control: self.ctrl,
                             alt: self.alt,
                             shift: self.shift,
+                            command: self.command,
                         };
                         if crate::media::keys::forward(p, code, scancode, pressed, ke.repeat, ke.text.as_deref(), mods) || pressed {
                             return;
@@ -18082,6 +18208,7 @@ impl ApplicationHandler for App {
                             control: self.ctrl,
                             alt: self.alt,
                             shift: self.shift,
+                            command: self.command,
                         };
                         if self
                             .media
@@ -18210,6 +18337,7 @@ impl ApplicationHandler for App {
                     control: self.ctrl,
                     alt: self.alt,
                     shift: self.shift,
+                    command: self.command,
                 };
                 let ray = if self.media.focus.is_some() {
                     self.gfx
