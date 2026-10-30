@@ -33,9 +33,8 @@ Latest package: tag `v0.8.3.1793323258`, built from upstream
 `v0.8.3-beta.20261029.2` plus 62 commits (`_upstream=0.8.3-beta.20261029.2`,
 pkgbuilds 54dd534). The grid sees `0.8.3.0`. The workspace tests passed
 before the tag (6222 passed, 0 failed, 30 ignored) and `makepkg` passed
-`check()`. **Not yet confirmed installed**: at checkpoint `sudo pacman -U
-~/Projects/pkgbuilds/aurora-viewer/aurora-viewer-0.8.3.1793323258-1-x86_64.pkg.tar.zst`
-was waiting on G.W.'s password; check `pacman -Q aurora-viewer`. Tree clean.
+`check()`. Installed here as `aurora-viewer 0.8.3.1793323258-1`;
+`--version` gives `0.8.3-beta.20261029.2+circuskid.1793323258`. Tree clean.
 
 ### FIRST — the two-minute check
 
