@@ -86,7 +86,7 @@ Aurora team, so these are overridden:
      commit, push.
 - The binary reports `<upstream tag>+circuskid.<stamp>`; the PKGBUILD's
   `check()` holds it to that. The grid sees only `X.Y.Z.0`.
-- 🔴 **No CI on the fork** (G.W., 2026-10-28). All seven inherited workflows
+- 🔴 **No CI on the fork** (G.W., 2026-10-28). All eight inherited workflows
   are disabled (`gh workflow list -R circuskid/Aurora-Viewer --all`): `Release`
   would publish on our stamp tags, `Crash triage` fires on every new issue.
   An upstream merge that adds a workflow brings it in active, so check that

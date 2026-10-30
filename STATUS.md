@@ -11,11 +11,12 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 **circuskid carries no patch of its own.** Every PR we sent upstream is
 merged: #1397 (notifications), #1405 (desktop identity), #1406 (jobs at
 lower priority), #1407 (PulseAudio / PipeWire), #1408 (local time), #1411
-(advanced inventory search). The 2026-10-29 sync merged `upstream/main`
-c5a428a7 into `circuskid`, taking upstream's side of every conflict (its
-#1411 supersedes our merge 11935b23). The tree is `upstream/main` plus
-`.claude/CLAUDE.md` and this file. All seven fork workflows are still
-`disabled_manually`, and the sync added no new workflow.
+(advanced inventory search). The second 2026-10-29 sync merged
+`upstream/main` 3cd1580c (26 commits, beta `.2`) into `circuskid` with no
+conflict (87c22614); fork `main` fast-forwarded to it. The tree is
+`upstream/main` plus `.claude/CLAUDE.md` and this file. That merge brought
+upstream's new `macOS` workflow; it is now `disabled_manually` like the
+other seven (its one run, fired by the `main` push, was cancelled).
 
 **Two PRs open upstream** (2026-10-29; validated by G.W. in demo; no issue,
 no labels; CI waits on the maintainer's first-contributor approval):
@@ -28,14 +29,13 @@ no labels; CI waits on the maintainer's first-contributor approval):
   `AURORA_DEMO_MENU_SEARCH=<q>`. Outfit-editor drag reorder: dropped
   (upstream has it, Legacy does not).
 
-Latest package: tag `v0.8.3.1793280767`, built from upstream
-`v0.8.3-beta.20261029.1` plus 30 commits (`_upstream=0.8.3-beta.20261029.1`).
-The binary reports `0.8.3-beta.20261029.1+circuskid.1793280767`, and the grid
-sees `0.8.3.0`. The workspace tests passed before the tag (6139 passed,
-0 failed, 30 ignored). Installed here as `aurora-viewer 0.8.3.1793280767-2`
-(pkgrel 2 fixed `package()` for upstream's desktop file and logo, #1398);
-`aurora-viewer --version` confirmed. Tree clean, nothing half-done.
-At checkpoint `upstream/main` was 3 commits ahead (not merged).
+Latest package: tag `v0.8.3.1793323258`, built from upstream
+`v0.8.3-beta.20261029.2` plus 62 commits (`_upstream=0.8.3-beta.20261029.2`,
+pkgbuilds 54dd534). The grid sees `0.8.3.0`. The workspace tests passed
+before the tag (6222 passed, 0 failed, 30 ignored) and `makepkg` passed
+`check()`. **Not yet confirmed installed**: at checkpoint `sudo pacman -U
+~/Projects/pkgbuilds/aurora-viewer/aurora-viewer-0.8.3.1793323258-1-x86_64.pkg.tar.zst`
+was waiting on G.W.'s password; check `pacman -Q aurora-viewer`. Tree clean.
 
 ### FIRST — the two-minute check
 
@@ -60,6 +60,7 @@ help: `describe` still finds the stamp tag and the build refuses the
 mismatch. The PKGBUILD deletes the tags in its clone. To run the tests,
 clone with no tags (`git clone --no-tags --shared`, then delete what
 `--branch` fetched) and point `CARGO_TARGET_DIR` at the worktree's `target/`.
+Fetch the upstream tag with `--no-tags`, or the stamp tags follow it in.
 
 ### THEN — the next upstream PR
 
