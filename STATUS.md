@@ -8,27 +8,23 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**circuskid carries no patch of its own. Four PRs of ours are open
+**circuskid carries no patch of its own. Two PRs of ours are open
 upstream. #1625** (`feat/linux-slurl-handler`, worktree
 `linux-items-status-afad2d`; Refs #676): Linux `secondlife://` links, xdg
 entry plus D-Bus hand-over; grid-validated on 7c70d050; review fixes
 afe5d231 demo-checked, ceb73efd (registers `<exe> (deleted)` after a
-rebuild/upgrade → now the plain path) unit-tested only. **#1630** (`fix/place-link-map-terminator`,
-worktree `mystifying-wright-c64e05`): place links 404 on a region's second
-link (map block terminator kept as a region); #1625 relies on it. **#1614** (`feat/minimap-lock-pan`, worktree
-`linux-local-time-4c73c4`; feedback-board request): mini-map Lock position;
-demo-validated 2026-10-30, codex fix bd98b05e, Fable clean, 6342 tests
-green. **And #1603** (`feat/take-to-rez-folder`, worktree
-`status-check-200b7b`; Sugar's Discord request, opened 2026-10-30): Take
-puts objects back in their rez folder per `handle_take` (nil FolderID
-skipped, conflict → Objects, never Trash/Library; Take Copy → Objects).
-6 `build::take_tests` pass; demo-validated by G.W. 2026-10-30; Fable and
-codex findings fixed (8464eb07), agy timed out. The eight before it are
-merged; `circuskid` = `upstream/main` 4709bed3 (tag
-`v0.8.4-beta.20261030.1`) plus `.claude/CLAUDE.md` and this file.
+rebuild/upgrade → now the plain path) unit-tested only. **And #1630**
+(`fix/place-link-map-terminator`, worktree `mystifying-wright-c64e05`):
+place links 404 on a region's second link (map block terminator kept as a
+region); #1625 relies on it. Neither had a review or a CI run on
+2026-10-30. The ten before them are merged, #1603 (Take → rez folder) and
+#1614 (mini-map lock) on 2026-10-30, their worktrees removed.
+`circuskid` = `upstream/main` 55b3c4e9 (10 past tag
+`v0.8.4-beta.20261030.2`) plus `.claude/CLAUDE.md` and this file.
 
-Latest package: tag `v0.8.4.1793365514`, installed here as
-`aurora-viewer 0.8.4.1793365514-1` (grid sees `0.8.4.0`). Tree clean.
+Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only;
+workspace tests not run), installed here as
+`aurora-viewer 0.8.4.1793391648-1` (grid sees `0.8.4.0`). Tree clean.
 
 ### FIRST — the two-minute check
 
@@ -40,12 +36,14 @@ Latest package: tag `v0.8.4.1793365514`, installed here as
 2. **Grid follow-ups G.W. owns:** the voice test on Linux for #1407
    (planned 2026-10-30). The maintainer sets its TASKS.md line to 🟡 in a
    docs PR of their own; nothing for us to push. Also the grid check of
-   #1603 (rez from a folder, Take, it comes back there; its TASKS.md ⬜).
-   And one link click with the viewer running, on ceb73efd (#1625).
-3. **PRs #1603, #1614, #1625 and #1630.** `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer
-   --json state,reviews,comments` for each (#1614 and #1630 have app Auto-fix on). CI had not run at opening (waits for the
-   maintainer's approval). Answer any review per THEN below; once merged,
-   remove the worktree's branch on the next sync.
+   #1603, now in the package (rez from a folder, Take, it comes back
+   there; its TASKS.md ⬜). And one link click with the viewer running, on
+   ceb73efd (#1625).
+3. **PRs #1625 and #1630.** `gh pr view <n> --repo
+   Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
+   (#1630 has app Auto-fix on). CI waits for the maintainer's approval.
+   Answer any review per THEN below; once merged, remove the worktree's
+   branch on the next sync.
 
 ### Gotcha — this machine's `secondlife://` links run a worktree build
 
