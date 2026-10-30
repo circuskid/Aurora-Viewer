@@ -8,8 +8,9 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**circuskid carries no patch of its own. One PR of ours is open
-upstream: #1603** (`feat/take-to-rez-folder`, in worktree
+**circuskid carries no patch of its own. Two PRs of ours are open
+upstream: #1614** (`feat/minimap-lock-pan`, worktree `linux-local-time-4c73c4`): mini-map
+Lock position; demo-validated, codex fix bd98b05e. **And #1603** (`feat/take-to-rez-folder`, in worktree
 `status-check-200b7b`; Sugar's Discord request, opened 2026-10-30): Take
 puts objects back in their rez folder per `handle_take` (nil FolderID
 skipped, conflict → Objects, never Trash/Library; Take Copy → Objects).
@@ -32,7 +33,7 @@ Latest package: tag `v0.8.4.1793365514`, installed here as
    (planned 2026-10-30). The maintainer sets its TASKS.md line to 🟡 in a
    docs PR of their own; nothing for us to push. Also the grid check of
    #1603 (rez from a folder, Take, it comes back there; its TASKS.md ⬜).
-3. **PR #1603.** `gh pr view 1603 --repo Aurora-Viewer/Aurora-Viewer
+3. **PRs #1603 and #1614.** `gh pr view 1603 --repo Aurora-Viewer/Aurora-Viewer
    --json state,reviews,comments`. CI had not run at opening (waits for the
    maintainer's approval). Answer any review per THEN below; once merged,
    remove the worktree's branch on the next sync.
