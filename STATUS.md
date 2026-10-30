@@ -8,11 +8,13 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**circuskid carries no patch of its own. Three PRs of ours are open
+**circuskid carries no patch of its own. Four PRs of ours are open
 upstream. #1625** (`feat/linux-slurl-handler`, worktree
 `linux-items-status-afad2d`; Refs #676): Linux `secondlife://` links, xdg
 entry plus D-Bus hand-over; grid-validated on 7c70d050, review fixes
-afe5d231 demo-checked only. **#1614** (`feat/minimap-lock-pan`, worktree
+afe5d231 demo-checked only. **#1630** (`fix/place-link-map-terminator`,
+worktree `mystifying-wright-c64e05`): place links 404 on a region's second
+link (map block terminator kept as a region); #1625 relies on it. **#1614** (`feat/minimap-lock-pan`, worktree
 `linux-local-time-4c73c4`; feedback-board request): mini-map Lock position;
 demo-validated 2026-10-30, codex fix bd98b05e, Fable clean, 6342 tests
 green. **And #1603** (`feat/take-to-rez-folder`, worktree
@@ -39,8 +41,8 @@ Latest package: tag `v0.8.4.1793365514`, installed here as
    docs PR of their own; nothing for us to push. Also the grid check of
    #1603 (rez from a folder, Take, it comes back there; its TASKS.md ⬜).
    And one link click with the viewer running, on afe5d231 (#1625).
-3. **PRs #1603, #1614 and #1625.** `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer
-   --json state,reviews,comments` for each (#1614 has app Auto-fix on). CI had not run at opening (waits for the
+3. **PRs #1603, #1614, #1625 and #1630.** `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer
+   --json state,reviews,comments` for each (#1614 and #1630 have app Auto-fix on). CI had not run at opening (waits for the
    maintainer's approval). Answer any review per THEN below; once merged,
    remove the worktree's branch on the next sync.
 
