@@ -11,8 +11,9 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 **circuskid carries no patch of its own. Four PRs of ours are open
 upstream. #1625** (`feat/linux-slurl-handler`, worktree
 `linux-items-status-afad2d`; Refs #676): Linux `secondlife://` links, xdg
-entry plus D-Bus hand-over; grid-validated on 7c70d050, review fixes
-afe5d231 demo-checked only. **#1630** (`fix/place-link-map-terminator`,
+entry plus D-Bus hand-over; grid-validated on 7c70d050; review fixes
+afe5d231 demo-checked, ceb73efd (registers `<exe> (deleted)` after a
+rebuild/upgrade → now the plain path) unit-tested only. **#1630** (`fix/place-link-map-terminator`,
 worktree `mystifying-wright-c64e05`): place links 404 on a region's second
 link (map block terminator kept as a region); #1625 relies on it. **#1614** (`feat/minimap-lock-pan`, worktree
 `linux-local-time-4c73c4`; feedback-board request): mini-map Lock position;
@@ -40,11 +41,20 @@ Latest package: tag `v0.8.4.1793365514`, installed here as
    (planned 2026-10-30). The maintainer sets its TASKS.md line to 🟡 in a
    docs PR of their own; nothing for us to push. Also the grid check of
    #1603 (rez from a folder, Take, it comes back there; its TASKS.md ⬜).
-   And one link click with the viewer running, on afe5d231 (#1625).
+   And one link click with the viewer running, on ceb73efd (#1625).
 3. **PRs #1603, #1614, #1625 and #1630.** `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer
    --json state,reviews,comments` for each (#1614 and #1630 have app Auto-fix on). CI had not run at opening (waits for the
    maintainer's approval). Answer any review per THEN below; once merged,
    remove the worktree's branch on the next sync.
+
+### Gotcha — this machine's `secondlife://` links run a worktree build
+
+The installed package has no Linux link support (#1625 is unmerged), so
+`~/.local/share/applications/aurora-viewer-slurl.desktop` points at
+`linux-items-status-afad2d/target/debug/aurora-viewer` (hand-repaired
+2026-10-30 from a `(deleted)` path). Removing that worktree breaks links:
+turn the Preferences switch off first, or re-register from the build that
+replaces it. Check: `gio mime x-scheme-handler/secondlife`.
 
 ### Gotcha — dev builds on `circuskid` panic
 
