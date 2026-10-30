@@ -16,9 +16,9 @@ afe5d231 demo-checked; ceb73efd (plain exe path, not `(deleted)`) hand-over
 grid-checked 2026-10-30, with #1630 merged in locally. **And #1630**
 (`fix/place-link-map-terminator`, worktree `mystifying-wright-c64e05`):
 place links 404 on a region's second link (map block terminator kept as a
-region); #1625 relies on it. Neither had a review or a CI run on
-2026-10-30. The ten before them are merged, #1603 (Take → rez folder) and
-#1614 (mini-map lock) on 2026-10-30, their worktrees removed.
+region); #1625 relies on it. No review or CI by 2026-10-30; our grid
+check is a comment on #1625. The ten before are merged, #1603 (Take →
+rez folder) and #1614 (mini-map lock) on 2026-10-30, worktrees removed.
 `circuskid` = `upstream/main` 55b3c4e9 (10 past tag
 `v0.8.4-beta.20261030.2`) plus `.claude/CLAUDE.md` and this file.
 
