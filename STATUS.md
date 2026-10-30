@@ -8,8 +8,11 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**circuskid carries no patch of its own. Two PRs of ours are open
-upstream: #1614** (`feat/minimap-lock-pan`, worktree
+**circuskid carries no patch of its own. Three PRs of ours are open
+upstream. #1625** (`feat/linux-slurl-handler`, worktree
+`linux-items-status-afad2d`; Refs #676): Linux `secondlife://` links, xdg
+entry plus D-Bus hand-over; grid-validated on 7c70d050, review fixes
+afe5d231 demo-checked only. **#1614** (`feat/minimap-lock-pan`, worktree
 `linux-local-time-4c73c4`; feedback-board request): mini-map Lock position;
 demo-validated 2026-10-30, codex fix bd98b05e, Fable clean, 6342 tests
 green. **And #1603** (`feat/take-to-rez-folder`, worktree
@@ -35,7 +38,8 @@ Latest package: tag `v0.8.4.1793365514`, installed here as
    (planned 2026-10-30). The maintainer sets its TASKS.md line to 🟡 in a
    docs PR of their own; nothing for us to push. Also the grid check of
    #1603 (rez from a folder, Take, it comes back there; its TASKS.md ⬜).
-3. **PRs #1603 and #1614.** `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer
+   And one link click with the viewer running, on afe5d231 (#1625).
+3. **PRs #1603, #1614 and #1625.** `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer
    --json state,reviews,comments` for each (#1614 has app Auto-fix on). CI had not run at opening (waits for the
    maintainer's approval). Answer any review per THEN below; once merged,
    remove the worktree's branch on the next sync.
@@ -87,7 +91,26 @@ switch back and delete the branch.
   Aurora-Viewer/Aurora-Viewer#209 (merged 2026-10-13, plan switched to FSR).
   NVIDIA's RTX SDK licence (§4(e), §2(c), logo/notice terms) is
   incompatible with GPLv3. **Frame generation: dropped too** (no Vulkan/Linux
-  path from NVIDIA or AMD). Research findings, in case FSR work starts:
+  path from NVIDIA or AMD). The FSR research is under Finished, below.
+
+### NOT QUEUED
+
+- **Linux notification click-to-raise: the maintainer answered 2026-10-29**
+  on Aurora-Viewer/Aurora-Viewer#1397 (merged): keep the ⬜ "later" line, and
+  make it a separate PR once it can be tested on a server that sends
+  `ActivationToken`. A click opens the
+  right conversation but cannot bring the window forward: winit 0.30.13's
+  Wayland `focus_window` is an empty function, and raising needs the
+  xdg-activation token a server may send with the click (`ActivationToken`).
+  Measured with `dbus-monitor` on a `notify-send` probe: quickshell 0.3.2 sends
+  only `ActionInvoked` then `NotificationClosed`, so on this desktop even our
+  own activation code would not raise it. Blocked on such a server.
+
+---
+
+## Finished — read on demand
+
+- **Research for DLSS / FSR (2026-10-28), in case FSR work starts:**
   the real prerequisite is per-pixel motion vectors (`crates/aurora-render`
   has none; TAA reprojects camera motion only); FSR 2/3.1 is MIT, candidate
   crate `sp-fidelity` (unreviewed); the Legacy Viewer has no upscaler.
@@ -107,23 +130,6 @@ switch back and delete the branch.
   reactive-mask generation, reference shader permutations only, output
   Rgba16Float only, "experimental". Fork-and-fix or wait; motion vectors
   come first either way.
-
-### NOT QUEUED
-
-- **Linux notification click-to-raise: the maintainer answered 2026-10-29**
-  on Aurora-Viewer/Aurora-Viewer#1397 (merged): keep the ⬜ "later" line, and
-  make it a separate PR once it can be tested on a server that sends
-  `ActivationToken`. A click opens the
-  right conversation but cannot bring the window forward: winit 0.30.13's
-  Wayland `focus_window` is an empty function, and raising needs the
-  xdg-activation token a server may send with the click (`ActivationToken`).
-  Measured with `dbus-monitor` on a `notify-send` probe: quickshell 0.3.2 sends
-  only `ActionInvoked` then `NotificationClosed`, so on this desktop even our
-  own activation code would not raise it. Blocked on such a server.
-
----
-
-## Finished — read on demand
 
 - **Researched, not queued: 3D preview of inventory objects** (Discord
   idea, 2026-10-30; no issue, no code). Fetching without rezzing is
