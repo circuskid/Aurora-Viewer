@@ -2,50 +2,41 @@
 
 Our fork of Aurora-Viewer/Aurora-Viewer. Rules: [.claude/CLAUDE.md](.claude/CLAUDE.md).
 
-## ▶ RESUME HERE — 2026-10-29
+## ▶ RESUME HERE — 2026-10-30
 
 Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**circuskid carries no patch of its own.** Every PR we sent upstream is
-merged: #1397 (notifications), #1405 (desktop identity), #1406 (jobs at
-lower priority), #1407 (PulseAudio / PipeWire), #1408 (local time), #1411
-(advanced inventory search). The second 2026-10-29 sync merged
-`upstream/main` 3cd1580c (26 commits, beta `.2`) into `circuskid` with no
-conflict (87c22614); fork `main` fast-forwarded to it. The tree is
-`upstream/main` plus `.claude/CLAUDE.md` and this file. That merge brought
-upstream's new `macOS` workflow; it is now `disabled_manually` like the
-other seven (its one run, fired by the `main` push, was cancelled).
+**circuskid carries no patch of its own, and no PR of ours is open
+upstream.** All eight are merged: #1397 (notifications), #1405 (desktop
+identity), #1406 (jobs at lower priority), #1407 (PulseAudio / PipeWire),
+#1408 (local time), #1411 (advanced inventory search), #1483 (inventory
+Left / Right arrows climb folders) and #1497 (search field in the wolf
+menu). Their worktrees and local branches are gone; the fork still holds
+the remote branches `feat/inventory-arrow-fold` and `feat/menu-search`.
+The 2026-10-30 sync merged `upstream/main` 4709bed3 (18 commits, tag
+`v0.8.4-beta.20261030.1`) into `circuskid` with no conflict (e8ba61b9);
+fork `main` fast-forwarded to it. The tree is `upstream/main` plus
+`.claude/CLAUDE.md` and this file. No new workflow came in; all eight stay
+`disabled_manually`.
 
-**Two PRs open upstream** (2026-10-29; validated by G.W. in demo; no issue,
-no labels; CI waits on the maintainer's first-contributor approval):
-- **#1483** inventory Left / Right arrows climb folders (Legacy
-  `LLFolderView::handleKeyHere`); branch `feat/inventory-arrow-fold`, worktree
-  `.claude/worktrees/elastic-lederberg-6a602f`.
-- **#1497** search field in the wolf menu ("home" → Go home, Set Home to
-  Here); branch `feat/menu-search`, worktree
-  `.claude/worktrees/menu-search-drag-reorder-84e3ca`; demo
-  `AURORA_DEMO_MENU_SEARCH=<q>`. Outfit-editor drag reorder: dropped
-  (upstream has it, Legacy does not).
-
-Latest package: tag `v0.8.3.1793323258`, built from upstream
-`v0.8.3-beta.20261029.2` plus 62 commits (`_upstream=0.8.3-beta.20261029.2`,
-pkgbuilds 54dd534). The grid sees `0.8.3.0`. The workspace tests passed
-before the tag (6222 passed, 0 failed, 30 ignored) and `makepkg` passed
-`check()`. Installed here as `aurora-viewer 0.8.3.1793323258-1`;
-`--version` gives `0.8.3-beta.20261029.2+circuskid.1793323258`. Tree clean.
+Latest package: tag `v0.8.4.1793365514`, built from upstream
+`v0.8.4-beta.20261030.1` plus 16 commits
+(`_upstream=0.8.4-beta.20261030.1`, pkgbuilds 4b820bb). The grid sees
+`0.8.4.0`. The workspace tests passed before the tag (6260 passed, 0
+failed, 31 ignored) and `makepkg` passed `check()`. Install handed to
+G.W. (`sudo pacman -U` of the `.pkg.tar.zst` in `pkgbuilds/aurora-viewer`);
+not yet confirmed here.
 
 ### FIRST — the two-minute check
 
-1. **Upstream drift.** `git fetch upstream && git rev-list --count
-   circuskid..upstream/main`. Since we carry no code, a sync should be
-   conflict-free; ship when G.W. wants a build (steps in `.claude/CLAUDE.md`).
-2. **#1483 and #1497 state.** `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer
-   --json state,mergeable,statusCheckRollup,comments`. A review: fix in its
-   worktree (one push per review). Merged: remove that worktree and
-   its branch.
-3. **Grid follow-ups G.W. owns:** the voice test on Linux for #1407
+1. **Upstream drift.** `git fetch --no-tags upstream && git rev-list
+   --count circuskid..upstream/main`. Since we carry no code, a sync should
+   be conflict-free; ship when G.W. wants a build (steps in
+   `.claude/CLAUDE.md`). Upstream now tags betas of the next version
+   (`v0.8.4-beta.*`): the package base is that tag's X.Y.Z.
+2. **Grid follow-ups G.W. owns:** the voice test on Linux for #1407
    (planned 2026-10-30). The maintainer sets its TASKS.md line to 🟡 in a
    docs PR of their own; nothing for us to push.
 
@@ -60,6 +51,8 @@ mismatch. The PKGBUILD deletes the tags in its clone. To run the tests,
 clone with no tags (`git clone --no-tags --shared`, then delete what
 `--branch` fetched) and point `CARGO_TARGET_DIR` at the worktree's `target/`.
 Fetch the upstream tag with `--no-tags`, or the stamp tags follow it in.
+Count the tests over every `test result:` line of the full output (28 of
+them): a tail of the output drops crates and undercounts.
 
 ### THEN — the next upstream PR
 
@@ -69,10 +62,11 @@ Fetch the upstream tag with `--no-tags`, or the stamp tags follow it in.
 - **Each push re-runs first-contributor CI**, which waits for the
   maintainer to approve it, so batch the fixes for one review into one push.
 - **The maintainer merges, not us**; the next sync brings merged PRs in.
-  Then remove the PR's worktree and local branch (the four of #1405–#1411
-  went 2026-10-29). Still around, probably done: `aurora-linux-improvements-5a6f8e`
-  (#1397's branch, merged) and `new-viewer-update-d7fc5f` (old 0.8.2 merge);
-  check before removing.
+  Then remove the PR's worktree and local branch (#1405–#1411 went
+  2026-10-29, #1483 and #1497 2026-10-30). Still around, probably done:
+  `aurora-linux-improvements-5a6f8e` (#1397's, merged; reused 2026-10-30
+  for the sync) and `new-viewer-update-d7fc5f` (old 0.8.2 merge); check
+  before removing.
 - **The fork cannot label PRs or publish captures upstream** (`push: false`;
   `pr-captures.ps1` pushes upstream's `captures` branch). The title's type
   carries the label; for screenshots, push them to the fork's own `captures`
