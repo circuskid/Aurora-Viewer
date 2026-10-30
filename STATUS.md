@@ -33,9 +33,10 @@ workspace tests not run), installed here as
    be conflict-free; ship when G.W. wants a build (steps in
    `.claude/CLAUDE.md`). Upstream now tags betas of the next version
    (`v0.8.4-beta.*`): the package base is that tag's X.Y.Z.
-2. **Grid follow-ups G.W. owns:** the voice test on Linux for #1407
-   (planned 2026-10-30). The maintainer sets its TASKS.md line to 🟡 in a
-   docs PR of their own; nothing for us to push. Also the grid check of
+2. **Grid follow-ups G.W. owns:** #1407 Linux voice: initial grid test
+   passed 2026-10-30; the full one (mic open under load, device switch
+   mid-call) waits until G.W. uses voice (rarely); blocks nothing. The
+   maintainer sets its TASKS.md 🟡; nothing for us to push. The grid check of
    #1603, now in the package (rez from a folder, Take, it comes back
    there; its TASKS.md ⬜). And one link click with the viewer running, on
    ceb73efd (#1625).
