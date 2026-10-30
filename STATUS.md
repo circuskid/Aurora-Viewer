@@ -12,8 +12,8 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 upstream. #1625** (`feat/linux-slurl-handler`, worktree
 `linux-items-status-afad2d`; Refs #676): Linux `secondlife://` links, xdg
 entry plus D-Bus hand-over; grid-validated on 7c70d050; review fixes
-afe5d231 demo-checked, ceb73efd (registers `<exe> (deleted)` after a
-rebuild/upgrade → now the plain path) unit-tested only. **And #1630**
+afe5d231 demo-checked; ceb73efd (plain exe path, not `(deleted)`) hand-over
+grid-checked 2026-10-30, with #1630 merged in locally. **And #1630**
 (`fix/place-link-map-terminator`, worktree `mystifying-wright-c64e05`):
 place links 404 on a region's second link (map block terminator kept as a
 region); #1625 relies on it. Neither had a review or a CI run on
@@ -37,8 +37,10 @@ workspace tests not run), installed here as
    passed 2026-10-30; the full one (mic open under load, device switch
    mid-call) waits until G.W. uses voice (rarely); blocks nothing. The
    maintainer sets its TASKS.md 🟡; nothing for us to push. #1603 Take →
-   rez folder: grid-confirmed by G.W. 2026-10-30. Left: one link click
-   with the viewer running, on ceb73efd (#1625).
+   rez folder: grid-confirmed by G.W. 2026-10-30. #1625 + #1630: grid-OK
+   on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
+   once merged). Test viewers: no `--title` (changes the D-Bus name);
+   quit from the menu, never kill (the next login gets no caps).
 3. **PRs #1625 and #1630.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
    (#1630 has app Auto-fix on). CI waits for the maintainer's approval.
