@@ -107,6 +107,10 @@ switch back and delete the branch.
 
 ### NOT QUEUED
 
+- **0.8.3 VRAM / device-lost reports: left to upstream** (G.W., 2026-10-30;
+  no AMD card). Fixed by upstream #1592, after `v0.8.4-beta.20261030.1`.
+  Unverified: AMD (#1490, #1486) reports budget = usage to the MB — revisit
+  only if AMD reports continue once #1592 ships.
 - **Linux notification click-to-raise: the maintainer answered 2026-10-29**
   on Aurora-Viewer/Aurora-Viewer#1397 (merged): keep the ⬜ "later" line, and
   make it a separate PR once it can be tested on a server that sends
