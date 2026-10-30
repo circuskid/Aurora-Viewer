@@ -337,7 +337,7 @@ pub struct App {
     /// Right-click menu of the text fields (Cut, Copy, Paste…).
     text_menu: ui::text_menu::TextMenu,
     alt: bool,
-    /// AltGr held: Ctrl + Alt for the mouse only (app/alt_graph.rs).
+    /// AltGr held: Ctrl + Alt for shortcuts and the mouse (app/alt_graph.rs).
     alt_graph: bool,
     left_down: bool,
     /// An unhandled world press may start steering when the right button joins.
@@ -956,6 +956,13 @@ fn apply_test_overrides(settings: &mut Settings) {
     if let Some(v) = std::env::var("AURORA_AA").ok().and_then(|v| v.parse().ok()) {
         settings.antialiasing = v;
     }
+    if let Some(v) = std::env::var("AURORA_RENDER_SCALE").ok().and_then(|v| v.parse::<u32>().ok()) {
+        settings.render_scale_percent = v.clamp(50, 100);
+    }
+    if let Some(v) = std::env::var("AURORA_TEXTURE_BUDGET_MB").ok().and_then(|v| v.parse::<u32>().ok()) {
+        settings.texture_budget_auto = false;
+        settings.texture_budget_mb = v.clamp(256, 32768);
+    }
     if let Some(v) = std::env::var("AURORA_MAX_COMPLEXITY").ok().and_then(|v| v.parse().ok()) {
         settings.max_complexity = v;
     }
@@ -1003,7 +1010,9 @@ impl App {
         {
             settings.show_ao = false;
         }
-        let net = NetClient::new()?;
+        // (an adapter known to drop under many downloads keeps them
+        // limited: #1545, net_adapters.rs)
+        let net = NetClient::new(crate::net_adapters::startup_mode(settings.download_connections))?;
         net.set_agent_language(aurora_i18n::language(), settings.language_is_public);
         let voice_http = net.caps_http();
         let login_info = ui::news::LoginInfo::start(net.runtime());
@@ -1064,6 +1073,7 @@ impl App {
         });
 
         let panels = Panels::from_settings(&settings);
+        let chat_ui = ChatUi::from_settings(&settings);
         let mut scene = Scene::new(cache, lib.clone());
         scene.jobs.execute(|| {
             crate::movement::strokes::pack();
@@ -1118,7 +1128,7 @@ impl App {
             viewer_stats: Default::default(),
             startup_windows: ui::StartupWindows::new(&panels),
             panels,
-            chat_ui: ChatUi::default(),
+            chat_ui,
             toolbar_ui: Default::default(),
             dock_layout: Default::default(),
             favorites_access_applied: None,
@@ -2470,6 +2480,11 @@ impl App {
     }
 
     fn back_to_login(&mut self, error: Option<String>) {
+        // Capture the layout before replacing account-specific UI state.
+        self.chat_ui.remember_layout(&mut self.settings);
+        self.settings.show_camera_controls = self.panels.camera_controls;
+        self.settings.show_movement_controls = self.panels.movement_controls;
+        self.settings.save();
         self.sync_local_picker_bindings();
         self.imports.flush_local_registry();
         for entry in &self.imports.entries {
@@ -2568,7 +2583,7 @@ impl App {
         self.neighbours_refused = false;
         // the transcripts shown belong to the account that leaves
         self.history_ui = Default::default();
-        self.chat_ui = ChatUi::default();
+        self.chat_ui = ChatUi::from_settings(&self.settings);
         self.ao_agent = uuid::Uuid::nil();
         self.appearance_ui = Default::default();
         self.shape_ui = Default::default();
@@ -2829,6 +2844,13 @@ impl App {
             return;
         }
         if let NetEvent::InventoryEdited { request, result } = ev {
+            if self.world.attachment_inventory.owns(request) {
+                self.world.attachment_inventory_result(request, result);
+                if self.appearance_ui.pending.is_some_and(|(id, _)| id == request) {
+                    self.appearance_ui.pending = None;
+                }
+                return;
+            }
             if self.texture_library_result(request, &result) {
                 return;
             }
@@ -3730,11 +3752,11 @@ impl App {
     }
 
     fn mods(&self) -> Mods {
-        Mods {
+        self.shortcut_mods(Mods {
             ctrl: self.ctrl,
             shift: self.shift,
             alt: self.alt,
-        }
+        })
     }
 
     /// Walk bindings taking part in double-tap running: 0 forward, 1 back,
@@ -5680,11 +5702,12 @@ impl App {
 
     /// End of a shortcut capture (None = cancelled).
     fn finish_capture(&mut self, input: Option<Input>) {
+        let mods = self.mods();
         let Some(ui::options::Capture::Binding(action, slot)) = self.options_ui.take_capture() else {
             return;
         };
         if let Some(input) = input {
-            let b = crate::keybinds::Binding::captured(input, self.mods());
+            let b = crate::keybinds::Binding::captured(input, mods);
             self.settings.keybinds.set(action, slot, Some(b));
             if action == Action::HudDrag {
                 self.down.clear();
@@ -5757,6 +5780,9 @@ impl App {
                 let text = self.gfx.as_mut().and_then(|g| g.egui_state.clipboard_text()).unwrap_or_default();
                 self.build.paste_vector(&mut self.world, &self.settings.build, which, &text);
             }
+            Request::CopyKeys => self
+                .egui_ctx
+                .copy_text(self.build.copy_keys(&self.world, &self.settings.build, self.shift)),
             Request::Script { object, item } => self.open_script(aurora_net::scripts::ScriptTarget { object, item }),
         }
         self.flush_build();
@@ -7784,9 +7810,25 @@ impl App {
                 self.send(NetCommand::RequestProfile(id));
             }
             self.send_derender_requests();
+            // Parentless server records are filed before their COF links:
+            // reliable MoveInventoryItem, matching AISUpdate::doUpdate.
+            if let Some(change) = self.world.inventory.take_parent_repairs() {
+                let request = uuid::Uuid::new_v4();
+                self.world_edits.insert(request);
+                self.send(NetCommand::EditInventory { request, change });
+            }
             // outfit restore at login (queues the COF fetch below)
             let second_life = !matches!(self.settings.grid, crate::settings::GridChoice::Custom);
             self.world.update_outfit(second_life, Instant::now());
+            let allow_links = self.world.outfit.is_done() && self.appearance_ui.pending.is_none() && self.inventory_ui.pending.is_none();
+            for command in self.world.update_attachment_inventory(Instant::now(), allow_links) {
+                if let NetCommand::EditInventory { request, .. } = &command {
+                    // Serialize COF writes with the same guard as interactive
+                    // outfit changes, including inventory link replacement.
+                    self.appearance_ui.pending = Some((*request, false));
+                }
+                self.send(command);
+            }
             for cmd in std::mem::take(&mut self.world.outfit.commands) {
                 self.send(cmd);
             }
@@ -7800,7 +7842,8 @@ impl App {
             self.world.region_alerts.cfg = crate::world::region_alerts::Config {
                 script_count: self.settings.script_count_alert,
                 script_threshold: self.settings.script_count_threshold,
-                version: self.settings.sim_version_alert,
+                // AURORA_DEMO_SIM_VERSION=on: on for the run, not saved
+                version: self.settings.sim_version_alert || (self.demo && crate::demo::sim_version::forced()),
             };
             // AURORA_DEMO_COLLISIONS=chat: the nearby chat lines for this run only
             self.world.collisions.cfg = if self.demo {
@@ -10129,6 +10172,16 @@ impl App {
                 }
             }
         }
+        if self.demo
+            && crate::demo::sim_version::mode().is_some()
+            && let Some(handle) = self.world.main_region
+        {
+            for event in crate::demo::sim_version::events(self.frame_count, handle) {
+                if let Some(e) = self.world.apply(event) {
+                    self.on_app_event(e);
+                }
+            }
+        }
         if self.demo && crate::demo::object_im::settings().is_some() {
             let agent = self.world.agent_id;
             for event in crate::demo::object_im::events(self.frame_count, agent) {
@@ -10941,6 +10994,7 @@ impl App {
                 );
             }
         }
+        self.demo_altgr_shortcuts();
         // AURORA_DEMO_KEY="down" (up, left, right): hold that arrow from frame
         // 235, log the agent and drawn body headings every 30 frames;
         // "up:pulse": 2 s held, 2 s released, over and over (by the clock,
@@ -15411,6 +15465,9 @@ impl App {
                 self.draw_day_editor(&ctx, &p);
                 self.draw_options(&ctx, &p, &mut a);
                 self.startup_windows.remember(&self.panels, &mut self.settings);
+                self.chat_ui.remember_layout(&mut self.settings);
+                self.settings.show_camera_controls = self.panels.camera_controls;
+                self.settings.show_movement_controls = self.panels.movement_controls;
                 self.settings.audio.stream_title_window = self.panels.stream_title;
                 self.settings.show_people = self.panels.people;
                 self.settings.people_tab = self.panels.people_tab;
@@ -15758,7 +15815,7 @@ impl ApplicationHandler for App {
                 return;
             }
             // AURORA_DEMO_TOOLBOX=1, or "target:tool" (target 0 nearest, 1
-            // selection, 2 under the cursor; tool: the one "Send a diagnostic"
+            // selection, 2 under the cursor, 3 my avatar; tool: the one "Send a diagnostic"
             // shows, e.g. "0:J4"), or "edit" (Customize): the Dev Toolbox
             if let Ok(v) = std::env::var("AURORA_DEMO_TOOLBOX") {
                 self.panels.dev_toolbox = true;
@@ -17116,6 +17173,7 @@ impl ApplicationHandler for App {
                     "default-permissions"
                         | "aurora-default-permissions"
                         | "permissions"
+                        | "lost"
                         | "bulk-permissions"
                         | "bulk-multi"
                         | "bulk-folder"
@@ -17182,6 +17240,13 @@ impl ApplicationHandler for App {
                     );
                     self.settings.inventory = ui::inventory::InventoryPreferences::default();
                     self.inventory_ui.show_original(&self.world.inventory, self.world.inventory.root);
+                    if view == "lost" {
+                        crate::world::inventory::demo::seed_lost(&mut self.world.inventory, self.world.agent_id);
+                        self.panels.inventory = true;
+                        self.inventory_ui
+                            .show_original(&self.world.inventory, crate::world::inventory::demo::LOST_FOLDER);
+                        self.inventory_ui.expand_all = Some(true);
+                    }
                     self.inventory_ui.filters_open = view == "filters";
                     self.inventory_ui.preferences_open = view == "preferences";
                     self.inventory_ui.default_permissions_open = view.ends_with("default-permissions");
@@ -17524,6 +17589,9 @@ impl ApplicationHandler for App {
                         self.inventory_ui.thumbnail.open(id);
                         self.inventory_ui.thumbnail.picker_open = view == "image-picker";
                         self.inventory_ui.thumbnail.photo_open = matches!(view.as_str(), "image-photo" | "image-photo-save");
+                        if view.starts_with("image-layout") {
+                            self.demo_inventory_file_choices(view.ends_with("wide"));
+                        }
                     } else if !matches!(
                         view.as_str(),
                         "keyboard" | "keyboard-fold" | "aurora-keyboard" | "aurora-keyboard-fold" | "aurora-keyboard-wide"
@@ -17986,15 +18054,19 @@ impl ApplicationHandler for App {
         );
         // Keep a lens shortcut out of egui: Ctrl+0 otherwise also resets
         // the interface scale at the end of the frame.
+        let key_mods = match &event {
+            WindowEvent::KeyboardInput { event: ke, .. } => self.key_mods(ke),
+            _ => self.mods(),
+        };
         let lens_shortcut = matches!(
             &event,
             WindowEvent::KeyboardInput { event: ke, .. }
                 if ke.state == ElementState::Pressed
                     && matches!(ke.physical_key, PhysicalKey::Code(code)
-                        if matches!(self.settings.keybinds.triggered(&Input::key(code), self.mods()),
+                        if matches!(self.settings.keybinds.triggered(&Input::key(code), key_mods),
                             Some(Action::LensZoomIn | Action::LensZoomOut | Action::LensZoomDefault))
                             && (!(self.egui_ctx.egui_wants_keyboard_input() || egui::Popup::is_any_open(&self.egui_ctx))
-                                || shortcut_while_typing(true, self.ctrl, self.alt, code, true)))
+                                || shortcut_while_typing(true, key_mods.ctrl, key_mods.alt, code, true)))
         ) && self.in_world()
             && self.options_ui.capture.is_none()
             && !self.exit_prompt.open
@@ -18004,10 +18076,15 @@ impl ApplicationHandler for App {
         // the hidden cursor the camera holds is the tool's (cursor_hold.rs):
         // it never hovers, clicks or scrolls the windows (#1343)
         let held_pointer = self.cursor_hold.held() && cursor_hold::held_from_ui(&event);
+        // AltGr's shortcut key must not also reach egui as a plain key:
+        // for example G would snap a selection while Ctrl+Alt+G runs.
+        // Releases still clear any key pressed before AltGr was held.
+        let altgr_shortcut = matches!(&event, WindowEvent::KeyboardInput { event: ke, .. }
+            if self.altgr_native_key(ke));
         let Some(g) = self.gfx.as_mut() else {
             return;
         };
-        let resp = if chat_pass || lens_shortcut || held_pointer {
+        let resp = if chat_pass || lens_shortcut || held_pointer || altgr_shortcut {
             egui_winit::EventResponse {
                 consumed: false,
                 repaint: true,
@@ -18095,6 +18172,8 @@ impl ApplicationHandler for App {
                 }
                 if let PhysicalKey::Code(code) = ke.physical_key {
                     let pressed = ke.state == ElementState::Pressed;
+                    let mods = self.key_mods(ke);
+                    let altgr_text = self.altgr_text_input(ke);
                     // The color dialog and an emoji picker own Escape before
                     // camera shortcuts. egui already received the event above.
                     let eyedropper = ui::widgets::color::pipette::armed(&self.egui_ctx);
@@ -18114,6 +18193,7 @@ impl ApplicationHandler for App {
                         && !self.shift
                         && !self.ctrl
                         && !self.alt
+                        && !self.alt_graph
                         && let winit::keyboard::Key::Character(s) = &ke.logical_key
                         && !format!("{code:?}").starts_with("Digit")
                         && !format!("{code:?}").starts_with(aurora_i18n::tr!("common-numpad"))
@@ -18129,7 +18209,7 @@ impl ApplicationHandler for App {
                     }
                     // egui received Ctrl+W above; reserve its physical key
                     // before gestures or movement can keep it held.
-                    if pressed && ui::close_key::take_native_key(&ke.logical_key, code, self.mods(), &mut self.down) {
+                    if pressed && ui::close_key::take_native_key(&ke.logical_key, code, mods, &mut self.down) {
                         self.check_temp_run();
                         return;
                     }
@@ -18141,9 +18221,10 @@ impl ApplicationHandler for App {
                     // The command table is shared with egui's dispatcher:
                     // an editing accelerator must never become a held move.
                     let input = Input::key(code);
-                    let mods = self.mods();
-                    let build_keyboard =
-                        self.in_world() && !self.egui_ctx.egui_wants_keyboard_input() && !egui::Popup::is_any_open(&self.egui_ctx);
+                    let build_keyboard = self.in_world()
+                        && !altgr_text
+                        && !self.egui_ctx.egui_wants_keyboard_input()
+                        && !egui::Popup::is_any_open(&self.egui_ctx);
                     let build_shortcut = pressed
                         .then(|| {
                             crate::build::ui::Shortcut::take_native_key(
@@ -18157,14 +18238,14 @@ impl ApplicationHandler for App {
                         })
                         .flatten();
                     let ui_shortcut = build_shortcut.is_some();
-                    let command_key = pressed && self.settings.keybinds.triggered(&input, mods).is_some();
+                    let command_key = pressed && !altgr_text && self.settings.keybinds.triggered(&input, mods).is_some();
                     if ui_shortcut || command_key {
                         self.down.remove(&input);
                         self.check_temp_run();
                     }
                     // A gesture key must still be held when the chat or a web
                     // page has keyboard focus; it only owns a visible HUD drag.
-                    if pressed && !ke.repeat && !ui_shortcut && self.settings.keybinds.uses_input(Action::HudDrag, &input) {
+                    if pressed && !ke.repeat && !altgr_text && !ui_shortcut && self.settings.keybinds.uses_input(Action::HudDrag, &input) {
                         let _ = self.settings.keybinds.update_held_input(&mut self.down, &input, pressed, mods);
                     }
                     // Releases always go through so keys never get stuck.
@@ -18183,7 +18264,7 @@ impl ApplicationHandler for App {
                         && (!ke.repeat || gesture_key.is_some_and(crate::gestures::Manager::repeat_triggers))
                         && !typing
                         && self.in_world()
-                        && !self.alt
+                        && !mods.alt
                         && self.profile_ui.focused_web().is_none()
                         && self.search_ui.focused_web().is_none()
                         && self.media.focus.is_none()
@@ -18191,7 +18272,7 @@ impl ApplicationHandler for App {
                         && let Some(id) = self
                             .gesture_state
                             .manager
-                            .key_trigger(key, u32::from(self.ctrl) | if self.shift { 4 } else { 0 })
+                            .key_trigger(key, u32::from(mods.ctrl) | if mods.shift { 4 } else { 0 })
                     {
                         self.gesture_play(id, Some(key));
                         return;
@@ -18255,8 +18336,8 @@ impl ApplicationHandler for App {
                         && !self.settings.letter_keys_move
                         && !ui_shortcut
                         && self.in_world()
-                        && !self.ctrl
-                        && !self.alt
+                        && !mods.ctrl
+                        && !mods.alt
                         && self.media.focus.is_none()
                         && let Some(text) = ke.text.as_deref()
                         && !text.is_empty()
@@ -18270,10 +18351,10 @@ impl ApplicationHandler for App {
                     let shortcut = pressed
                         && shortcut_while_typing(
                             typing,
-                            self.ctrl,
-                            self.alt,
+                            mods.ctrl,
+                            mods.alt,
                             code,
-                            self.settings.keybinds.triggered(&Input::key(code), self.mods()).is_some(),
+                            self.settings.keybinds.triggered(&input, mods).is_some(),
                         );
                     // Ctrl+F belongs to the window with its own find when the
                     // script editor is active, the keyboard is in a conversation, or the

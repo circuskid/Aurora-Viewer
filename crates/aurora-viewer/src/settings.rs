@@ -31,6 +31,16 @@ impl ChatStyle {
     }
 }
 
+/// Nearby chat belongs to the layout, unlike account-specific IM sessions.
+/// Hidden keeps its detached window available to the nearby-chat button.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum NearbyChatWindow {
+    #[default]
+    Docked,
+    Detached,
+    Hidden,
+}
+
 /// Where the thumbnails of the open conversations stand (Preferences ›
 /// Chat, `ui/chat/thumbnails.rs`): the Legacy Viewer's IM chiclets, shown
 /// unless `FSDisableIMChiclets`. Beside the chat bar by default (the human's
@@ -248,6 +258,19 @@ impl PlateClick {
 /// It becomes a public GitHub issue in the tester's name, hence Ask by
 /// default where the Legacy Viewer always sends to its own server
 /// (llcrashlogger.cpp, CrashSubmitBehavior).
+/// How many asset downloads may be under way at once (`aurora_net::AssetConnections`).
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum DownloadConnections {
+    /// Adaptive, or limited when a network adapter known to lose its link
+    /// under many connections is present (`net_adapters::needs_limited`).
+    #[default]
+    Automatic,
+    /// Always follow the link (`fetch_pace.rs`), Aurora's fast default.
+    Adaptive,
+    /// Always the Legacy Viewer's bounded connections.
+    Limited,
+}
+
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CrashReports {
     #[default]
@@ -546,6 +569,11 @@ pub struct Settings {
     /// turned since (`ui::StartupWindows`).
     pub show_chat: bool,
     pub show_minimap: bool,
+    /// Nearby-chat docking and visibility; geometry stays in ui_layout.ron.
+    pub nearby_chat_window: NearbyChatWindow,
+    /// LLFloaterCamera / LLFloaterMove save_visibility (their floater XML).
+    pub show_camera_controls: bool,
+    pub show_movement_controls: bool,
     /// FSUseStandalonePlaceDetailsFloater: landmarks, place links and history
     /// entries open in their own window instead of the Places window.
     pub standalone_place_details: bool,
@@ -802,7 +830,10 @@ pub struct Settings {
     pub script_count_alert: bool,
     pub script_count_threshold: u32,
     /// A notice when the region runs another simulator version than the
-    /// last one (FSShowServerVersionChangeNotice, on).
+    /// last one (FSShowServerVersionChangeNotice). Off, unlike the Legacy
+    /// Viewer's on: it came at nearly every teleport and region crossing
+    /// and told the user nothing they could act on (human choice,
+    /// 2026-10-30).
     pub sim_version_alert: bool,
     /// Object messages from elsewhere dropped (Preferences › Privacy, #623).
     pub object_im_filter: crate::world::object_im_filter::Settings,
@@ -1085,6 +1116,8 @@ pub struct Settings {
     /// default, RenderFSAAType 2 of Firestorm's High to Ultra levels in
     /// featuretable.txt)
     pub antialiasing: u8,
+    /// World resolution as a percentage of the window; HUDs and UI stay native.
+    pub render_scale_percent: u32,
     /// Geometric specular anti-aliasing (common.wgsl `specular_aa_roughness`):
     /// highlights widened where the shading normal turns faster than a
     /// pixel, so they stop shimmering as the camera moves. An Aurora
@@ -1199,6 +1232,11 @@ pub struct Settings {
     /// (Firestorm's ThrottleBandwidthKBPS; the default and the top of the
     /// range are Aurora's, `aurora_net::throttle::DEFAULT_KBPS`).
     pub bandwidth_kbps: u32,
+    /// How many asset downloads may be under way at once (Preferences ›
+    /// Network and cache): automatic follows the link, or stays limited
+    /// when a network adapter known to drop under it is present
+    /// (`net_adapters.rs`). Read when the network starts.
+    pub download_connections: DownloadConnections,
     /// Connect only to the region we are in (the Legacy Viewer's
     /// FSDisableNeighbourRegionConnections, off): the neighbours are not
     /// shown, and crossings on foot or in vehicles are less reliable.
@@ -1277,7 +1315,7 @@ pub(crate) const TONEMAP_MIX: f32 = 0.7;
 /// an S32 of seconds).
 pub(crate) const GROUP_SNOOZE_MAX_MINUTES: u32 = i32::MAX as u32 / 60;
 
-const SETTINGS_VERSION: u32 = 28;
+const SETTINGS_VERSION: u32 = 29;
 
 /// `settings.json` from a newer build: the document, what this build loaded
 /// from it, and the top-level keys to leave as they were unless changed here
@@ -1647,6 +1685,9 @@ impl Default for Settings {
             show_perf: false,
             show_chat: true,
             show_minimap: true,
+            nearby_chat_window: NearbyChatWindow::Docked,
+            show_camera_controls: false,
+            show_movement_controls: false,
             standalone_place_details: false,
             inspect_columns: crate::ui::inspect::ALL_COLUMNS,
             landmarks_by_date: true,
@@ -1745,7 +1786,7 @@ impl Default for Settings {
             show_joined_group_invitations: false,
             script_count_alert: false,
             script_count_threshold: 100,
-            sim_version_alert: true,
+            sim_version_alert: false,
             object_im_filter: Default::default(),
             anti_spam: Default::default(),
             rlva_enabled: false,
@@ -1846,6 +1887,7 @@ impl Default for Settings {
             projector_shadows: true,
             contact_shadows: false,
             antialiasing: 6,
+            render_scale_percent: 100,
             specular_aa: true,
             tonemapper: 1,
             tonemap_mix: TONEMAP_MIX,
@@ -1891,6 +1933,7 @@ impl Default for Settings {
             cache_location: String::new(),
             chat_log_location: String::new(),
             bandwidth_kbps: aurora_net::throttle::DEFAULT_KBPS as u32,
+            download_connections: DownloadConnections::Automatic,
             no_neighbour_regions: false,
             parcel_visibility: Default::default(),
             chat_bar_width: 0.0,
@@ -2359,6 +2402,11 @@ impl Settings {
             // on Potato or Low turns it off, any other keeps it on
             crate::graphics_presets::upgrade_hdr_emissive(&mut self);
         }
+        if self.settings_version < 29 {
+            // new default: no simulator version notice (every earlier file
+            // wrote the former default, on)
+            self.sim_version_alert = false;
+        }
         if !self.audio.mic_gain.is_finite() {
             self.audio.mic_gain = 1.0;
         }
@@ -2444,6 +2492,7 @@ impl Settings {
         };
         self.shadow_quality = self.shadow_quality.min(4);
         self.antialiasing = self.antialiasing.min(6);
+        self.render_scale_percent = self.render_scale_percent.clamp(50, 100);
         self.reflection_probes = self.reflection_probes.min(3);
         self.probe_count = self.probe_count.clamp(8, 64);
         self.tonemapper = self.tonemapper.min(1);
@@ -2591,6 +2640,7 @@ impl Settings {
         let mut water_effects = self.water_effects.render();
         water_effects.particle_budget = self.max_particles;
         aurora_render::RenderSettings {
+            render_scale_percent: self.render_scale_percent.clamp(50, 100),
             water_effects,
             aa: match self.antialiasing {
                 0 => AntiAliasing::None,
@@ -2663,6 +2713,10 @@ pub struct MapSettings {
     pub mini_collision: bool,
     /// MiniMapAutoCenter.
     pub mini_auto_center: bool,
+    /// The mini-map window can neither be moved nor resized, and a plain
+    /// drag pans the map (not in the Legacy Viewer, where only Shift + drag
+    /// pans).
+    pub mini_locked: bool,
     /// FSNetMapDoubleClickAction: 0 nothing, 1 world map, 2 teleport.
     pub mini_double_click: u8,
     /// MapScale: world map pixels per region.
@@ -2701,6 +2755,7 @@ impl Default for MapSettings {
             mini_for_sale: false,
             mini_collision: true,
             mini_auto_center: true,
+            mini_locked: false,
             mini_double_click: 2,
             world_scale: 128.0,
             world_people: true,
@@ -2778,6 +2833,18 @@ impl WaterEffectsSettings {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn render_scale_defaults_native_and_survives_profile_round_trip() {
+        let mut settings = Settings::default();
+        assert_eq!(settings.render_settings().render_scale_percent, 100);
+        settings.render_scale_percent = 67;
+        let saved = serde_json::to_vec(&settings).expect("settings JSON");
+        let loaded: Settings = serde_json::from_slice(&saved).expect("settings JSON");
+        assert_eq!(loaded.render_settings().render_scale_percent, 67);
+        settings.render_scale_percent = 0;
+        assert_eq!(settings.sanitized().render_settings().render_scale_percent, 50);
+    }
+
     #[test]
     fn automatic_flight_preferences_default_on_and_keep_independent_saved_choices() {
         use super::Settings;
@@ -3726,6 +3793,43 @@ mod tests {
         let mut off = Settings::default();
         off.colors.relation_names = false;
         assert!(!off.sanitized().colors.relation_names);
+    }
+
+    #[test]
+    fn the_simulator_version_notice_is_off_by_default_and_for_earlier_files() {
+        assert!(!Settings::default().sanitized().sim_version_alert);
+        // a file that wrote the former default, on
+        let old = Settings {
+            settings_version: 28,
+            sim_version_alert: true,
+            ..Settings::default()
+        };
+        assert!(!old.sanitized().sim_version_alert);
+        // switched on after the migration: kept
+        let on = Settings {
+            sim_version_alert: true,
+            ..Settings::default()
+        };
+        assert!(on.sanitized().sim_version_alert);
+    }
+
+    #[test]
+    fn download_connections_stay_automatic_for_earlier_files() {
+        assert_eq!(Settings::default().download_connections, DownloadConnections::Automatic);
+        // a file written before the setting existed: automatic, the fast
+        // adaptive pace unless an adapter known to drop is present
+        let mut value = serde_json::to_value(Settings::default()).expect("settings JSON");
+        value.as_object_mut().expect("object").remove("download_connections");
+        let loaded: Settings = serde_json::from_value(value).expect("settings JSON");
+        assert_eq!(loaded.download_connections, DownloadConnections::Automatic);
+        // a choice made by hand is kept
+        let limited = Settings {
+            download_connections: DownloadConnections::Limited,
+            ..Settings::default()
+        };
+        let saved = serde_json::to_string(&limited).expect("settings JSON");
+        let loaded: Settings = serde_json::from_str(&saved).expect("settings JSON");
+        assert_eq!(loaded.download_connections, DownloadConnections::Limited);
     }
 
     #[test]

@@ -298,7 +298,7 @@ pub fn demo(st: &mut OptionsUi, value: &str) {
         st.demo_open_cogs = true;
     } else if let Some(query) = what.strip_prefix("search=") {
         st.query = query.to_owned();
-    } else if page == Page::Shortcuts && !what.is_empty() && st.reveal.is_none() {
+    } else if page == Page::Shortcuts && !what.is_empty() && what != "altgr" && st.reveal.is_none() {
         // the shortcut page's former filter: the window's search now
         st.query = what.to_owned();
     }
@@ -719,6 +719,31 @@ fn combo<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, choices: &[(T, &
         .show_ui(ui, |ui| {
             for (v, label) in choices {
                 changed |= ui.selectable_value(value, *v, *label).changed();
+            }
+        });
+    changed
+}
+
+/// `combo` whose choices with a reason cannot be picked: greyed, the
+/// reason shown on hover.
+fn combo_blocked<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, choices: &[(T, &str, Option<&str>)]) -> bool {
+    let shown = choices.iter().find(|(v, _, _)| v == value).map_or("", |(_, l, _)| *l);
+    let mut changed = false;
+    egui::ComboBox::from_id_salt(ui.scope_id().with("combo"))
+        .width(COMBO_W)
+        .selected_text(shown)
+        .truncate()
+        .show_ui(ui, |ui| {
+            for (v, label, blocked) in choices {
+                let r = ui
+                    .add_enabled_ui(blocked.is_none(), |ui| ui.selectable_value(value, *v, *label))
+                    .inner;
+                match blocked {
+                    Some(why) => {
+                        r.on_disabled_hover_text(*why);
+                    }
+                    None => changed |= r.changed(),
+                }
             }
         });
     changed

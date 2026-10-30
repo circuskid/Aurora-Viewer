@@ -1,5 +1,18 @@
 # Aurora Viewer architecture
 
+Session layout uses Settings::nearby_chat_window for nearby-chat docking/visibility
+and show_camera_controls / show_movement_controls for the Controls windows.
+ChatUi::from_settings restores only nearby chat at startup and after logout; IMs,
+drafts and focus stay session-local. Stable floater ids reuse ui_layout.ron for
+geometry and minimized state; restoration does not raise a minimized window.
+Contact sets import uses `world/contact_sets/importing.rs` to validate the
+Legacy Viewer's complete LLSD account file and individual exports, then merge
+membership without overwriting local appearance or aliases. It reconstructs
+non-friend retention for individual exports and atomically saves the complete
+merge before changing live state. `ui/contacts/importing.rs` shares the native
+file picker and background XML reader between People and Conversations;
+completion is scoped to the originating account.
+
 `graphics_presets/saved.rs` holds named rendering quality snapshots (#1218),
 persisted as an explicit allowlist in `Settings::graphics_saved`. Selection is
 stored separately in `graphics_saved_active`: identical snapshots remain distinct,
@@ -12,23 +25,70 @@ split into filtering options, the filter's scope list and always-visible parcels
 cap switch between the FPS hover card (both bar layouts) and the system menu.
 
 `imports/animation_model.rs` loads local rigged DAE/glTF/GLB preview models
-on the import worker pool. Each animation draft retains its own geometry,
-imported rest skeleton and revisioned selection; cancellation, failures and
-late results preserve the current model. The independent animation clock
+on the import worker pool. A revisioned selection shares geometry and its
+imported rest skeleton across all queued animations, including later additions.
+Cancellation, failures and late results preserve the current model, even if
+the originating row was removed. Each independent animation clock
 uses that rest skeleton, and the existing preview GPU skins Bento joints.
 Worker-computed bone-chain reach frames rotating tails/wings around the pelvis
 without per-frame geometry scans or a rest-bounds crop.
 Choosing Standard restores the dummy avatar. Preview models never enter the
 upload queue or change animation bytes, metadata, inventory or world appearance.
 `Preferences::animation_models` remembers model identifiers, names and local
-paths across sessions. Selecting a saved entry loads it on the worker pool;
-weak cache entries share geometry only while a preview retains it. Each saved
+paths across sessions. `animation_model_last` restores the last successfully
+loaded choice by default; Standard clears it for the whole queue.
+Selecting a saved entry loads it once on the worker pool;
+the queue retains the selected model and caches other models weakly. Each saved
 model has a removal icon at the right of its list row, so it can be removed
 without selecting it first. The list stays open for further removals. Removing a reference
 resets dependent previews and never deletes its file.
 Only local source models are offered. Preferences ignore references to the
 retired inventory snapshot format; its rez, capture and cleanup workflow is
 removed.
+
+`inventory/orphans.rs` in aurora-net implements the startup `findLostItems`
+read: agent-only AIS `/orphans`, or a legacy null-folder request with items
+enabled and folders disabled. It validates identities/owners, keeps links and
+folder metadata, and distinguishes empty successful replies from failures.
+`world/inventory/background.rs` includes this once-per-login read in its bounded
+pool, even with a warm cache; obsolete replies are ignored and failures can
+retry after a region capability change. `world/inventory/lost.rs` follows
+`buildParentChildMap`: dangling cached items and ordinary folders go to Lost And
+Found, protected folders return to the root, and library roots stay untouched.
+The return sentinel is translated locally; genuine repairs use reliable parent
+moves. Missing destination folders defer filing until their actual metadata
+arrives. `AURORA_DEMO_INVENTORY=lost` exercises this startup path offline.
+
+`world/attachment_inventory.rs` fetches missing inventory records for ordinary
+attachments independently of open floaters, with bounded retries. Once login
+restoration and interactive outfit changes finish, it adds missing Current Outfit
+links through AIS, without replacing the outfit or reattaching anything. A
+simulator-confirmed detach during link creation removes the late link after
+confirmation; failed readback reloads the COF before retrying. Transient avatar
+absence during teleport preserves links. Temporary attachments are excluded.
+Manual removal recovers our worn roots through `ObjectDetach` when an item or
+the COF remains unavailable, following `LLSelectMgr::sendDetach`. Healthy outfit
+mutations retain their existing path. Recovery preserves RLVa point/source locks
+and refuses unknown folder or scripted nostrip decisions until metadata arrives.
+
+`world/inventory/parents.rs` distinguishes normal creation from AIS orphan
+recovery. Following `processUpdateCreateInventoryItem` / `updateItem`, a newly
+script-attached original retains its known folder or uses the Objects system
+folder when its parent is null. `FetchAttachmentItems` / `AttachmentInventoryItems`
+preserve that creation context through HTTP delays, detachment and teleport.
+Attaching only adds a COF link; it does not move an original with a valid parent.
+Generic AIS orphan reads keep their separate Lost And Found handling. Original
+identities and permissions remain intact. Bounded reliable parent moves precede
+COF registration, and pending assignments survive older folder/metadata reads
+until confirmed readback. Existing RLVa inventory move rules apply.
+
+Binding-array texture pages are limited independently of ordinary frame texture
+bindings. `RenderSettings::render_scale_percent` reuses the separate world-target
+path in `rlva/resolution.rs`; the RLVa resolution divisor takes precedence,
+following the reference RenderResolutionMultiplier behavior. The user
+scale uses nine bilinear Catmull-Rom taps before native-resolution labels, HUDs
+and egui; RLVa-only scaling retains its nearest-pixel behavior. Target changes
+invalidate depth/occlusion history, and snapshots bypass the user's scale.
 
 `scene/anim.rs` restarts active resident and control-avatar motions from one shared
 instant for Ctrl+S, World and the resync toolbar command. Receipt signals,
@@ -123,6 +183,10 @@ None, flexible prims, HUDs and unknown simulator shape types are excluded.
 Traditional sculpt physics remains undisplayed, as in the reference editor.
 
 `world/bridge.rs` inspects an existing attachment before writing scripts.
+Bridge 1.40 normalizes its copied library container at controller initialization:
+a solid 1 cm box, default plywood mapping, white tint, zero alpha on all faces
+and an empty description. Version checks upgrade the same inventory object;
+attachment initialization reapplies the shape and surface after reattachment.
 The `Verify` phase requires matching controller, query and IK replies from the
 selected worn root, current region, folder and protocol version. A current
 bridge resumes directly, including after a normal reattachment at login.
@@ -218,6 +282,14 @@ uploads through the renderer's staging pool and publishes a complete local
 generation. It pins the server bakes for cancellation and releases retired
 GPU slots. `wearable_editor/masks.rs` embeds the original character masks;
 preview textures never enter the inventory or replace server appearance.
+Local imports share their worker-prepared RGBA images with `PreviewSource`.
+Wearable texture pickers accept local textures for private previews; pixel
+revisions trigger a new bake after a watched file reload. Removing a local
+texture restores the edited slots, and saving requires inventory textures.
+The wearable picker snapshots its target slot, previews each selection and
+restores that snapshot on Cancel or close; OK keeps the preview. The build
+and wearable editors share `build/ui/common.rs::swatch`, including bordered,
+crossed empty slots and consistent loading/transparent-image states.
 `aurora-assets/src/wearable.rs` preserves original texture text when unchanged
 and preserves metadata and future sections when textures are edited.
 
@@ -969,8 +1041,25 @@ those sent by our avatar's objects. Settings persist; blocks do not. Preferences
 Its Cx rows participate in preference search, modified settings and page reset.
 `demo_anti_spam.rs` supplies synthetic floods through the production event path.
 
-The construction floater uses a single compact presentation (350 by 820 initial
-size), with ordinary saved geometry. Five editing sections share a full-width
+The construction floater defaults to the compact Aurora presentation (350 by 820
+initial size), with ordinary saved geometry. `BuildSettings::legacy_window`,
+exposed in Preferences > Aurora and its bulk look choices, selects
+`build/ui/legacy.rs`: the `LLFloaterTools` reference geometry (360 by 780 initial
+size), including the compact tool/options block, linked-part/link/grid row,
+selection counters, five tabs and bottom collapse strip. Its scoped UI tag keeps
+native spinners compact without changing Aurora or standalone object profiles.
+General places sale before ownership permissions. Object keeps flags and vertical
+XYZ blocks with C/P/p buttons on the left and shape/mesh data on the right.
+Features exposes flexible and physics columns above light/projector and probe
+controls. `build/ui/legacy_texture.rs` follows `FSPanelFace` and
+`panel_fs_tools_texture.xml`: three visible PBR/Blinn-Phong/Media tabs, vertical
+classic maps or the PBR map/tint grid on the left, inline parameters on the right,
+then channel tabs above the Scale/Offset/Rotation columns. The shared compact tab
+strip preserves the theme at inspector density. Face repeats, sync, planar
+alignment and mapping form the footer. UV writers, permission checks, pickers and
+simulator commands stay shared with Aurora.
+Contents keeps its three-column action strip. The fixed Legacy controls remain
+independent of the customized Aurora arrangement. Aurora's five editing sections share a full-width
 folding transform area and an editable footer. `build/layout.rs` owns the saved
 item order/destinations and the versioned, validated notecard profile, excluding
 object properties/transforms. `build/ui/layout.rs` renders the same controls in
@@ -1108,6 +1197,27 @@ aurora-viewer ──► aurora-net ──► aurora-msg, aurora-llsd
 ```
 
 ## `aurora-viewer` in detail
+
+Inventory local-file thumbnails prepare whole-image square scaling
+(LLViewerTextureList::convertToUploadFile with force_square), proportional fit
+with transparent margins, and a movable crop on bounded background jobs in
+`app/inventory_thumbnail.rs`. The crop retains the full source with a short
+edge of at most 256 px, bounded to 4 MiB even for a thin 4096 px strip.
+`ui/inventory/thumbnail/choices.rs` pans the square viewport by UV coordinates,
+clamped to the image bounds, with no resampling or texture replacement per drag
+frame. Releasing a drag keeps the modal open; an explicit preview click submits
+the selected source rectangle for background cropping and JPEG2000 encoding.
+The shared modal supports both inventory items and folders. Only the chosen
+pixels enter the existing
+InventoryThumbnailUpload/AIS path; cancellation retains the previous thumbnail.
+Scene snapshot framing and existing inventory texture assignment are unchanged.
+
+Thumbnail mutations confirm the expected asset UUID through complete AIS parent
+snapshots, preserving sibling metadata; legacy folder listings can omit it.
+Propagation delays and transient read failures get bounded read-only retries,
+without repeating the upload or PATCH. The image editor stays in its loading
+state until that verification finishes, then retains success or the actual error.
+The same result in each inventory footer expires after five seconds.
 
 The Appearance gallery keeps whole-image previews by default. Its options menu
 can enable saved `Settings::appearance_fill_previews`: `ui/appearance.rs` crops
@@ -1660,7 +1770,13 @@ folder windows) as flat rows, rebuilt only when the inventory, the sort or an
 open folder changes, and lays out only the rows in sight; it keeps each
 window's open folders (the main window's with the UI layout). Searches,
 filters and the other tabs use the flattened result tree of
-`ui/inventory/view.rs`, drawn the same way.
+`ui/inventory/view.rs`, drawn the same way. Aurora's toolbar exposes Collapse
+all / Expand all above a separate quick/advanced search row. In the explorer,
+these commands affect the folder sidebar; in filtered views they affect only
+the result tree. Bulk folding walks every known descendant within the window's
+scope, including closed branches, and expansion uses the ordinary lazy fetches.
+Unlike LLPanelMainInventory::onCollapseButtonClicked, Aurora retains the query
+when collapsing results, so the chosen search remains usable.
 
 `ui/inventory/smart.rs` is the advanced search's rule model (All/Any groups of
 negatable rules on any item fact) and its matcher: each rule compiles once per
@@ -1964,7 +2080,7 @@ Scripts use a shared editor (`ui/scripts.rs`, actions in `app/scripts.rs`) for i
 | `ui/inventory/embedded.rs` | Items embedded in notecards: icon and name in the text, preview / opening and copy to the inventory, drop at the pointer position; one character per item to preserve selection, deletion and undo |
 | `aurora-net/src/session/inventory_preview.rs` | Reading of the notecards and scripts protected by the simulator's inventory transfer (identifiers of the agent, the session, the owner, the object, the item and the asset); bounded reassembly of out-of-order packets, correlation with the simulator and expiry |
 | `app/task_notecards.rs`, `aurora-net/src/session/task_notecard.rs` | Notecards in the contents of objects: double-click / Open, shared editor with a state specific to the object and to the item; rights of the object and of the notecard, asset transfer authorised by the inventory, save through UpdateNotecardTaskInventory, read-back and draft kept on refusal |
-| `main.rs`, `app.rs`, `app/` | Startup, event loop, one frame of the viewer, interface actions; chat bar commands (`app/chat_commands.rs`), right-click menus (`app/context_menu.rs`: opening, rights on the object, chosen actions), "Freeze" and "Eject" of a resident on our land, their question and `AURORA_DEMO_LAND_MODERATION` (`app/land_moderation.rs`), the left button's clicks for scripts (`app/script_clicks.rs`: mouselook bits when a script took the button, touch at the crosshair otherwise, LBUTTON bits for a press nothing takes; the counts of `aurora-net/src/script_controls.rs`), clicks on the world without waiting for the GPU (`app/click_pick.rs`: the depth under the click is requested from the renderer, the click is handled when the reply arrives with the cursor and the keys it had, and what follows it — release, other buttons, mouse movement that moves the camera — waits behind it in order; check `AURORA_CLICK_PICK`, demo clicks `AURORA_DEMO_CLICKS`), HUD move gesture with a configurable key (Ctrl by default) and left click, and offline scenario (`app/hud_drag.rs`), the system cursor hidden and locked by mouselook and the camera drags, and where it comes back (`app/cursor_hold.rs`), AltGr counted as Ctrl + Alt by the mouse's camera gestures, never by the keyboard shortcuts (`app/alt_graph.rs`), the name plate under the pointer (expanded on hover) and its independent plain, Shift and Ctrl left-click actions (`app/plate_click.rs`), "Reset skeleton (and animations)" of an avatar and "Stop animations" of ours, with the ResetSkeleton ViewerEffect sent and followed (`app/reset_skeleton.rs`), Me › Avatar health's "Undeform avatar" and "Refresh attachments", and the customise animation while our appearance is edited (`app/avatar_health.rs`), "Derender" of the menus, the Asset blacklist window and `AURORA_DEMO_DERENDER` (`app/derender.rs`), the Dev Toolbox's tools — toggles, copies, live views, windows — and "Send a diagnostic" (header, system configuration, hidden names; Copy, Save as .txt, Log) (`app/dev_toolbox.rs`), its "Debug to log / clipboard" (J1, J2), which ask the names of the worn items they detail, then hand it the lines of `scene/describe.rs` (`app/describe.rs`, `AURORA_DEMO_DESCRIBE`), the double click on the ground (walk, run or teleport there) and the walk frame after frame (`app/double_click.rs`), the object menus' entries that take more than one message — Return, Drop, Put on after a walk to the object, the script actions on a selection, Block particle owner, our attachments' favorites, Link and Take multiple on a kept selection, Touch with the right click's surface (`app/object_menu.rs`; `AURORA_DEMO_OBJECT_MENU` in `app/object_menu_demo.rs`, its objects in `demo_object_menu.rs`) |
+| `main.rs`, `app.rs`, `app/` | Startup, event loop, one frame of the viewer, interface actions; chat bar commands (`app/chat_commands.rs`), right-click menus (`app/context_menu.rs`: opening, rights on the object, chosen actions), "Freeze" and "Eject" of a resident on our land, their question and `AURORA_DEMO_LAND_MODERATION` (`app/land_moderation.rs`), the left button's clicks for scripts (`app/script_clicks.rs`: mouselook bits when a script took the button, touch at the crosshair otherwise, LBUTTON bits for a press nothing takes; the counts of `aurora-net/src/script_controls.rs`), clicks on the world without waiting for the GPU (`app/click_pick.rs`: the depth under the click is requested from the renderer, the click is handled when the reply arrives with the cursor and the keys it had, and what follows it — release, other buttons, mouse movement that moves the camera — waits behind it in order; check `AURORA_CLICK_PICK`, demo clicks `AURORA_DEMO_CLICKS`), HUD move gesture with a configurable key (Ctrl by default) and left click, and offline scenario (`app/hud_drag.rs`), the system cursor hidden and locked by mouselook and the camera drags, and where it comes back (`app/cursor_hold.rs`), AltGr counted as Ctrl + Alt for shortcut capture, keyboard shortcuts while preserving text/web/media characters and the mouse's camera gestures (`app/alt_graph.rs`), the name plate under the pointer (expanded on hover) and its independent plain, Shift and Ctrl left-click actions (`app/plate_click.rs`), "Reset skeleton (and animations)" of an avatar and "Stop animations" of ours, with the ResetSkeleton ViewerEffect sent and followed (`app/reset_skeleton.rs`), Me › Avatar health's "Undeform avatar" and "Refresh attachments", and the customise animation while our appearance is edited (`app/avatar_health.rs`), "Derender" of the menus, the Asset blacklist window and `AURORA_DEMO_DERENDER` (`app/derender.rs`), the Dev Toolbox's tools — toggles, copies, live views, windows — and "Send a diagnostic" (header, system configuration, hidden names; Copy, Save as .txt, Log) (`app/dev_toolbox.rs`), its "Debug to log / clipboard" (J1, J2), which ask the names of the worn items they detail, then hand it the lines of `scene/describe.rs` (`app/describe.rs`, `AURORA_DEMO_DESCRIBE`), the double click on the ground (walk, run or teleport there) and the walk frame after frame (`app/double_click.rs`), the object menus' entries that take more than one message — Return, Drop, Put on after a walk to the object, the script actions on a selection, Block particle owner, our attachments' favorites, Link and Take multiple on a kept selection, Touch with the right click's surface (`app/object_menu.rs`; `AURORA_DEMO_OBJECT_MENU` in `app/object_menu_demo.rs`, its objects in `demo_object_menu.rs`) |
 | `cli.rs` | Command-line arguments (`--title`, `--fps-limit`, `--language`, `--grid` / `--loginuri`, `--login`, the startup SLURL, `--version`); title with the common version and the build profile; the Linux desktop identity (`DESKTOP_ID`: Wayland app_id, X11 WM_CLASS, name of the desktop entry) |
 | `external_url.rs`, `slurl_handoff.rs`, `url_scheme.rs`, `app/external_links.rs` | SLURLs from outside the viewer: what a link from the command line or a web page asks for and what is refused from outside (`external_url.rs`), the named pipe that hands a link to the viewer already running (`slurl_handoff.rs`), the user's `secondlife:` link handler in the Windows registry (`url_scheme.rs`, Preferences › Interface), and their use: login start location, place details, commands once in the world, `--login` (`app/external_links.rs`) |
 | `cmdline/` | Chat bar as a command line (FSCmdLine): parsing of the commands, calculator (LLCalc), dice; executed by `app/chat_commands.rs` |
@@ -2001,6 +2117,7 @@ Scripts use a shared editor (`ui/scripts.rs`, actions in `app/scripts.rs`) for i
 | `demo_blend_shadows.rs` | `AURORA_DEMO_BLEND_SHADOWS` scenario: alpha-blended panels in the sun (greenhouse pane with opaque frame, face and texture alpha above and under the shadow cutoffs), or 400 greenhouse panes for the cost of blended casters |
 | `demo_plants.rs` | `AURORA_DEMO_PLANTS` scenario: the 21 tree species and 6 grass species near or far along the start view, or a forest of about 600 trees and 400 grass tufts; stand-in species textures drawn under their ids, in this scenario only |
 | `demo_sculpt.rs` | `AURORA_DEMO_SCULPT_ZERO` scenario: ordinary torus and two sculpts sharing its path/profile, subtype zero and sphere, with a synthetic JPEG2000 map in the demo cache |
+| `demo_sim_version.rs` | `AURORA_DEMO_SIM_VERSION` scenario: the region's simulator version changes during the run (the notice of Preferences › Confirmations, off by default, or on for the run) |
 | `demo_missing_texture.rs` | `AURORA_DEMO_TEXTURE_MISSING` scenario: boxes whose texture the asset server does not have (the Legacy Viewer's grey, not the rez grid) |
 | `demo_bom_rezzed.rs` | `AURORA_DEMO_BOM_REZZED` scenario: a box of bake-on-mesh placeholders on the ground, with stand-in placeholder textures drawn under their ids, in this scenario only |
 | `demo_social_menu.rs`, `app/social_menu_demo.rs` | `AURORA_DEMO_SOCIAL_MENU` scenario: a resident's "Invite to group" (group picker, then the invitation), "Add to contact set" (a new set), "Block particles" (the fountain they own) and calling cards (given, accepted by the demo server, or offered by the resident) |
@@ -2112,6 +2229,7 @@ Scripts use a shared editor (`ui/scripts.rs`, actions in `app/scripts.rs`) for i
 | `mac_quit.rs` | macOS: the Quit item of winit's application menu (Cmd+Q) sent to the window's `performClose:`, so that it shows the exit prompt (`WindowEvent::CloseRequested`) instead of ending the process (handleQuit, llappdelegate-objc.mm) |
 | `window_show.rs` | Showing the startup window once its first frame is drawn: on Windows one `ShowWindow`, already maximized when it has to be, then a foreground and focus request that follows Windows' rules (LLWindowWin32::show), then winit's flags, visible first (winit maximizing a window it thinks hidden showed it, activated it and hid it again, leaving it without the keyboard focus) |
 | `frame_profile.rs` | Frame profile (AURORA_PROFILE): time of each step of the frame, summary line per second in the log (average and maximum of each step, number of slow frames; detail of the streaming on the main thread, `s_*`, of the frame parameters, `p_*`, and of the interface per group of windows, `u_*`; time spent off the CPU per step, `off_cpu:`; meeting of the main thread and the render thread, `thread` segment) |
+| `net_adapters.rs` | Network adapters known to lose their link under many simultaneous downloads (Marvell AQtion / Aquantia, #1545): GetAdaptersAddresses once at startup, and the download mode that follows from it (always limited with such an adapter) and from Preferences › Network and cache › Download connections (`aurora_net::AssetConnections`: adaptive, or the Legacy Viewer's bounded connections) |
 | `net_profile.rs` | Network profile: what the link and the session did over each second, from the counters of `aurora-net` (`NetStats`: packets, resends, sequence gaps, longest pause of the session loop, delay between a key and its AgentUpdate), the wait of the events before the main thread applies them and the corrections and prediction lead of our avatar (`agent.rs`, `own_motion.rs`). Read by the Performance window; one `net summary` line per second in the log with AURORA_PROFILE |
 | `deep_profile.rs` | Deep profile (AURORA_PROFILE): every 10 s, the `msg summary`, `http summary`, `asset summary` (decode and mesh job durations, queues, GPU uploads, disk caches), `avatar summary` and `memory summary` lines, from the probes of `aurora-net` (`probe.rs`), of the background jobs and of the scene |
 | `sys_probe.rs` | What the system knows of the process (Windows): its memory, and the CPU time of its threads by group, written as `cpu summary` every 10 s by a thread of its own (AURORA_PROFILE); while the resource monitor is open, a sampler thread (`aurora-monitor`) reads every half second the threads' groups with their priority, the load of each logical core (the system's `\Processor(*)` counters) and the media plugins' processes with those they started |
@@ -2122,6 +2240,7 @@ Scripts use a shared editor (`ui/scripts.rs`, actions in `app/scripts.rs`) for i
 | `app/safe_graphics.rs` | The safe graphics after GPU trouble in the last session: the login card's choices, the Potato level applied only on the user's click, the level's values kept in `graphics-before-safe.json` and put back on request. |
 | `scene/lights.rs` | Local lights of the frame: the prim lights closest to the camera (range × 1.5, falloff, colour) and, for those that have a texture, their projector — cone computed from the position, the rotation and the size of the prim (`aurora-render` `Projector`), texture reserved as long as the light stays in the list; choice of the two projectors that cast shadows (the most present on screen) and fade of their shadow maps (`SpotShadowSlots`) |
 | `scene/animesh.rs` | Standalone skeletons of the animated objects, animations of the linkset, bounds of the poses for culling and shadows, demo scenario |
+| `scene/animesh_report.rs` | Dev Toolbox J9: the skin joints, joint overrides (and the winning mesh), control skeleton and motions of each animesh the target wears, then its ordinary rigged attachments and the motions on the wearer; the text builder is pure and tested |
 | `scene/anim_box.rs` | Animated box of each animated object (rigged extents per joint, posed each frame), which the detail level of its rigged meshes is judged by (`LLVOAvatar::calculateSpatialExtents`) |
 | `scene/body_physics.rs` | Avatar body physics (LLPhysicsMotion): six springs per avatar wearing a physics layer, driven by the world motion of its chest and pelvis at a fixed step, move the LEFT_PEC / RIGHT_PEC / BELLY / BUTT collision volumes of the posed palette (what mesh bodies are rigged to), in the parallel pose loop; detail and on/off from Preferences › Graphics |
 | `scene/morph.rs` | Morphs of the system avatar body: the visual parameters that move the vertices of the base meshes (sex, body fat, face, system hair, eyelashes, skirt). A body part is built by a job for a set of weights and shared by the avatars that have them (`GeomKey::AvatarMorph`); hidden parts are not built |
@@ -2327,6 +2446,13 @@ its mesh and record allocations. Selected invisible meshes temporarily
 retain draw records for their wireframe; manipulation keeps the selection
 outlines visible.
 
+In the photo viewfinder, `app/viewfinder.rs::viewfinder_click` consumes Ctrl
+alone before dispatching an ordinary world press. The asynchronous pick keeps
+the consumed modifier state, while keyboard Ctrl is restored immediately.
+Scene object actions and visible HUDs therefore remain usable without moving
+the AF point; Alt camera gestures and Shift group focus keep their priority.
+The upper-left controls and help in `ui/viewfinder.rs` document the shortcut.
+
 ## Life of a frame
 
 `joystick/` owns persisted NDOF settings, native input and the six-axis flycam
@@ -2443,6 +2569,10 @@ preserve known flags, while complete AIS records can explicitly clear them.
 Cache version 3 invalidates older snapshots once, reloading favorites that
 earlier builds may have lost from their local listing.
 Readback retries never repeat a write, and diagnostics log only field states.
+Item reads accept explicit null parents, derive omitted inventory types from
+asset types, and recognize direct or embedded records with the requested identity.
+Background batches preserve successful items and report only failed identities;
+mutation readback still requires all requested records.
 Inventory links read and modify their original's favorite through
 `world/inventory/actions.rs`; the menu, filter, count and star share that
 rule. Multi-selection sets a common state and deduplicates aliases,

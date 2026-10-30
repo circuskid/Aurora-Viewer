@@ -67,13 +67,7 @@ impl App {
             self.send(NetCommand::DiscardMeshQuote(token));
         }
         let commands = self.imports.poll(ctx, &self.scene.jobs, &self.world, &self.settings.inventory);
-        if std::mem::take(&mut self.imports.animation_models_dirty) {
-            self.settings
-                .imports
-                .animation_models
-                .clone_from(&self.imports.load_preferences.animation_models);
-            self.settings.save();
-        }
+        self.save_import_animation_models();
         for command in commands {
             self.send(command);
         }
@@ -355,9 +349,7 @@ impl App {
                         .animation_model_file(id, &self.scene.jobs, ctx, self.scene.avatar_lib.clone());
                 }
                 Action::DefaultAnimationModel(id) => {
-                    if let Some(entry) = self.imports.entries.iter_mut().find(|e| e.id == id) {
-                        crate::imports::animation_model::reset(entry);
-                    }
+                    self.imports.reset_animation_models(id);
                 }
                 Action::SelectAnimationModel(id, saved) => {
                     self.imports
@@ -365,11 +357,6 @@ impl App {
                 }
                 Action::RemoveAnimationModel(saved) => {
                     self.imports.remove_animation_model(saved, &self.scene.jobs);
-                    self.settings
-                        .imports
-                        .animation_models
-                        .clone_from(&self.imports.load_preferences.animation_models);
-                    self.settings.save();
                 }
                 Action::SoundGain(id) => {
                     if self.imports.sound_playing == Some(id)
@@ -591,6 +578,7 @@ impl App {
                 }
             }
         }
+        self.save_import_animation_models();
         self.update_import_avatar_preview();
         if let Some(asset) = self.imports.map_picker.show(ctx, palette, &mut self.world, &self.ui_images)
             && let Some((id, slot)) = self.imports.map_target.take()
@@ -713,6 +701,17 @@ impl App {
         }
         if let Some((id, _, (start, sample))) = desired {
             self.world.set_animation_preview_clock(id, start, sample);
+        }
+    }
+
+    fn save_import_animation_models(&mut self) {
+        if std::mem::take(&mut self.imports.animation_models_dirty) {
+            self.settings
+                .imports
+                .animation_models
+                .clone_from(&self.imports.load_preferences.animation_models);
+            self.settings.imports.animation_model_last = self.imports.load_preferences.animation_model_last;
+            self.settings.save();
         }
     }
 
@@ -874,6 +873,9 @@ impl App {
                 {
                     entry.local_slots.insert(texture.id, slot);
                     shared_slots.insert(texture.id, slot);
+                    if let Some(image) = prepared.images.get(&texture.id) {
+                        self.scene.textures.set_local_pixels(texture.id, image.clone());
+                    }
                     self.scene
                         .textures
                         .register_local_image(texture.id, slot, texture.alpha, texture.has_alpha);
