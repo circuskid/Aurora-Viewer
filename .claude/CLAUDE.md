@@ -45,6 +45,28 @@ Aurora team, so these are overridden:
   and `Closes`/`Refs`. Get them right before the first push: a fix pushed after
   review re-runs first-contributor CI, which waits for maintainer approval
   (missed on #1332, 2026-10-28).
+- 🔴 **The maintainer removes contributors who skip the PR checks after being
+  asked** (a contributor was removed on 2026-10-30, and all of their PRs
+  closed). Their stated bar, every PR: `check.ps1` until "All green.", a
+  test of your own (demo or grid) said in the PR, a `type(area): summary`
+  title with the template filled in, and one PR per change with fixes pushed
+  to that same PR.
+- 🔴 **`check.ps1` gives a false "All green." on Linux** (upstream #1659,
+  filed 2026-10-30). `check-scripts.ps1` throws on the missing
+  `powershell.exe`, the steps loop ends, and fmt, clippy and the tests never
+  run. Until #1659 is fixed, run the steps by hand in the PR's worktree, with
+  the commands `check.ps1` uses:
+  - `cargo fmt --all -- --check`;
+  - `cargo clippy --workspace --all-targets --locked -- -D warnings`: it
+    fails on Linux in Windows-only code that isn't ours. Count the errors by
+    file and confirm that none is in a changed file;
+  - `cargo test --workspace --locked`, the whole workspace and never
+    filtered, summed over every `test result:` line.
+- 🔴 **Never tick a Tests box for a check that didn't run as written.** Leave
+  the `check.ps1` box unticked, list each step with its real result, say the
+  5.1 parse can't run on Linux, and name the date of the human's grid test.
+  #1630 ticked "check.ps1 green" over filtered tests and had to be corrected
+  (2026-10-30).
 - **What the maintainer's review checked on #1397** (2026-10-29). Their
   review is a PR comment in the AGENTS.md §11 shape (`## Review`, `Verdict:`),
   not a GitHub review. Get these right in the first draft:
@@ -61,8 +83,6 @@ Aurora team, so these are overridden:
   - **Read every `cfg(windows)` arm you touch**: Linux clippy cannot see
     them, and Windows CI fails on what it would flag (an unreachable match
     arm failed #1397).
-  - Say in the Tests section that `check.ps1` was not run (no `pwsh`) and
-    what ran instead; the maintainer accepts that.
 - **Our PRs that touch the same area answer each other's nits.** When a
   review nit is fixed by another of our open PRs (the `.desktop` `Icon=` line,
   fixed by the desktop-identity PR), leave it out of this one and point to
@@ -75,7 +95,8 @@ Aurora team, so these are overridden:
 
 - Dev build: `cargo build --release -p aurora-viewer` (the Arch deps are in
   `docs/LINUX.md` *Building from source*). Upstream's scripts are PowerShell;
-  `pwsh` is not installed, so we don't run them.
+  `pwsh` is installed (`powershell-bin`, 2026-10-30), but see #1659 above
+  before trusting `check.ps1`.
 - **Package: `pkgbuilds/aurora-viewer`** (OWNER `aurora-viewer`). It builds a
   tag on `circuskid`. 🔴 **`circuskid-release` can't run here** because it
   requires `main`, and our `main` is upstream's. Release by hand, on `circuskid`:

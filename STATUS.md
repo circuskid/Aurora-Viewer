@@ -8,18 +8,16 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**circuskid carries no patch of its own. Two PRs of ours are open
-upstream. #1625** (`feat/linux-slurl-handler`, worktree
-`linux-items-status-afad2d`; Refs #676): Linux `secondlife://` links, xdg
-entry plus D-Bus hand-over; grid-validated on 7c70d050; review fixes
-afe5d231 demo-checked; ceb73efd (plain exe path, not `(deleted)`) hand-over
-grid-checked 2026-10-30, with #1630 merged in locally. **And #1630**
-(`fix/place-link-map-terminator`, worktree `mystifying-wright-c64e05`):
-place links 404 on a region's second link (map block terminator kept as a
-region); #1625 relies on it. No review or CI by 2026-10-30; our grid
-check is a comment on #1625. The ten before are merged, #1603 (Take →
-rez folder) and #1614 (mini-map lock) on 2026-10-30, worktrees removed.
-`circuskid` = `upstream/main` 55b3c4e9 (10 past tag
+**circuskid carries no patch of its own. Open upstream: #1625**
+(`feat/linux-slurl-handler`, worktree `linux-items-status-afad2d`; Refs
+#676): Linux `secondlife://` links (xdg entry, D-Bus hand-over), head
+ceb73efd grid-checked 2026-10-30 with #1630 merged in locally. **#1630**
+(`fix/place-link-map-terminator`, worktree `mystifying-wright-c64e05`): a
+region's second place link 404s; #1625 relies on it. No review or CI yet.
+Both Tests sections were rewritten 2026-10-30 with real per-step results
+(fmt clean, tests 6359/6362 green, clippy failing only in Windows-only
+files), and we filed **#1659** (`check.ps1` false "All green." on Linux).
+Earlier PRs all merged. `circuskid` = `upstream/main` 55b3c4e9 (10 past
 `v0.8.4-beta.20261030.2`) plus `.claude/CLAUDE.md` and this file.
 
 Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only;
@@ -45,7 +43,9 @@ workspace tests not run), installed here as
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
    (#1630 has app Auto-fix on). CI waits for the maintainer's approval.
    Answer any review per THEN below; once merged, remove the worktree's
-   branch on the next sync.
+   branch on the next sync. Also `gh issue view 1659 --repo
+   Aurora-Viewer/Aurora-Viewer --comments`: draft any reply to G.W. first.
+   Once it is fixed, drop the run-it-by-hand rule in `.claude/CLAUDE.md`.
 
 ### Gotcha — this machine's `secondlife://` links run a worktree build
 
@@ -84,18 +84,17 @@ switch back and delete the branch.
 - **Each push re-runs first-contributor CI**, which waits for the
   maintainer to approve it, so batch the fixes for one review into one push.
 - **The maintainer merges, not us**; the next sync brings merged PRs in.
-  Then remove the PR's worktree and local branch (#1405–#1411 went
-  2026-10-29, #1483 and #1497 2026-10-30). Still around, probably done:
-  `aurora-linux-improvements-5a6f8e` (#1397's, merged; reused 2026-10-30
-  for the sync) and `new-viewer-update-d7fc5f` (old 0.8.2 merge); check
-  before removing.
+  Then remove its worktree and branch. Probably done, check first:
+  `aurora-linux-improvements-5a6f8e`, `new-viewer-update-d7fc5f`.
 - **The fork cannot label PRs or publish captures upstream** (`push: false`;
   `pr-captures.ps1` pushes upstream's `captures` branch). The title's type
   carries the label; for screenshots, push them to the fork's own `captures`
   branch and link the raw URLs.
-- **Clippy `-D warnings` on Linux fails on existing Windows-only dead code**
-  (`crash/`, `raw_mouse.rs`, `url_scheme.rs`…). Not ours (AGENTS.md rule 3):
-  check only that the touched files are clean, and say so in the PR.
+- 🔴 **Before opening any PR, meet the maintainer's bar** in
+  `.claude/CLAUDE.md` (*Upstream's rules*): fmt, clippy and the full
+  workspace tests by hand (#1659), no ticked box for a check that didn't
+  run, the human test stated. Clippy's 34–35 Linux errors (2026-10-30) are
+  Windows-only code, not ours.
 
 ### DECIDED — do not reopen
 
