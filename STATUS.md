@@ -36,10 +36,9 @@ workspace tests not run), installed here as
 2. **Grid follow-ups G.W. owns:** #1407 Linux voice: initial grid test
    passed 2026-10-30; the full one (mic open under load, device switch
    mid-call) waits until G.W. uses voice (rarely); blocks nothing. The
-   maintainer sets its TASKS.md 🟡; nothing for us to push. The grid check of
-   #1603, now in the package (rez from a folder, Take, it comes back
-   there; its TASKS.md ⬜). And one link click with the viewer running, on
-   ceb73efd (#1625).
+   maintainer sets its TASKS.md 🟡; nothing for us to push. #1603 Take →
+   rez folder: grid-confirmed by G.W. 2026-10-30. Left: one link click
+   with the viewer running, on ceb73efd (#1625).
 3. **PRs #1625 and #1630.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
    (#1630 has app Auto-fix on). CI waits for the maintainer's approval.
