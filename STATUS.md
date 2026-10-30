@@ -8,26 +8,18 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**circuskid carries no patch of its own, and no PR of ours is open
-upstream.** All eight are merged: #1397 (notifications), #1405 (desktop
-identity), #1406 (jobs at lower priority), #1407 (PulseAudio / PipeWire),
-#1408 (local time), #1411 (advanced inventory search), #1483 (inventory
-Left / Right arrows climb folders) and #1497 (search field in the wolf
-menu). Their worktrees and local branches are gone; the fork still holds
-the remote branches `feat/inventory-arrow-fold` and `feat/menu-search`.
-The 2026-10-30 sync merged `upstream/main` 4709bed3 (18 commits, tag
-`v0.8.4-beta.20261030.1`) into `circuskid` with no conflict (e8ba61b9);
-fork `main` fast-forwarded to it. The tree is `upstream/main` plus
-`.claude/CLAUDE.md` and this file. No new workflow came in; all eight stay
-`disabled_manually`.
+**circuskid carries no patch of its own. One PR of ours is open
+upstream: #1603** (`feat/take-to-rez-folder`, in worktree
+`status-check-200b7b`; Sugar's Discord request, opened 2026-10-30): Take
+puts objects back in their rez folder per `handle_take` (nil FolderID
+skipped, conflict → Objects, never Trash/Library; Take Copy → Objects).
+6 `build::take_tests` pass; demo-validated by G.W. 2026-10-30; Fable and
+codex findings fixed (8464eb07), agy timed out. The eight before it are
+merged; `circuskid` = `upstream/main` 4709bed3 (tag
+`v0.8.4-beta.20261030.1`) plus `.claude/CLAUDE.md` and this file.
 
-Latest package: tag `v0.8.4.1793365514`, built from upstream
-`v0.8.4-beta.20261030.1` plus 16 commits
-(`_upstream=0.8.4-beta.20261030.1`, pkgbuilds 4b820bb). The grid sees
-`0.8.4.0`. The workspace tests passed before the tag (6260 passed, 0
-failed, 31 ignored) and `makepkg` passed `check()`. Installed here as
-`aurora-viewer 0.8.4.1793365514-1`; `--version` gives
-`0.8.4-beta.20261030.1+circuskid.1793365514`. Tree clean.
+Latest package: tag `v0.8.4.1793365514`, installed here as
+`aurora-viewer 0.8.4.1793365514-1` (grid sees `0.8.4.0`). Tree clean.
 
 ### FIRST — the two-minute check
 
@@ -38,7 +30,12 @@ failed, 31 ignored) and `makepkg` passed `check()`. Installed here as
    (`v0.8.4-beta.*`): the package base is that tag's X.Y.Z.
 2. **Grid follow-ups G.W. owns:** the voice test on Linux for #1407
    (planned 2026-10-30). The maintainer sets its TASKS.md line to 🟡 in a
-   docs PR of their own; nothing for us to push.
+   docs PR of their own; nothing for us to push. Also the grid check of
+   #1603 (rez from a folder, Take, it comes back there; its TASKS.md ⬜).
+3. **PR #1603.** `gh pr view 1603 --repo Aurora-Viewer/Aurora-Viewer
+   --json state,reviews,comments`. CI had not run at opening (waits for the
+   maintainer's approval). Answer any review per THEN below; once merged,
+   remove the worktree's branch on the next sync.
 
 ### Gotcha — dev builds on `circuskid` panic
 
@@ -125,6 +122,20 @@ switch back and delete the branch.
 
 ## Finished — read on demand
 
+- **Merged upstream PRs (eight, through 2026-10-30):** #1397
+  (notifications), #1405 (desktop identity), #1406 (jobs at lower
+  priority), #1407 (PulseAudio / PipeWire), #1408 (local time), #1411
+  (advanced inventory search), #1483 (inventory Left / Right arrows climb
+  folders), #1497 (search field in the wolf menu). Worktrees and local
+  branches gone; the fork still holds remote branches
+  `feat/inventory-arrow-fold` and `feat/menu-search`.
+- **2026-10-30 sync:** merged `upstream/main` 4709bed3 (18 commits) into
+  `circuskid` with no conflict (e8ba61b9); fork `main` fast-forwarded. No
+  new workflow; all eight stay `disabled_manually`. Package
+  `v0.8.4.1793365514` from upstream `v0.8.4-beta.20261030.1` plus 16
+  commits (pkgbuilds 4b820bb); workspace tests 6260 passed, 0 failed, 31
+  ignored; `makepkg` passed `check()`; `--version` gives
+  `0.8.4-beta.20261030.1+circuskid.1793365514`.
 - If the review of the attention flash is ever reopened, this alternative was
   rejected: skip the flash only on Wayland (`RawWindowHandle::Wayland`) and
   keep X11 flashing whenever the window is behind. It was dropped because the
