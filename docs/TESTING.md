@@ -8270,7 +8270,6 @@ What the inventory must show with these scenarios:
 | `AURORA_AO=legacy`, `gtao` or `alt` (`:<0-3>`) | Ambient occlusion method (and GTAO quality) for this launch |
 | `AURORA_GTAO_SPECULAR=0` or `alt` | GTAO without its specular occlusion (reflections in creases), as before |
 | `AURORA_GTAO_TEMPORAL=0` or `alt` | GTAO without its accumulation over the frames (fixed noise, finer grain), as before |
-| `AURORA_GTAO_SPREAD=0` | GTAO ultra takes its nine slices every frame instead of three per frame, as before |
 | `AURORA_GTAO_NORMALS=depth` or `alt` | GTAO with the normal rebuilt from the depth (facets on low-poly meshes), as before |
 | `AURORA_SSIL=1`, `0` or `alt` | GTAO's screen-space indirect light forced on or off for this launch |
 | `AURORA_SSIL_INTENSITY=<0-8>` | Strength of GTAO's indirect light for this launch |
@@ -8506,17 +8505,6 @@ What the inventory must show with these scenarios:
   image does not change. `0` leaves it out, as before; `alt` leaves it out
   every other second (`AURORA_DEMO_PBR_METAL=1`: the inside corner left
   of the cube, and the folds of the avatars' clothes and skin).
-- **`AURORA_GTAO_SPREAD=0`**: while GTAO accumulates with a history,
-  ultra spreads its nine slices over three frames, three each, interleaved
-  (`spread` in gtao.wgsl), and the history adds them up: the image of the
-  nine at about the cost of high (on an RTX 5090 at 4K, ultra held Deluxe
-  at 70–90 fps, high at 120). A frame without a history (a photo, new
-  targets) and the accumulation turned off still take all nine. The
-  history's clip is three times wider while spreading: a frame's three
-  slices alone vary too little to bound a history of all nine, and it
-  would flicker with each part. `0` takes
-  them all every frame, to compare the cost (`g_ssao` of `perf summary`)
-  and the look in motion.
 - **`AURORA_GTAO_TEMPORAL=0|alt`**: GTAO gathers its occlusion over the
   frames, as XeGTAO expects of the TAA it is made for (`temporal` in
   gtao.wgsl): its noise moves every frame (XeGTAO's SpatioTemporalNoise, 64
@@ -9404,10 +9392,6 @@ thread.
     also counted in `g_effects`;
   - `g_contact`: the sun's contact shadows alone (`AURORA_CONTACT_SHADOWS`),
     also counted in `g_effects`;
-  - `g_planar`, `g_probe`, `g_copy`, `g_ssr` (written after `g_post`): the
-    rest of `g_effects`, the planar reflections (water, mirror), the
-    reflection probe face and its filtering, the scene copy (refraction and
-    SSR source) and the screen-space reflections;
   - `g_bloom`: the bloom levels alone (`AURORA_BLOOM`, 0 while off), also
     counted in `g_post`;
   - the draws and draw commands, the objects synced / rebuilt (`synced`,

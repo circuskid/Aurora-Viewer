@@ -64,7 +64,7 @@ const BENT_BLUR: u32 = 3;
 const INDIRECT_EXTRA_BLUR: u32 = 4;
 /// The accumulation: the current frame's least weight (the history then
 /// holds about thirty frames), and the half width of the neighbourhood the
-/// history is clipped to, in standard deviations (times the spread).
+/// history is clipped to, in standard deviations.
 const TEMPORAL_MIN_WEIGHT: f32 = 0.03;
 const TEMPORAL_CLIP: f32 = 1.25;
 /// Times more slices on a frame that accumulates without a history.
@@ -83,21 +83,13 @@ pub(crate) struct Quality {
     pub half_res: bool,
     /// Blur passes (at least one: the last one writes the result).
     pub denoise_passes: u32,
-    /// Frames the slices are spread over while the occlusion accumulates
-    /// with a history: each takes `slices / spread` of them, a different
-    /// third of the half circle each time, and the history adds them up
-    /// (1: all of them every frame).
-    pub spread: u32,
 }
 
 /// The four levels of Preferences (0 low … 3 ultra). XeGTAO's own presets
 /// are slices 1 / 2 / 3 / 9 with 2 / 2 / 3 / 3 steps; low takes two slices
 /// at half resolution and the levels blur more where they sample less, as
 /// they did before the accumulation: a frame without history (a photo)
-/// looks as it did. Ultra spreads its nine slices over three frames (three
-/// each, like high): the history holds about thirty frames, so it still adds
-/// up to the nine and more, for a third of the cost at 4K (measured
-/// 2026-10-30 on an RTX 5090: ultra cost Deluxe 70-90 fps, high held 120).
+/// looks as it did.
 pub(crate) fn quality(level: u8) -> Quality {
     match level {
         0 => Quality {
@@ -105,28 +97,24 @@ pub(crate) fn quality(level: u8) -> Quality {
             steps: 2,
             half_res: true,
             denoise_passes: 2,
-            spread: 1,
         },
         1 => Quality {
             slices: 2,
             steps: 2,
             half_res: false,
             denoise_passes: 2,
-            spread: 1,
         },
         2 => Quality {
             slices: 3,
             steps: 3,
             half_res: false,
             denoise_passes: 2,
-            spread: 1,
         },
         _ => Quality {
             slices: 9,
             steps: 3,
             half_res: false,
             denoise_passes: 1,
-            spread: 3,
         },
     }
 }
@@ -228,18 +216,6 @@ impl SpecularOcclusion {
             SpecularOcclusion::Alternate => secs.is_multiple_of(2),
         }
     }
-}
-
-/// `AURORA_GTAO_SPREAD=0`: ultra takes all its slices every frame, as
-/// before the spread (comparison).
-fn spread_from_env() -> bool {
-    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| {
-        !matches!(
-            std::env::var("AURORA_GTAO_SPREAD").ok().as_deref().map(str::trim),
-            Some("0" | "off")
-        )
-    })
 }
 
 /// `AURORA_GTAO_TEMPORAL`: the occlusion's accumulation over the frames.
@@ -421,9 +397,6 @@ struct GtaoU {
     temporal: [f32; 4],
     /// A mat3x3 (columns padded to four).
     normal_view: [[f32; 4]; 3],
-    /// The slices' spread over the frames: this frame's part, the frames
-    /// they are spread over, unused, unused.
-    spread: [f32; 4],
 }
 
 /// The constants of a frame drawn with `proj` into targets of `size`;
@@ -447,11 +420,6 @@ fn uniforms(
     // a frame that accumulates without a history (a photo, its tiles, new
     // targets) would show the grain the history takes out: it samples more
     let slices = if temporal.is_some() && !history { NO_HISTORY_SLICES } else { 1 };
-    // spread only where the history adds the parts up
-    let (part, spread) = match temporal {
-        Some((index, true)) if q.spread > 1 => ((index % u64::from(q.spread)) as u32, q.spread),
-        _ => (0, 1),
-    };
     GtaoU {
         // scales and off-centre terms (a photo tile's projection has them)
         proj: [proj.x_axis.x, proj.y_axis.y, proj.z_axis.x, proj.z_axis.y],
@@ -462,27 +430,16 @@ fn uniforms(
         misc: [
             DENOISE_BLUR_BETA,
             if q.half_res { 2.0 } else { 1.0 },
-            (q.slices * slices / spread) as f32,
+            (q.slices * slices) as f32,
             if normals.is_some() { 1.0 } else { 0.0 },
         ],
         reproj: reproj.to_cols_array_2d(),
         il: [INDIRECT_THICKNESS, INDIRECT_RADIUS, intensity, 0.0],
-        // a spread frame's neighbourhood holds a third of the slices, its
-        // spread too narrow for a history of all of them: clipped to it, the
-        // history follows each frame's part and flickers (measured in demo:
-        // 4x the frame-to-frame change of all the slices every frame; the
-        // clip widened as many times brings it back near)
-        temporal: [
-            noise,
-            if history { 0.0 } else { 1.0 },
-            TEMPORAL_MIN_WEIGHT,
-            TEMPORAL_CLIP * spread as f32,
-        ],
+        temporal: [noise, if history { 0.0 } else { 1.0 }, TEMPORAL_MIN_WEIGHT, TEMPORAL_CLIP],
         normal_view: normals.map_or([[0.0; 4]; 3], |view| {
             let m = normal_view(view);
             [m.x_axis.extend(0.0), m.y_axis.extend(0.0), m.z_axis.extend(0.0)].map(|c| c.to_array())
         }),
-        spread: [part as f32, spread as f32, 0.0, 0.0],
     }
 }
 
@@ -949,14 +906,10 @@ impl Gtao {
         let next = t.history.next(frame);
         t.accumulate = next.map(|(target, _)| target);
         let temporal = next.map(|(_, history)| (frame.index, history));
-        let mut q = t.quality;
-        if !spread_from_env() {
-            q.spread = 1;
-        }
         queue.write_buffer(
             &self.buffer,
             0,
-            bytemuck::bytes_of(&uniforms(proj, reproj, intensity, t.size, q, temporal, normals)),
+            bytemuck::bytes_of(&uniforms(proj, reproj, intensity, t.size, t.quality, temporal, normals)),
         );
     }
 
@@ -1158,30 +1111,6 @@ mod tests {
         assert_eq!(slices(None), 3.0);
         assert_eq!(slices(Some((3, true))), 3.0);
         assert_eq!(slices(Some((3, false))), 3.0 * NO_HISTORY_SLICES as f32);
-    }
-
-    #[test]
-    fn ultra_spreads_its_slices_only_over_frames_that_add_up() {
-        let proj = glam::camera::rh::proj::directx::perspective_infinite_reverse(1.0, 1.6, 0.1);
-        let u = |t| uniforms(proj, Mat4::IDENTITY, 1.0, (64, 64), quality(3), t, None);
-        // with a history: a third each frame, the parts in turn
-        for (index, part) in [(30, 0.0), (31, 1.0), (32, 2.0), (33, 0.0)] {
-            let g = u(Some((index, true)));
-            assert_eq!(g.misc[2], 3.0);
-            assert_eq!(g.spread[..2], [part, 3.0]);
-            assert_eq!(g.temporal[3], TEMPORAL_CLIP * 3.0);
-        }
-        // nothing to add them up with: all of them, as before
-        assert_eq!(u(None).misc[2], 9.0);
-        assert_eq!(u(None).spread[..2], [0.0, 1.0]);
-        assert_eq!(u(Some((31, false))).temporal[3], TEMPORAL_CLIP);
-        assert_eq!(u(Some((31, false))).misc[2], 9.0 * NO_HISTORY_SLICES as f32);
-        assert_eq!(u(Some((31, false))).spread[..2], [0.0, 1.0]);
-        // the other levels never spread
-        for level in 0..3 {
-            let g = uniforms(proj, Mat4::IDENTITY, 1.0, (64, 64), quality(level), Some((31, true)), None);
-            assert_eq!(g.spread[..2], [0.0, 1.0], "level {level}");
-        }
     }
 
     #[test]
