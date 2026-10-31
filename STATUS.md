@@ -7,21 +7,21 @@ Our fork of Aurora-Viewer/Aurora-Viewer. Rules: [.claude/CLAUDE.md](.claude/CLAU
 Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid` (this file);
 `pkgbuilds/aurora-viewer` builds its tags; `~/Projects/phoenix-firestorm`: reference clone.
 
-**circuskid carries no patch of its own.** #1625 (Linux `secondlife://`
-links) and #1630 (place link 404) were **merged upstream by 2026-10-31**; the
-next sync brings them in, then drop the `slurl-combined` worktree and
-re-register links from the packaged build (gotcha below). **Open upstream
-(2026-10-31), the Linux GTAO/fps work, worktree `linux-framerate-perf-2a2ce9`:**
-#1702 motion vectors for GTAO's history (review answered 2026-10-31, head
-34585fd2, `check.ps1` All green; waits for the maintainer's A/B), #1703 GTAO Hilbert index
-on NVIDIA/Linux, #1704 egui discarded-pass click, #1705 per-effect profile
-timers. All four grid-validated by G.W. 2026-10-30 (except #1705, profiling
-only). **#1748** (script editor export 0700/0600) closes fork issue #3 once
-synced. **#1752** (menu search keys) is worktree `new-viewer-update-d7fc5f`.
-**#1753** (cef cache), **#1757** (NVIDIA minimums): `login-profile-pic-pixelated-960617`.
-**#1760** (Linux CI tests): `aurora-viewer-contributing-91cc75`. **#1762** (XKB
-layout): `awesome-dhawan-42ba61`. **#1765**, **#1766** (black photos, slow GPUs;
-validated): `reported-issue-review-14cf6d`. `circuskid` = `upstream/main` 55b3c4e9.
+**circuskid carries no patch of its own.** #1625 (Linux `secondlife://` links) and #1630
+(place link 404) were **merged upstream by 2026-10-31**; the next sync brings them in,
+then drop the `slurl-combined` worktree and re-register links from the packaged build
+(gotcha below). **Open upstream (2026-10-31), the Linux GTAO/fps work, worktree
+`linux-framerate-perf-2a2ce9`:** #1702 motion vectors for GTAO's history (review
+answered 2026-10-31, head 34585fd2, `check.ps1` All green; waits for the maintainer's
+A/B), #1703 GTAO Hilbert index on NVIDIA/Linux, #1704 egui discarded-pass click, #1705
+per-effect profile timers. All four grid-validated by G.W. 2026-10-30 (except #1705,
+profiling only). **#1748** (script editor export 0700/0600) closes fork issue #3 once
+synced. **#1752** (menu search keys) is worktree `new-viewer-update-d7fc5f`. **#1753**
+(cef cache), **#1757** (NVIDIA minimums): `login-profile-pic-pixelated-960617`.
+**#1760** (Linux CI tests): `aurora-viewer-contributing-91cc75`. **#1762** (XKB layout):
+`awesome-dhawan-42ba61`. **#1765**, **#1766** (black photos, slow GPUs; validated):
+`reported-issue-review-14cf6d`. **#1768** (Linux resource monitor):
+`post-feedback-3b6d89`. `circuskid` = `upstream/main` 55b3c4e9.
 
 Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only, no workspace
 tests), installed as `0.8.4.1793391648-1` (grid sees `0.8.4.0`). Tree clean.
@@ -127,11 +127,10 @@ reviewed + `notify-send`, 2 lookup failed); state in `~/.local/state/` same name
 ### Linux review leftovers (2026-10-31, not queued)
 
 From the Linux review that produced #1753 and #1757: Linux-only unit tests
-absent from upstream's CI (now PR #1760); keyboard
-layout detection is a no-op on Linux (AZERTY gets WASD, #1741-adjacent);
-resource monitor and per-thread CPU empty on Linux (`sys_probe.rs`,
-`thread_cpu.rs`); `xdg-open` children never reaped; GPU-stall box never
-closes; Wayland never flashes the taskbar; fonts ignore `XDG_DATA_HOME`.
+absent from upstream's CI (now PR #1760); keyboard layout detection is a no-op
+on Linux (AZERTY gets WASD, #1741-adjacent); resource monitor and per-thread CPU
+empty on Linux (now PR #1768); `xdg-open` children never reaped; GPU-stall box
+never closes; Wayland never flashes the taskbar; fonts ignore `XDG_DATA_HOME`.
 Upstream #1659 (`check.ps1` false green) was fixed by #1675.
 
 **#1760 hand-over (2026-10-31).** `ci.yml` job `clippy (Linux)`: `cargo test
