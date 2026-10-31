@@ -40,9 +40,9 @@ tests), installed as `0.8.4.1793391648-1` (grid sees `0.8.4.0`). Tree clean.
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702–#1705, #1748, #1752, #1753, #1757, #1760, #1765, #1766, #1768.** `gh pr view <n> --repo
+3. **PRs #1702–#1705, #1748, #1752, #1753, #1757, #1760, #1762, #1765, #1766, #1768.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (#1702, #1748, #1752, #1753, #1760, #1768 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
+   (Auto-fix on #1702, #1748, #1752, #1753, #1768; #1757/#1760/#1762 unwatched, check by hand; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
    in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
    All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
@@ -126,11 +126,15 @@ reviewed + `notify-send`, 2 lookup failed); state in `~/.local/state/` same name
 
 ### Linux review leftovers (2026-10-31, not queued)
 
-From the Linux review that produced #1753 and #1757: Linux-only unit tests
-absent from upstream's CI (now PR #1760); keyboard layout detection is a no-op
-on Linux (AZERTY gets WASD, #1741-adjacent); resource monitor and per-thread CPU
-empty on Linux (now PR #1768); `xdg-open` children never reaped; GPU-stall box
-never closes; Wayland never flashes the taskbar; fonts ignore `XDG_DATA_HOME`.
+The Linux review (session "Linux review + CEF cache path fix") produced #1753,
+#1757, #1760 (Linux CI tests), #1762 (XKB layout) and #1768 (resource monitor).
+Still open, each small: `xdg-open` children never reaped (`logging.rs`,
+`snapshot/gallery.rs`, `bug_report/files.rs`, `crash/window.rs`, script
+editor); GPU-stall box never closes on Linux (`app/gpu_stall.rs`); Wayland never
+flashes the taskbar (`app/attention.rs`); fonts ignore `XDG_DATA_HOME`
+(`ui/fonts.rs`). Not worth a PR alone: NVIDIA minimums on FreeBSD / Wine (#1757
+limits); shm without `O_EXCL` (as the Legacy Viewer). TASKS.md line ~2318 (Linux
+YouTube white squares) is stale: fixed per a tester on #848; the maintainer's line.
 Upstream #1659 (`check.ps1` false green) was fixed by #1675.
 
 **#1760 hand-over (2026-10-31).** `ci.yml` job `clippy (Linux)`: `cargo test
