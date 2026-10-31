@@ -19,9 +19,9 @@ on NVIDIA/Linux, #1704 egui discarded-pass click, #1705 per-effect profile
 timers. All four grid-validated by G.W. 2026-10-30 (except #1705, profiling
 only). **#1748** (script editor export 0700/0600) closes fork issue #3 once
 synced. **#1752** (menu search keys) is worktree `new-viewer-update-d7fc5f`.
-**#1753** (leftover `cef\cef_cache` removed) and **#1757** (NVIDIA Linux
-driver minimums): worktree `login-profile-pic-pixelated-960617`. `circuskid` =
-`upstream/main` 55b3c4e9 plus `.claude/CLAUDE.md` and this file.
+**#1753** (leftover `cef\cef_cache`) and **#1757** (NVIDIA Linux minimums):
+worktree `login-profile-pic-pixelated-960617`. **#1760** (Linux CI tests):
+`aurora-viewer-contributing-91cc75`. `circuskid` = `upstream/main` 55b3c4e9 + docs.
 
 Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only;
 workspace tests not run), installed here as
@@ -41,9 +41,9 @@ workspace tests not run), installed here as
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702–#1705, #1748, #1752, #1753, #1757.** `gh pr view <n> --repo
+3. **PRs #1702–#1705, #1748, #1752, #1753, #1757, #1760.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (#1702, #1748, #1752, #1753 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
+   (#1702, #1748, #1752, #1753, #1760 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
    in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
    All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
@@ -127,7 +127,7 @@ reviewed + `notify-send`, 2 lookup failed); state in `~/.local/state/` same name
 ### Linux review leftovers (2026-10-31, not queued)
 
 From the Linux review that produced #1753 and #1757: Linux-only unit tests
-absent from upstream's CI (`ci.yml` runs clippy plus two crates); keyboard
+absent from upstream's CI (now PR #1760); keyboard
 layout detection is a no-op on Linux (AZERTY gets WASD, #1741-adjacent);
 resource monitor and per-thread CPU empty on Linux (`sys_probe.rs`,
 `thread_cpu.rs`); `xdg-open` children never reaped; GPU-stall box never
