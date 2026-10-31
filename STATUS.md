@@ -20,7 +20,8 @@ only). **#1748** (script editor export 0700/0600) closes fork issue #3 once
 synced. **#1752** (menu search keys) is worktree `new-viewer-update-d7fc5f`.
 **#1753** (leftover `cef\cef_cache`) and **#1757** (NVIDIA Linux minimums):
 worktree `login-profile-pic-pixelated-960617`. **#1760** (Linux CI tests):
-`aurora-viewer-contributing-91cc75`. `circuskid` = `upstream/main` 55b3c4e9 + docs.
+`aurora-viewer-contributing-91cc75`. **#1762** (Linux XKB keyboard layout):
+`awesome-dhawan-42ba61`. `circuskid` = `upstream/main` 55b3c4e9 + docs.
 
 Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only, no workspace
 tests), installed as `0.8.4.1793391648-1` (grid sees `0.8.4.0`). Tree clean.
