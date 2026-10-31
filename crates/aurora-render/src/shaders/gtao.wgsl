@@ -98,6 +98,10 @@ struct GtaoParams {
     temporal: vec4<f32>,
     // world directions to this view space, for the mesh normals
     normal_view: mat3x3<f32>,
+    // the slices spread over the frames (ultra, with a history): this
+    // frame's part, the number of frames (1: all of them every frame),
+    // unused, unused
+    spread: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> g: GtaoParams;
@@ -444,7 +448,9 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     for (var si = 0; si < i32(slice_count); si++) {
         let slice = f32(si);
-        let slice_k = (slice + noise.x) / slice_count;
+        // spread: this frame's slices interleave with the other frames'
+        // (part 0 of 3 takes the 1st, 4th and 7th of nine)
+        let slice_k = (slice * g.spread.y + g.spread.x + noise.x) / (slice_count * g.spread.y);
         // lines 5, 6 of the paper
         let phi = slice_k * PI;
         let cos_phi = cos(phi);
