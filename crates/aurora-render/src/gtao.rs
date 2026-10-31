@@ -471,8 +471,7 @@ fn uniforms(
         // spread too narrow for a history of all of them: clipped to it, the
         // history follows each frame's part and flickers (measured in demo:
         // 4x the frame-to-frame change of all the slices every frame; the
-        // clip widened as many times brings it back near; the shader keeps
-        // the width only where the point stays put on screen)
+        // clip widened as many times brings it back near)
         temporal: [
             noise,
             if history { 0.0 } else { 1.0 },

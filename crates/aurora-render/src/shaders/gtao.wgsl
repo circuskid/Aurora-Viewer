@@ -803,12 +803,7 @@ fn temporal(@builtin(global_invocation_id) id: vec3<u32>) {
             count = m.y;
         }
         if (weight > 1e-3) {
-            // the spread's wider clip only where the point stays put on
-            // screen: under a moving camera it let a lit history streak
-            // across a newly shaded surface (hair over a back), and the
-            // motion hides the spread's flicker the base clip lets back
-            let moved = smoothstep(0.25, 1.0, length(pp - vec2<f32>(px)));
-            let gamma = mix(g.temporal.w, g.temporal.w / g.spread.y, moved);
+            let gamma = g.temporal.w;
             hist = clamp(sum / weight, m1 - gamma * sigma, m1 + gamma * sigma);
         } else {
             count = 0.0;
