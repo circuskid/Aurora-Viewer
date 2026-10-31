@@ -18,10 +18,10 @@ on NVIDIA/Linux, #1704 egui discarded-pass click, #1705 per-effect profile
 timers. All four grid-validated by G.W. 2026-10-30 (except #1705, profiling
 only). **#1748** (script editor export 0700/0600) closes fork issue #3 once
 synced. **#1752** (menu search keys) is worktree `new-viewer-update-d7fc5f`.
-**#1753** (leftover `cef\cef_cache`) and **#1757** (NVIDIA Linux minimums):
-worktree `login-profile-pic-pixelated-960617`. **#1760** (Linux CI tests):
-`aurora-viewer-contributing-91cc75`. **#1762** (Linux XKB keyboard layout):
-`awesome-dhawan-42ba61`. `circuskid` = `upstream/main` 55b3c4e9 + docs.
+**#1753** (cef cache), **#1757** (NVIDIA minimums): `login-profile-pic-pixelated-960617`.
+**#1760** (Linux CI tests): `aurora-viewer-contributing-91cc75`. **#1762** (XKB
+layout): `awesome-dhawan-42ba61`. **#1765**, **#1766** (black photos, slow GPUs;
+validated): `reported-issue-review-14cf6d`. `circuskid` = `upstream/main` 55b3c4e9.
 
 Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only, no workspace
 tests), installed as `0.8.4.1793391648-1` (grid sees `0.8.4.0`). Tree clean.
@@ -40,7 +40,7 @@ tests), installed as `0.8.4.1793391648-1` (grid sees `0.8.4.0`). Tree clean.
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702–#1705, #1748, #1752, #1753, #1757, #1760.** `gh pr view <n> --repo
+3. **PRs #1702–#1705, #1748, #1752, #1753, #1757, #1760, #1765, #1766.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
    (#1702, #1748, #1752, #1753, #1760 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
