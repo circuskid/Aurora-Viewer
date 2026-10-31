@@ -51,20 +51,20 @@ Aurora team, so these are overridden:
   test of your own (demo or grid) said in the PR, a `type(area): summary`
   title with the template filled in, and one PR per change with fixes pushed
   to that same PR.
-- 🔴 **`check.ps1` gives a false "All green." on Linux** (upstream #1659,
-  filed 2026-10-30). `check-scripts.ps1` throws on the missing
-  `powershell.exe`, the steps loop ends, and fmt, clippy and the tests never
-  run. Until #1659 is fixed, run the steps by hand in the PR's worktree, with
-  the commands `check.ps1` uses:
-  - `cargo fmt --all -- --check`;
-  - `cargo clippy --workspace --all-targets --locked -- -D warnings`: it
-    fails on Linux in Windows-only code that isn't ours. Count the errors by
-    file and confirm that none is in a changed file;
-  - `cargo test --workspace --locked`, the whole workspace and never
-    filtered, summed over every `test result:` line.
-- 🔴 **Never tick a Tests box for a check that didn't run as written.** Leave
-  the `check.ps1` box unticked, list each step with its real result, say the
-  5.1 parse can't run on Linux, and name the date of the human's grid test.
+- **`check.ps1` works on Linux** on a branch whose base has upstream #1675
+  and #1681 (2026-10-31; our #1659 report). A step that throws now fails the
+  check, the 5.1 parse runs through `pwsh` (#1655), and clippy passes
+  `-A dead-code` off Windows, as the Linux CI job does. Run
+  `pwsh -NoProfile -File scripts/check.ps1` in the PR's worktree; its "All
+  green." was verified real on #1702 (all four steps ran, 6500 tests). Still
+  sum the tests over every `test result:` line (28) for the PR body. It
+  rewrites `~/Projects/.cargo/config.toml` (sccache) the same each time. On
+  an older base, run its steps by hand with the same commands, including
+  `-A dead-code`.
+- 🔴 **Never tick a Tests box for a check that didn't run as written.** Tick
+  the `check.ps1` box only when it printed "All green." on the head as
+  pushed; list each step with its real result, and name the date of the
+  human's grid test.
   #1630 ticked "check.ps1 green" over filtered tests and had to be corrected
   (2026-10-30).
 - **What the maintainer's review checked on #1397** (2026-10-29). Their
@@ -95,8 +95,8 @@ Aurora team, so these are overridden:
 
 - Dev build: `cargo build --release -p aurora-viewer` (the Arch deps are in
   `docs/LINUX.md` *Building from source*). Upstream's scripts are PowerShell;
-  `pwsh` is installed (`powershell-bin`, 2026-10-30), but see #1659 above
-  before trusting `check.ps1`.
+  `pwsh` is installed (`powershell-bin`, 2026-10-30) and runs `check.ps1`
+  (see *Upstream's rules*).
 - **Package: `pkgbuilds/aurora-viewer`** (OWNER `aurora-viewer`). It builds a
   tag on `circuskid`. 🔴 **`circuskid-release` can't run here** because it
   requires `main`, and our `main` is upstream's. Release by hand, on `circuskid`:

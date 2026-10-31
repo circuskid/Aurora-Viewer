@@ -8,16 +8,17 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
 `~/Projects/phoenix-firestorm` is the shallow reference clone.
 
-**circuskid carries no patch of its own. Open upstream: #1625**
-(`feat/linux-slurl-handler`, worktree `linux-items-status-afad2d`; Refs
-#676): Linux `secondlife://` links (xdg entry, D-Bus hand-over), head
-ceb73efd grid-checked 2026-10-30 with #1630 merged in locally. **#1630**
-(`fix/place-link-map-terminator`, worktree `mystifying-wright-c64e05`): a
-region's second place link 404s; #1625 relies on it. No review or CI yet.
-Both Tests sections were rewritten 2026-10-30 with real per-step results
-(fmt clean, tests 6359/6362 green, clippy failing only in Windows-only
-files), and we filed **#1659** (`check.ps1` false "All green." on Linux).
-Earlier PRs all merged. `circuskid` = `upstream/main` 55b3c4e9 (10 past
+**circuskid carries no patch of its own.** #1625 (Linux `secondlife://`
+links) and #1630 (place link 404) were **merged upstream by 2026-10-31**; the
+next sync brings them in, then drop the `slurl-combined` worktree and
+re-register links from the packaged build (gotcha below). **Open upstream
+(2026-10-31), the Linux GTAO/fps work, worktree `linux-framerate-perf-2a2ce9`:**
+#1702 motion vectors for GTAO's history (head `feat/gtao-motion-vectors`,
+`main` merged in, `check.ps1` All green, 6500 tests), #1703 GTAO Hilbert index
+on NVIDIA/Linux, #1704 egui discarded-pass click, #1705 per-effect profile
+timers. All four grid-validated by G.W. 2026-10-30 (except #1705, profiling
+only). Upstream #1659 (our `check.ps1` false-green report) is **fixed** by
+#1675. Earlier PRs all merged. `circuskid` = `upstream/main` 55b3c4e9 (10 past
 `v0.8.4-beta.20261030.2`) plus `.claude/CLAUDE.md` and this file.
 
 Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only;
@@ -39,17 +40,17 @@ workspace tests not run), installed here as
    on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1625 and #1630.** `gh pr view <n> --repo
+3. **PRs #1702–#1705.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (#1630 has app Auto-fix on). CI waits for the maintainer's approval.
+   (#1702 has app Auto-fix on). CI waits for the maintainer's approval.
    Answer any review per THEN below; once merged, remove the worktree's
-   branch on the next sync. Also `gh issue view 1659 --repo
-   Aurora-Viewer/Aurora-Viewer --comments`: draft any reply to G.W. first.
-   Once it is fixed, drop the run-it-by-hand rule in `.claude/CLAUDE.md`.
+   branch on the next sync. The maintainer offered (on #1659) an issue for
+   Linux clippy on Windows-only code; moot now that `check.ps1` passes
+   `-A dead-code` off Windows unless G.W. wants it.
 
 ### Gotcha — this machine's `secondlife://` links run a worktree build
 
-The installed package has no Linux link support (#1625 is unmerged), so
+The installed package has no Linux link support (#1625 is merged upstream but in no package yet), so
 `~/.local/share/applications/aurora-viewer-slurl.desktop` points at
 `linux-items-status-afad2d/target/debug/aurora-viewer` (hand-repaired
 2026-10-30 from a `(deleted)` path). Removing that worktree breaks links:
@@ -91,10 +92,9 @@ switch back and delete the branch.
   carries the label; for screenshots, push them to the fork's own `captures`
   branch and link the raw URLs.
 - 🔴 **Before opening any PR, meet the maintainer's bar** in
-  `.claude/CLAUDE.md` (*Upstream's rules*): fmt, clippy and the full
-  workspace tests by hand (#1659), no ticked box for a check that didn't
-  run, the human test stated. Clippy's 34–35 Linux errors (2026-10-30) are
-  Windows-only code, not ours.
+  `.claude/CLAUDE.md` (*Upstream's rules*): `check.ps1` until "All
+  green." (it works on Linux since #1675/#1681, on a branch cut after them),
+  no ticked box for a check that didn't run, the human test stated.
 
 ### DECIDED — do not reopen
 
