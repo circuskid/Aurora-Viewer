@@ -18,7 +18,8 @@ re-register links from the packaged build (gotcha below). **Open upstream
 on NVIDIA/Linux, #1704 egui discarded-pass click, #1705 per-effect profile
 timers. All four grid-validated by G.W. 2026-10-30 (except #1705, profiling
 only). Upstream #1659 (our `check.ps1` false-green report) is **fixed** by
-#1675. Earlier PRs all merged. `circuskid` = `upstream/main` 55b3c4e9 (10 past
+#1675. **#1748** (2026-10-31, script editor temp export 0700/0600) closes
+fork local issue #3 once synced. Earlier PRs all merged. `circuskid` = `upstream/main` 55b3c4e9 (10 past
 `v0.8.4-beta.20261030.2`) plus `.claude/CLAUDE.md` and this file.
 
 Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only;
@@ -35,14 +36,13 @@ workspace tests not run), installed here as
 2. **Grid follow-ups G.W. owns:** #1407 Linux voice: initial grid test
    passed 2026-10-30; the full one (mic open under load, device switch
    mid-call) waits until G.W. uses voice (rarely); blocks nothing. The
-   maintainer sets its TASKS.md 🟡; nothing for us to push. #1603 Take →
-   rez folder: grid-confirmed by G.W. 2026-10-30. #1625 + #1630: grid-OK
-   on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
+   maintainer sets its TASKS.md 🟡; nothing for us to push. #1625 + #1630:
+   grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702–#1705.** `gh pr view <n> --repo
+3. **PRs #1702–#1705 and #1748.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (#1702 has app Auto-fix on). CI waits for the maintainer's approval.
+   (#1702, #1748 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
    in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
    All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
