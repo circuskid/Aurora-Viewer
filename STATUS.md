@@ -40,9 +40,9 @@ tests), installed as `0.8.4.1793391648-1` (grid sees `0.8.4.0`). Tree clean.
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702–#1705, #1748, #1752, #1753, #1757, #1760, #1765, #1766.** `gh pr view <n> --repo
+3. **PRs #1702–#1705, #1748, #1752, #1753, #1757, #1760, #1765, #1766, #1768.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (#1702, #1748, #1752, #1753, #1760 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
+   (#1702, #1748, #1752, #1753, #1760, #1768 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
    in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
    All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
