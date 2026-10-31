@@ -43,10 +43,10 @@ workspace tests not run), installed here as
 3. **PRs #1702–#1705.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
    (#1702 has app Auto-fix on). CI waits for the maintainer's approval.
-   Answer any review per THEN below; once merged, remove the worktree's
-   branch on the next sync. The maintainer offered (on #1659) an issue for
-   Linux clippy on Windows-only code; moot now that `check.ps1` passes
-   `-A dead-code` off Windows unless G.W. wants it.
+   Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
+   in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
+   All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
+   `backup/linux-framerate-perf-pre-split`. Unqueued next: TAA motion vectors.
 
 ### Gotcha — this machine's `secondlife://` links run a worktree build
 
