@@ -148,6 +148,21 @@ the PR wall time (~11–14 min, estimated) too long: one-line change to
 failure on a missing library goes in the `System libraries` step. Merged →
 drop worktree `aurora-viewer-contributing-91cc75` and the branch.
 
+**#1765 / #1766 hand-over (2026-10-31), black photos on slow GPUs.** Cause:
+a photo drawn in one pass past the driver's ~2 s job limit (amdgpu ring reset,
+Windows TDR) read back black or lost the device; 610M threshold ~6400x3600.
+#1766 (`fix/photo-gpu-timeout`) caps a pass at 500 ms of measured GPU time
+(1500 ms with interface/HUD), redraws a black pass smaller, keeps a black
+part of window size. #1765 (`fix/photo-busy-frame`) waits for a busy render
+thread (30 s cap), never re-sends a capture still on the GPU. Both branches in
+worktree `reported-issue-review-14cf6d` (on `fix/photo-busy-frame`; `git
+switch` to answer #1766). Three-way review (Fable, codex, agy) done, all
+confirmed findings fixed; G.W. validated on the Radeon. Test without a real
+slow GPU: `AURORA_DEMO_GPU_STALL=700:15` holds the demo photo frame (stall
+notices pop up, nothing crashes). Not filed: RADV reports no memory budget in
+the log though `VK_EXT_memory_budget` is present (`vram.rs`). Merged → drop
+the worktree and both branches.
+
 ## Finished — read on demand
 
 - **Research for DLSS / FSR (2026-10-28), in case FSR work starts:**
