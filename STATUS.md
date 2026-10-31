@@ -4,17 +4,16 @@ Our fork of Aurora-Viewer/Aurora-Viewer. Rules: [.claude/CLAUDE.md](.claude/CLAU
 
 ## ▶ RESUME HERE — 2026-10-31
 
-Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
-(this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
-`~/Projects/phoenix-firestorm` is the shallow reference clone.
+Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid` (this file);
+`pkgbuilds/aurora-viewer` builds its tags; `~/Projects/phoenix-firestorm`: reference clone.
 
 **circuskid carries no patch of its own.** #1625 (Linux `secondlife://`
 links) and #1630 (place link 404) were **merged upstream by 2026-10-31**; the
 next sync brings them in, then drop the `slurl-combined` worktree and
 re-register links from the packaged build (gotcha below). **Open upstream
 (2026-10-31), the Linux GTAO/fps work, worktree `linux-framerate-perf-2a2ce9`:**
-#1702 motion vectors for GTAO's history (head `feat/gtao-motion-vectors`,
-`main` merged in, `check.ps1` All green, 6500 tests), #1703 GTAO Hilbert index
+#1702 motion vectors for GTAO's history (review answered 2026-10-31, head
+34585fd2, `check.ps1` All green; waits for the maintainer's A/B), #1703 GTAO Hilbert index
 on NVIDIA/Linux, #1704 egui discarded-pass click, #1705 per-effect profile
 timers. All four grid-validated by G.W. 2026-10-30 (except #1705, profiling
 only). **#1748** (script editor export 0700/0600) closes fork issue #3 once
@@ -23,9 +22,8 @@ synced. **#1752** (menu search keys) is worktree `new-viewer-update-d7fc5f`.
 worktree `login-profile-pic-pixelated-960617`. **#1760** (Linux CI tests):
 `aurora-viewer-contributing-91cc75`. `circuskid` = `upstream/main` 55b3c4e9 + docs.
 
-Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only;
-workspace tests not run), installed here as
-`aurora-viewer 0.8.4.1793391648-1` (grid sees `0.8.4.0`). Tree clean.
+Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only, no workspace
+tests), installed as `0.8.4.1793391648-1` (grid sees `0.8.4.0`). Tree clean.
 
 ### FIRST — the two-minute check
 
@@ -47,7 +45,8 @@ workspace tests not run), installed here as
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
    in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
    All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
-   `backup/linux-framerate-perf-pre-split`. Unqueued next: TAA motion vectors.
+   `backup/linux-framerate-perf-pre-split`. Next: TAA motion vectors. #1702's
+   610M cost is the Rgba16F width; 8-bit normals and an Rg8 target: ruled out.
 
 ### Gotcha — this machine's `secondlife://` links run a worktree build
 
