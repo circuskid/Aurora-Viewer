@@ -419,10 +419,27 @@ pub struct TilePass {
 /// wall: a dark line along the seams. GTAO's radius (0.73 m) spans fewer
 /// pixels than the band beyond 9 m in a photo 1,800 pixels high, and its
 /// farthest samples weigh the least; the band costs 128 pixels of a side of
-/// 4,096 or more in the photos that need tiles. The bloom and the depth of
-/// field reach farther and widen it while they are on
-/// (`aurora_render::bloom_tile_reach`, `dof_tile_reach`).
+/// 4,096 or more in the photos that need tiles. The bloom, the depth of
+/// field and the contact shadows of a photo larger than the viewfinder
+/// (their rays as much longer, [`viewfinder_scale`]) reach farther and
+/// widen it while they are on (`aurora_render::bloom_tile_reach`,
+/// `dof_tile_reach`, `contact_tile_reach`).
 pub const TILE_GUARD: u32 = 128;
+
+/// How many times taller, in pixels, a photo of `photo` pixels is than the
+/// viewfinder's view of it, in a window of `window` pixels whose 3D is drawn
+/// at `render_percent` of it (50 to 100, as the setting is kept): the
+/// photo's projection keeps the window's
+/// height of view when it is narrower than the window, its width when it is
+/// wider (`Camera::photo_proj`), so the viewfinder shows it `window height`
+/// or `window width / its aspect` pixels high. The contact shadows march
+/// that many times further in the photo (issue #1662). At least 1.
+pub fn viewfinder_scale(photo: (u32, u32), window: (u32, u32), render_percent: u32) -> f32 {
+    let (pw, ph) = (photo.0.max(1) as f32, photo.1.max(1) as f32);
+    let (ww, wh) = (window.0.max(1) as f32, window.1.max(1) as f32);
+    let shown = wh.min(ww * ph / pw) * render_percent.clamp(50, 100) as f32 / 100.0;
+    (ph / shown).max(1.0)
+}
 
 /// The pixel a drawn tile starts on, and the multiple its size is rounded
 /// to (but at the photo's edges): the bloom halves the image six times, so
@@ -430,6 +447,18 @@ pub const TILE_GUARD: u32 = 128;
 /// on those of one pass. Off them, each tile blurred its own grid and the
 /// halos stepped at the seams.
 const TILE_ALIGN: u32 = 64;
+
+/// The most pixels a photo pass may draw: half of the video memory left
+/// under the driver's budget (`free_bytes`), at `per_pixel` bytes each, but
+/// never fewer than the window's frame (LLViewerWindow::rawSnapshot falls
+/// back to tiles of the window's size). A card already over its budget, its
+/// textures under pressure in a busy region, left nothing free: the photo
+/// was drawn in tiles of 32 pixels, thousands of frames with the world held
+/// still, and the viewer looked frozen for minutes.
+pub fn pass_pixels(free_bytes: u64, per_pixel: u64, window: (u32, u32)) -> u64 {
+    let window = u64::from(window.0) * u64::from(window.1);
+    (free_bytes / per_pixel.max(1)).max(window)
+}
 
 /// How a photo of `size` is drawn: one pass when the card holds it (a side
 /// within `max_side`, the pixels within `max_pixels`, the memory its render

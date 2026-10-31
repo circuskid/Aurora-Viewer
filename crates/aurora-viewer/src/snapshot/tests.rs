@@ -2,6 +2,24 @@ use super::*;
 use std::sync::atomic::AtomicU32;
 
 #[test]
+fn the_viewfinder_scale_is_the_photos_height_over_the_viewfinders() {
+    // an 8K photo of the window's proportions: 4 times its height
+    assert_eq!(viewfinder_scale((7680, 4320), (1920, 1080), 100), 4.0);
+    // a square photo in a wide window: the window's height of view
+    assert_eq!(viewfinder_scale((7680, 7680), (1920, 1080), 100), 7680.0 / 1080.0);
+    // a wide photo in a tall window: shown 1600 / (16 / 9) = 900 high
+    assert_eq!(viewfinder_scale((3840, 2160), (1600, 2000), 100), 2.4);
+    // the 3D drawn at half the window: the viewfinder's pixels are half
+    assert_eq!(viewfinder_scale((3840, 2160), (1920, 1080), 50), 4.0);
+    // a photo smaller than the viewfinder (the preview) keeps the window's
+    assert_eq!(viewfinder_scale((720, 405), (1920, 1080), 100), 1.0);
+    assert_eq!(viewfinder_scale((0, 0), (0, 0), 100), 1.0);
+    // a render scale out of the setting's range counts as its nearest end
+    assert_eq!(viewfinder_scale((3840, 2160), (1920, 1080), 0), 4.0);
+    assert_eq!(viewfinder_scale((3840, 2160), (1920, 1080), 200), 2.0);
+}
+
+#[test]
 fn presets_give_their_long_side_with_the_proportions() {
     let win = (2560, 1369);
     assert_eq!(photo_size(Aspect::R16x9, Resolution::Uhd, [0, 0], win), (3840, 2160));
@@ -130,6 +148,22 @@ fn one_pass_while_the_card_holds_it_tiles_otherwise() {
             "{max_side} {max_pixels}"
         );
     }
+}
+
+#[test]
+fn a_card_over_its_budget_still_draws_passes_of_the_windows_size() {
+    // half of the free memory at 88 bytes a pixel (MSAA 4x)
+    assert_eq!(pass_pixels(880_000_000, 88, (1318, 745)), 10_000_000);
+    // nothing free (1,818 MB used of a 1,248 MB budget): the window's frame
+    assert_eq!(pass_pixels(0, 88, (1318, 745)), 1318 * 745);
+    assert_eq!(pass_pixels(0, 0, (1920, 1080)), 1920 * 1080);
+    // a photo of the window at twice its size (the photo quality) takes a
+    // handful of passes, not the thousands of 32-pixel tiles drawn before
+    let tiles = plan((2636, 1490), 16384, pass_pixels(0, 88, (1318, 745)), TILE_GUARD);
+    assert!(tiles.len() <= 16, "{}", tiles.len());
+    let tiles = plan((3840, 2160), 16384, pass_pixels(0, 88, (1920, 1080)), TILE_GUARD);
+    assert!(tiles.len() <= 16, "{}", tiles.len());
+    assert!(plan((2636, 1490), 16384, 0, TILE_GUARD).len() > 1000);
 }
 
 #[test]

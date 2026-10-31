@@ -35,7 +35,7 @@ use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec3, Vec4};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 pub const CASCADES: usize = 3;
 const MAX_LIGHTS: usize = 64;
@@ -118,6 +118,12 @@ struct FrameU {
     sky_obj_light: [f32; 4],
     sky_optics: [f32; 4],
     sky_optics_tex: [u32; 4],
+    /// Night sky (stars.rs `StarFrame::uniform`).
+    sky_stars: [[f32; 4]; 3],
+    /// The pass's target size for the stars' footprint (width, height,
+    /// 1/w, 1/h; 0: `screen`), for the reflections that keep the main
+    /// view's `screen` but draw smaller.
+    sky_star_pass: [f32; 4],
     anim_clock: [u32; 4],
     selection_color: [f32; 4],
     rez_gradient: [[f32; 4]; 3],
@@ -884,6 +890,9 @@ struct GpuTimer {
     last_contact: Option<f32>,
     /// Last time of the bloom levels (ms).
     last_bloom: Option<f32>,
+    /// Last times of the rest of the effects (ms), in [`GPU_EFFECT_PARTS`]
+    /// order.
+    last_effects: Option<[f32; 4]>,
     /// AURORA_MSAA_PREPASS=alt: the variant each readback slot's frame was
     /// drawn with, and the frames measured since the variant last changed.
     slot_prepass: [std::cell::Cell<bool>; 3],
@@ -1008,6 +1017,17 @@ const MARK_CONTACT_END: u32 = 23;
 const MARK_WATER_INTERFACE_END: u32 = 24;
 const MARK_WATER_AIR_BEGIN: u32 = 25;
 const MARK_WATER_AIR_END: u32 = 26;
+/// The effects beyond the occlusion and the contact shadows
+/// (`RenderStats::gpu_effects`): the planar reflections (water, mirror), with
+/// the refracted water light before them; the reflection probe face with its
+/// filtering; the scene copy, with the cut-out pass and the submerged water
+/// particles before it; the SSR.
+const GPU_EFFECT_PARTS: [(u32, u32); 4] = [
+    (MARK_CONTACT_END, MARK_WATER_AIR_BEGIN),
+    (MARK_WATER_AIR_END, MARK_REFL_END),
+    (MARK_SCENE_A_END, MARK_COPY_END),
+    (MARK_COPY_END, MARK_SSR_END),
+];
 /// GPU time ranges `(from, to)` of each kind of element, in
 /// [`GpuElement::ALL`] order; together they cover the whole frame.
 const GPU_ELEMENTS: [&[(u32, u32)]; GpuElement::ALL.len()] = [
@@ -1084,6 +1104,7 @@ impl GpuTimer {
             last_ssao: None,
             last_contact: None,
             last_bloom: None,
+            last_effects: None,
             slot_prepass: Default::default(),
             compare: PrepassCompare::default(),
         }
@@ -1113,6 +1134,7 @@ impl GpuTimer {
                             self.last_ssao = Some(ms(MARK_DEPTH_END, MARK_SSAO_END));
                             self.last_contact = Some(ms(MARK_SSAO_END, MARK_CONTACT_END));
                             self.last_bloom = Some(ms(MARK_BLOOM_BEGIN, MARK_BLOOM_END));
+                            self.last_effects = Some(GPU_EFFECT_PARTS.map(|(a, b)| ms(a, b)));
                             if msaa_prepass() == MsaaPrepass::Alternate {
                                 let mut times = [0.0; COMPARE_KEYS.len()];
                                 times[0] = ms(0, 1);
@@ -1387,7 +1409,8 @@ impl FrameTarget {
 pub(crate) struct Backend {
     device: wgpu::Device,
     queue: wgpu::Queue,
-    surface: wgpu::Surface<'static>,
+    /// Destroyed by hand in `Drop`, unless the device is lost.
+    surface: std::mem::ManuallyDrop<wgpu::Surface<'static>>,
     config: wgpu::SurfaceConfiguration,
     /// The window's size while a photo frame draws at its own size in
     /// `config` (`Capture::Snapshot`); put back by `result`.
@@ -1412,6 +1435,8 @@ pub(crate) struct Backend {
     ssao: Ssao,
     gtao: crate::gtao::Gtao,
     water_effects: crate::water_effects::WaterGpu,
+    /// The night sky's stars (stars.rs), made once.
+    stars: wgpu::Buffer,
     contact: crate::contact_shadows::ContactShadows,
     /// This frame draws the contact shadows (`AURORA_CONTACT_SHADOWS=alt`
     /// switches them each second).
@@ -1489,6 +1514,8 @@ pub(crate) struct Backend {
     /// Two threads that finish command encoders beside this one.
     finishers: Helpers<wgpu::CommandEncoder, wgpu::CommandBuffer>,
     msaa_samples: u32,
+    /// The pipelines being compiled for other samples or SSR, if any.
+    pipeline_build: Option<PipelineBuild>,
     vsync: bool,
     /// Presentation modes of the surface, read when it was created.
     present_modes: Vec<wgpu::PresentMode>,
@@ -1508,6 +1535,28 @@ pub(crate) struct Backend {
     /// Set by the device-lost callback: the GPU is never waited on again
     /// (device_lost.rs).
     lost: crate::device_lost::DeviceLost,
+    /// Each frame's submission, read by the main thread before the next
+    /// frame reads its input (pacing.rs).
+    gpu_frames: std::sync::Arc<crate::pacing::GpuFrames<wgpu::SubmissionIndex>>,
+}
+
+impl Drop for Backend {
+    /// After a device loss the swapchain image of the last frame never comes
+    /// back: the work that holds it never finishes, and destroying the
+    /// surface panics in wgpu (`release_resources`: "SwapchainAcquireSemaphore
+    /// still in use by a SurfaceTexture", wgpu-hal 30). The session closing
+    /// properly after a "GPU device lost" then ended with a Rust panic
+    /// (#1650). A lost device only closes the viewer, so the surface is left
+    /// to the process, which releases it with the driver's objects.
+    fn drop(&mut self) {
+        if self.lost.get() {
+            log::warn!("GPU device lost: the window surface is left to the process");
+            return;
+        }
+        // SAFETY: dropped once, here, and never used again: the backend is
+        // being dropped.
+        unsafe { std::mem::ManuallyDrop::drop(&mut self.surface) };
+    }
 }
 
 /// What the main thread's `Renderer` creates the backend from.
@@ -1530,6 +1579,8 @@ pub(crate) struct BackendInit {
     pub scene: SceneGpu,
     pub anim_clock: crate::tex_anim::AnimClock,
     pub lost: crate::device_lost::DeviceLost,
+    /// Each frame's submission, for the frame pacing (pacing.rs).
+    pub gpu_frames: std::sync::Arc<crate::pacing::GpuFrames<wgpu::SubmissionIndex>>,
 }
 
 fn skin_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -1971,6 +2022,8 @@ fn reflection_matrix(n: Vec3, d: f32) -> Mat4 {
 struct Impostors {
     layout: wgpu::BindGroupLayout,
     atlas: wgpu::Texture,
+    pages: u32,
+    sprite_capacity: usize,
     bind_group: wgpu::BindGroup,
     scratch: wgpu::Texture,
     scratch_view: wgpu::TextureView,
@@ -1981,6 +2034,27 @@ struct Impostors {
     sprite: wgpu::RenderPipeline,
     /// The cards' depth alone, single sample (contact shadows).
     sprite_depth: wgpu::RenderPipeline,
+}
+
+/// The impostors' capture (opaque, blended) and card (colour, depth alone)
+/// pipelines.
+type ImpostorPipelines = (
+    wgpu::RenderPipeline,
+    wgpu::RenderPipeline,
+    wgpu::RenderPipeline,
+    wgpu::RenderPipeline,
+);
+
+/// The pipelines that depend on the MSAA samples and SSR, compiled on a
+/// worker thread when one of them changes (#1722, #1746). Built on the render
+/// thread, the whole set stopped the frames for as long as the driver took:
+/// 9 s on amdvlk, 36 s on an Intel Arc, reported as a GPU stall. The frames keep their samples and SSR meanwhile, and take the
+/// new ones with their targets on the frame the set arrives.
+struct PipelineBuild {
+    samples: u32,
+    ssr: bool,
+    started: std::time::Instant,
+    done: std::sync::mpsc::Receiver<(Pipelines, ImpostorPipelines)>,
 }
 
 impl Impostors {
@@ -2000,7 +2074,7 @@ impl Impostors {
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
                         multisampled: false,
                     },
                     count: None,
@@ -2013,42 +2087,8 @@ impl Impostors {
                 },
             ],
         });
-        let size = IMPOSTOR_TILE * IMPOSTOR_TILES_PER_ROW;
-        let atlas = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("impostor atlas"),
-            size: wgpu::Extent3d {
-                width: size,
-                height: size,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: HDR_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-        let atlas_view = atlas.create_view(&Default::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("impostor"),
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            ..Default::default()
-        });
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("impostor atlas"),
-            layout: &layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::TextureView(&atlas_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-            ],
-        });
+        let atlas = Self::make_atlas(device, 1);
+        let bind_group = Self::bind_atlas(device, &layout, &atlas);
         let tile = wgpu::Extent3d {
             width: IMPOSTOR_TILE,
             height: IMPOSTOR_TILE,
@@ -2088,6 +2128,8 @@ impl Impostors {
         Impostors {
             layout,
             atlas,
+            pages: 1,
+            sprite_capacity: IMPOSTOR_TILES as usize,
             bind_group,
             scratch,
             scratch_view,
@@ -2100,17 +2142,88 @@ impl Impostors {
         }
     }
 
-    fn rebuild_pipelines(
-        &mut self,
-        device: &wgpu::Device,
-        frame_layout: &wgpu::BindGroupLayout,
-        records_layout: &wgpu::BindGroupLayout,
-        tex_layout: &wgpu::BindGroupLayout,
-        samples: u32,
-        ssr: bool,
-    ) {
-        (self.capture_opaque, self.capture_blend, self.sprite, self.sprite_depth) =
-            Self::make_pipelines(device, &self.layout, frame_layout, records_layout, tex_layout, samples, ssr);
+    fn make_atlas(device: &wgpu::Device, pages: u32) -> wgpu::Texture {
+        let size = IMPOSTOR_TILE * IMPOSTOR_TILES_PER_ROW;
+        device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("impostor atlas"),
+            size: wgpu::Extent3d {
+                width: size,
+                height: size,
+                depth_or_array_layers: pages,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: HDR_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        })
+    }
+
+    fn bind_atlas(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, atlas: &wgpu::Texture) -> wgpu::BindGroup {
+        let view = atlas.create_view(&wgpu::TextureViewDescriptor {
+            dimension: Some(wgpu::TextureViewDimension::D2Array),
+            ..Default::default()
+        });
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("impostor"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("impostor atlas"),
+            layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+        })
+    }
+
+    /// Add pages only for allocated pictures, at most 128 MiB. Return the
+    /// old image for a GPU copy before any pass samples the enlarged cache.
+    fn prepare(&mut self, device: &wgpu::Device, lists: &DrawLists) -> Option<wgpu::Texture> {
+        let tiles = lists
+            .impostor_sprites
+            .iter()
+            .filter(|s| s.tile & IMPOSTOR_PENDING == 0)
+            .map(|s| s.tile & !IMPOSTOR_FULLBRIGHT)
+            .chain(lists.impostor_captures.iter().map(|c| c.tile))
+            .max()
+            .map_or(0, |tile| tile + 1);
+        let pages = tiles
+            .div_ceil(IMPOSTOR_TILES)
+            .next_power_of_two()
+            .clamp(1, IMPOSTOR_MAX_TILES / IMPOSTOR_TILES);
+        let old = if pages > self.pages {
+            let atlas = Self::make_atlas(device, pages);
+            self.bind_group = Self::bind_atlas(device, &self.layout, &atlas);
+            self.pages = pages;
+            Some(std::mem::replace(&mut self.atlas, atlas))
+        } else {
+            None
+        };
+        if lists.impostor_sprites.len() > self.sprite_capacity {
+            self.sprite_capacity = lists.impostor_sprites.len().next_power_of_two();
+            self.sprites = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("impostor cards"),
+                size: self.sprite_capacity as u64 * std::mem::size_of::<ImpostorSprite>() as u64,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+        old
+    }
+
+    fn set_pipelines(&mut self, p: ImpostorPipelines) {
+        (self.capture_opaque, self.capture_blend, self.sprite, self.sprite_depth) = p;
     }
 
     fn make_pipelines(
@@ -2121,12 +2234,7 @@ impl Impostors {
         tex_layout: &wgpu::BindGroupLayout,
         samples: u32,
         ssr: bool,
-    ) -> (
-        wgpu::RenderPipeline,
-        wgpu::RenderPipeline,
-        wgpu::RenderPipeline,
-        wgpu::RenderPipeline,
-    ) {
+    ) -> ImpostorPipelines {
         let src = format!(
             "{}\n{}\n{}",
             crate::common_shader_source(),
@@ -2385,6 +2493,7 @@ impl Backend {
             scene,
             anim_clock,
             lost,
+            gpu_frames,
         } = init;
         let caps = surface.get_capabilities(&adapter);
         let format = caps
@@ -2547,6 +2656,17 @@ impl Backend {
                 float_tex(13),
                 // GTAO's screen-space indirect light (gtao.rs)
                 float_tex(14),
+                // the night sky's stars (stars.rs)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 24,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
         let records_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -2764,6 +2884,14 @@ impl Backend {
         exposure.bind(&device, &targets.color, &targets.depth_ss, &glow.views[1]);
         let mut histogram = crate::histogram::Histogram::new(&device);
         histogram.bind(&device, &targets.color);
+        let stars = wgpu::util::DeviceExt::create_buffer_init(
+            &device,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("night sky stars"),
+                contents: &crate::stars::buffer_contents(),
+                usage: wgpu::BufferUsages::STORAGE,
+            },
+        );
         let groups = Self::make_frame_groups(
             &device,
             &frame_layout,
@@ -2776,6 +2904,7 @@ impl Backend {
             &targets,
             &probes,
             &water_effects,
+            &stars,
         );
         let indirect = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("indirect"),
@@ -2801,7 +2930,7 @@ impl Backend {
         let mut r = Backend {
             device,
             queue,
-            surface,
+            surface: std::mem::ManuallyDrop::new(surface),
             config,
             snapshot_window: None,
             surface_srgb,
@@ -2822,6 +2951,7 @@ impl Backend {
             ssao,
             gtao,
             water_effects,
+            stars,
             contact,
             contact_now: false,
             gtao_normals_now: false,
@@ -2874,6 +3004,7 @@ impl Backend {
             timer,
             finishers: Helpers::new(2, "aurora-render-finish", finish_encoder),
             msaa_samples,
+            pipeline_build: None,
             vsync,
             present_modes,
             settings,
@@ -2886,6 +3017,7 @@ impl Backend {
             last_inv_vp: Mat4::IDENTITY,
             msaa_supported,
             lost,
+            gpu_frames,
         };
         r.rebuild_bind_groups();
         Ok(r)
@@ -3933,6 +4065,7 @@ impl Backend {
         t: &Targets,
         probes: &crate::probes::Probes,
         water_effects: &crate::water_effects::WaterGpu,
+        stars: &wgpu::Buffer,
     ) -> FrameGroups {
         let mk = |label: &str,
                   buffer: &wgpu::Buffer,
@@ -3952,6 +4085,10 @@ impl Backend {
                     wgpu::BindGroupEntry {
                         binding: 23,
                         resource: wgpu::BindingResource::TextureView(if sample_mask { &t.water_mask } else { &dummies.white }),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 24,
+                        resource: stars.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 0,
@@ -4265,6 +4402,7 @@ impl Backend {
                 &self.targets,
                 &self.probes,
                 &self.water_effects,
+                &self.stars,
             );
         }
     }
@@ -4283,6 +4421,7 @@ impl Backend {
             &self.targets,
             &self.probes,
             &self.water_effects,
+            &self.stars,
         );
         self.gbuf_group = self.targets.gbuf.as_ref().map(|g| {
             self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -4403,7 +4542,110 @@ impl Backend {
             AntiAliasing::Msaa(n) => self.msaa_supported.iter().copied().filter(|&m| m <= n).max().unwrap_or(1),
             _ => 1,
         };
-        let pipelines_dirty = samples != self.msaa_samples || s.ssr != self.settings.ssr;
+        if (samples, s.ssr) == (self.msaa_samples, self.settings.ssr) {
+            // (a set still compiling for other samples is no longer wanted)
+            self.pipeline_build = None;
+            self.apply_settings_with(s, None);
+            return;
+        }
+        if self.pipeline_build.as_ref().is_none_or(|b| (b.samples, b.ssr) != (samples, s.ssr)) {
+            log::info!(
+                "compiling the pipelines for {samples} sample(s), SSR {}",
+                if s.ssr { "on" } else { "off" }
+            );
+            self.pipeline_build = Some(self.start_pipeline_build(samples, s.ssr));
+        }
+        let Some(build) = &self.pipeline_build else {
+            return;
+        };
+        match build.done.try_recv() {
+            Ok((scene, impostors)) => {
+                log::info!(
+                    "pipelines for {samples} sample(s) ready in {} ms",
+                    build.started.elapsed().as_millis()
+                );
+                self.pipeline_build = None;
+                self.apply_settings_with(s, Some((samples, scene, impostors)));
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                // the other settings now, the samples and SSR with their
+                // pipelines
+                let now = RenderSettings {
+                    aa: self.settings.aa,
+                    ssr: self.settings.ssr,
+                    ..s
+                };
+                if now != self.settings {
+                    self.apply_settings_with(now, None);
+                }
+            }
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                log::error!("the pipeline worker stopped: compiling them on the render thread");
+                self.pipeline_build = None;
+                let scene = Self::make_pipelines(
+                    &self.device,
+                    &self.frame_layout,
+                    &self.records_layout,
+                    &self.tex_layout,
+                    &self.shadow_layout,
+                    [&self.post_layout, &self.bloom.post_layout],
+                    &self.gbuf_layout,
+                    samples,
+                    self.config.format,
+                    s.ssr,
+                );
+                let impostors = Impostors::make_pipelines(
+                    &self.device,
+                    &self.impostors.layout,
+                    &self.frame_layout,
+                    &self.records_layout,
+                    &self.tex_layout,
+                    samples,
+                    s.ssr,
+                );
+                self.apply_settings_with(s, Some((samples, scene, impostors)));
+            }
+        }
+    }
+
+    /// Compile the pipelines for `samples` and `ssr` on a worker thread.
+    fn start_pipeline_build(&self, samples: u32, ssr: bool) -> PipelineBuild {
+        let (tx, done) = std::sync::mpsc::sync_channel(1);
+        let device = self.device.clone();
+        let layouts = [
+            self.frame_layout.clone(),
+            self.records_layout.clone(),
+            self.tex_layout.clone(),
+            self.shadow_layout.clone(),
+            self.post_layout.clone(),
+            self.bloom.post_layout.clone(),
+            self.gbuf_layout.clone(),
+            self.impostors.layout.clone(),
+        ];
+        let format = self.config.format;
+        let spawned = std::thread::Builder::new().name("aurora-pipelines".into()).spawn(move || {
+            let [frame, records, tex, shadow, post, bloom, gbuf, impostor] = &layouts;
+            let scene = Self::make_pipelines(&device, frame, records, tex, shadow, [post, bloom], gbuf, samples, format, ssr);
+            let impostors = Impostors::make_pipelines(&device, impostor, frame, records, tex, samples, ssr);
+            // (refused when other settings came meanwhile: the set is dropped)
+            let _ = tx.send((scene, impostors));
+        });
+        if let Err(e) = spawned {
+            // the receiver reports the worker gone: compiled on this thread
+            log::error!("cannot start the pipeline worker: {e}");
+        }
+        PipelineBuild {
+            samples,
+            ssr,
+            started: std::time::Instant::now(),
+            done,
+        }
+    }
+
+    /// `apply_settings` once the pipelines for `s` are known: `rebuilt` the
+    /// set compiled for other samples or SSR, `None` when they stay.
+    fn apply_settings_with(&mut self, s: RenderSettings, rebuilt: Option<(u32, Pipelines, ImpostorPipelines)>) {
+        let pipelines_dirty = rebuilt.is_some();
         let targets_dirty = pipelines_dirty
             || s.render_scale_percent != self.settings.render_scale_percent
             || (s.aa == AntiAliasing::Smaa) != (self.settings.aa == AntiAliasing::Smaa)
@@ -4415,28 +4657,10 @@ impl Backend {
             || crate::water_optics::scale(s.water_effects) != crate::water_optics::scale(self.settings.water_effects)
             || s.mirror_scale != self.settings.mirror_scale;
         let taa_was = self.taa.is_some();
-        self.msaa_samples = samples;
-        if pipelines_dirty {
-            self.pipelines = Self::make_pipelines(
-                &self.device,
-                &self.frame_layout,
-                &self.records_layout,
-                &self.tex_layout,
-                &self.shadow_layout,
-                [&self.post_layout, &self.bloom.post_layout],
-                &self.gbuf_layout,
-                samples,
-                self.config.format,
-                s.ssr,
-            );
-            self.impostors.rebuild_pipelines(
-                &self.device,
-                &self.frame_layout,
-                &self.records_layout,
-                &self.tex_layout,
-                samples,
-                s.ssr,
-            );
+        if let Some((samples, scene, impostors)) = rebuilt {
+            self.msaa_samples = samples;
+            self.pipelines = scene;
+            self.impostors.set_pipelines(impostors);
         }
         let slots = s.probe_slots.clamp(1, crate::probes::MAX_PROBES as u32);
         let probes_dirty = slots != self.probes.slots;
@@ -4785,6 +5009,8 @@ impl Backend {
         u.sky_obj_light = s.object_sunlight.extend(0.0).to_array();
         u.sky_optics = [s.moisture_level, s.droplet_radius, s.ice_level, 0.0];
         u.sky_optics_tex = [s.rainbow_texture, s.halo_texture, 0, 0];
+        u.sky_stars = s.stars.uniform();
+        u.sky_star_pass = [0.0; 4];
         // (common.wgsl FEATURE_NO_EMISSIVE)
         u.features[0] = if self.settings.hdr { 0 } else { 1 };
         for (i, m) in cascades.iter().enumerate() {
@@ -4902,6 +5128,7 @@ impl Backend {
             drawn,
             capture: wanted,
             histogram,
+            input_at,
         } = packet;
         let mut stats = RenderStats::default();
         if let Some(t) = &mut self.timer {
@@ -4941,6 +5168,7 @@ impl Backend {
         if settings != self.settings {
             self.apply_settings(settings);
         }
+        stats.settings = Some(self.settings);
         let snapshot = match wanted {
             Some(Capture::Snapshot(s)) if s.width > 0 && s.height > 0 => Some(s),
             _ => None,
@@ -5370,14 +5598,23 @@ impl Backend {
         };
         let mut water_vp = Mat4::IDENTITY;
         let mut mirror_vp = Mat4::IDENTITY;
+        // the reflections' own pixel size, for the stars' footprint
+        let star_pass = |t: &Option<ReflTarget>| {
+            t.as_ref().map_or([0.0; 4], |t| {
+                let (w, h) = (t.width.max(1) as f32, t.height.max(1) as f32);
+                [w, h, 1.0 / w, 1.0 / h]
+            })
+        };
         if do_water_refl {
-            let u = refl_frame(self, Vec3::Z, -f.water_height, 0.05);
+            let mut u = refl_frame(self, Vec3::Z, -f.water_height, 0.05);
+            u.sky_star_pass = star_pass(&self.targets.water_refl);
             water_vp = Mat4::from_cols_array_2d(&u.view_proj);
             self.queue.write_buffer(&self.refl_buffers[0], 0, bytemuck::bytes_of(&u));
         }
         if let Some(m) = &mirror {
             let n = m.normal.normalize_or(Vec3::Z);
-            let u = refl_frame(self, n, -n.dot(m.point), 0.01);
+            let mut u = refl_frame(self, n, -n.dot(m.point), 0.01);
+            u.sky_star_pass = star_pass(&self.targets.mirror);
             mirror_vp = Mat4::from_cols_array_2d(&u.view_proj);
             self.queue.write_buffer(&self.refl_buffers[1], 0, bytemuck::bytes_of(&u));
         }
@@ -5442,7 +5679,8 @@ impl Backend {
             u.screen = [r, r, 1.0 / r, 1.0 / r];
             self.queue.write_buffer(&self.refl_buffers[3 + i], 0, bytemuck::bytes_of(&u));
         }
-        let n_sprites = lists.impostor_sprites.len().min(IMPOSTOR_TILES as usize);
+        let old_impostor_atlas = self.impostors.prepare(&self.device, lists);
+        let n_sprites = lists.impostor_sprites.len();
         if n_sprites > 0 {
             self.queue.write_buffer(
                 &self.impostors.sprites,
@@ -5545,8 +5783,10 @@ impl Backend {
             // with (jittered under TAA)
             let light = crate::contact_shadows::light_projection(fu.proj * fu.view, f.sun_dir);
             // an infinite reversed projection keeps its near plane there
-            // (centred or not: tiled photos)
-            self.contact.write(&self.queue, t, light, fu.proj.w_axis.z);
+            // (centred or not: tiled photos); a photo larger than the
+            // viewfinder marches as much further
+            self.contact
+                .write(&self.device, &self.queue, t, light, fu.proj.w_axis.z, f.photo_scale);
         }
         if let (true, Some(t)) = (self.targets.gtao_shown, &mut self.targets.gtao) {
             let prev = self.prev_view_proj.unwrap_or(unjittered_vp);
@@ -5918,6 +6158,23 @@ impl Backend {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
+        if let Some(old) = old_impostor_atlas {
+            encoder.copy_texture_to_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &old,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::TexelCopyTextureInfo {
+                    texture: &self.impostors.atlas,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                old.size(),
+            );
+        }
 
         let timer_slot = self.timer.as_mut().and_then(|t| t.slot());
         let mut first_pass = true;
@@ -6576,7 +6833,7 @@ impl Backend {
                     origin: wgpu::Origin3d {
                         x: (tile % IMPOSTOR_TILES_PER_ROW) * IMPOSTOR_TILE,
                         y: (tile / IMPOSTOR_TILES_PER_ROW) * IMPOSTOR_TILE,
-                        z: 0,
+                        z: c.tile / IMPOSTOR_TILES,
                     },
                     aspect: wgpu::TextureAspect::All,
                 },
@@ -7657,7 +7914,15 @@ impl Backend {
             }
         }
         prof.mark("finish");
-        self.queue.submit(upload_cmds.into_iter().chain(extra_cmds));
+        let submission = self.queue.submit(upload_cmds.into_iter().chain(extra_cmds));
+        self.gpu_frames.submitted(index, submission);
+        if self.gpu_frames.enabled {
+            // the news as soon as a poll sees the frame done (the start of
+            // the next frame's job): a GPU that is not the limit does not
+            // hold the main thread until this thread is through a frame
+            let frames = self.gpu_frames.clone();
+            self.queue.on_submitted_work_done(move || frames.finished_through(index));
+        }
         // staging chunks whose copies are now submitted are mapped again
         frame_uploads.after_submit();
         let mut captured = None;
@@ -7709,6 +7974,7 @@ impl Backend {
         if let FrameTarget::Surface(t) = surface_tex {
             self.queue.present(t);
             stats.presented = true;
+            stats.input_ms = input_at.map(|at| at.elapsed().as_secs_f32() * 1000.0);
         }
         self.lost.poll(&self.device);
         // a click answered by now goes back with this frame's result
@@ -7744,6 +8010,7 @@ impl Backend {
         stats.gpu_ssao = self.timer.as_ref().and_then(|t| t.last_ssao);
         stats.gpu_contact = self.timer.as_ref().and_then(|t| t.last_contact);
         stats.gpu_bloom = self.timer.as_ref().and_then(|t| t.last_bloom);
+        stats.gpu_effects = self.timer.as_ref().and_then(|t| t.last_effects);
         if profile_frames && let Some(e) = stats.gpu_elements {
             let mut out = String::new();
             for (el, ms) in GpuElement::ALL.iter().zip(e) {
@@ -7803,6 +8070,43 @@ impl Backend {
         Some((buf, w, h, row))
     }
 
+    /// Frame pacing (pacing.rs), once frame `frame` is presented: wait, at
+    /// most `timeout`, until the GPU has finished the frames before it, and
+    /// tell the main thread, which then reads the input of the next frame.
+    /// Done here, on the thread that submits and presents: the wait holds
+    /// the device's locks.
+    pub fn finish_frames_before(&self, frame: u64, timeout: Duration) {
+        // (the wait runs the callbacks of `on_submitted_work_done` too)
+        if !self.gpu_frames.enabled || self.lost.get() {
+            return;
+        }
+        let Some(last) = frame.checked_sub(1) else {
+            return;
+        };
+        if let Some(index) = self.gpu_frames.before(frame) {
+            let wait = wgpu::PollType::Wait {
+                submission_index: Some(index),
+                timeout: Some(timeout),
+            };
+            match self.device.poll(wait) {
+                Ok(_) => {}
+                // a GPU that fell behind: no news, the main thread's own
+                // bound lets it go on
+                Err(wgpu::PollError::Timeout) => return,
+                Err(e) => log::debug!("frame pacing: {e:?}"),
+            }
+        }
+        self.gpu_frames.finished_through(last);
+    }
+
+    /// Run the callbacks of the GPU work already finished, without waiting:
+    /// the frame pacing's news of the frames done (pacing.rs).
+    pub fn poll_finished(&self) {
+        if self.gpu_frames.enabled {
+            self.lost.poll(&self.device);
+        }
+    }
+
     /// World position of the opaque surface under a pixel of the last frame
     /// drawn (depth prepass read-back; None for the sky). Blocks on the GPU
     /// for one tiny copy: clicks only.
@@ -7826,6 +8130,55 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[ignore = "requires a GPU"]
+    fn gpu_impostor_atlas_growth_preserves_pictures_and_separates_pages() {
+        let _gpu = crate::test_gpu::lock();
+        let instance = wgpu::Instance::default();
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).expect("GPU adapter");
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())).expect("GPU device");
+        let before = Impostors::make_atlas(&device, 1);
+        let after = Impostors::make_atlas(&device, 2);
+        let extent = wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+        };
+        let pixel = [0u8, 60, 0, 56, 0, 52, 0, 60];
+        queue.write_texture(before.as_image_copy(), &pixel, wgpu::TexelCopyBufferLayout::default(), extent);
+        let mut encoder = device.create_command_encoder(&Default::default());
+        encoder.copy_texture_to_texture(before.as_image_copy(), after.as_image_copy(), before.size());
+        let readback = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("impostor atlas test"),
+            size: 512,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        for page in 0..2 {
+            encoder.copy_texture_to_buffer(
+                wgpu::TexelCopyTextureInfo {
+                    origin: wgpu::Origin3d { x: 0, y: 0, z: page },
+                    ..after.as_image_copy()
+                },
+                wgpu::TexelCopyBufferInfo {
+                    buffer: &readback,
+                    layout: wgpu::TexelCopyBufferLayout {
+                        offset: page as u64 * 256,
+                        bytes_per_row: Some(256),
+                        rows_per_image: None,
+                    },
+                },
+                extent,
+            );
+        }
+        queue.submit([encoder.finish()]);
+        readback.map_async(wgpu::MapMode::Read, .., |_| {});
+        device.poll(wgpu::PollType::wait_indefinitely()).expect("GPU readback");
+        let data = readback.get_mapped_range(..).expect("mapped");
+        assert_eq!(&data[..8], &pixel, "the existing picture survives atlas growth");
+        assert_eq!(&data[256..264], &[0; 8], "a new page cannot alias the old one");
+    }
 
     #[test]
     fn specular_aa_follows_the_setting_unless_forced_and_alternates_each_second() {

@@ -609,6 +609,10 @@ pub struct DrawLists {
 pub const IMPOSTOR_TILE: u32 = 256;
 pub const IMPOSTOR_TILES_PER_ROW: u32 = 8;
 pub const IMPOSTOR_TILES: u32 = IMPOSTOR_TILES_PER_ROW * IMPOSTOR_TILES_PER_ROW;
+/// At most four 32 MiB atlas pages; offscreen pictures are reclaimed first.
+pub const IMPOSTOR_MAX_TILES: u32 = IMPOSTOR_TILES * 4;
+/// A visible avatar waiting for a picture uses a cheap silhouette card.
+pub const IMPOSTOR_PENDING: u32 = 1 << 30;
 /// Impostor pictures taken per frame.
 pub const IMPOSTOR_CAPTURES: usize = 2;
 
@@ -1072,6 +1076,8 @@ pub struct SkyParams {
     /// Bindless slots (0 = none) of the rainbow and halo textures.
     pub rainbow_texture: u32,
     pub halo_texture: u32,
+    /// Night sky: which stars and how they are turned (stars.rs).
+    pub stars: crate::stars::StarFrame,
 }
 
 impl Default for SkyParams {
@@ -1118,6 +1124,7 @@ impl Default for SkyParams {
             ice_level: 0.0,
             rainbow_texture: 0,
             halo_texture: 0,
+            stars: crate::stars::StarFrame::default(),
         }
     }
 }
@@ -1200,6 +1207,11 @@ pub struct FrameParams {
     /// and their casters are fitted to the whole photo, so that every tile
     /// reads the shadow maps of one pass.
     pub photo_tile: Mat4,
+    /// How many times taller, in pixels, the image is than the viewfinder's
+    /// view of the same field: 1 in the window, the photo's height over
+    /// the viewfinder's in a photo. The screen-space effects measured in
+    /// pixels (the contact shadows) keep their size in the image with it.
+    pub photo_scale: f32,
     pub camera_pos: Vec3,
     pub near: f32,
     pub far: f32,
@@ -1415,6 +1427,10 @@ pub struct RenderStats {
     /// Presentation mode the swapchain is configured with (present.rs);
     /// None until the backend has answered a frame.
     pub present_mode: Option<wgpu::PresentMode>,
+    /// The settings the frame was drawn with: the MSAA samples and SSR of
+    /// the previous ones while the pipelines for new ones compile (#1746).
+    /// None until the backend has answered a frame.
+    pub settings: Option<RenderSettings>,
     pub draws: u32,
     pub shadow_draws: u32,
     pub shadow: ShadowStats,
@@ -1471,6 +1487,11 @@ pub struct RenderStats {
     /// GPU time of the bloom levels alone (ms), part of
     /// [`GpuElement::Post`] (0 while off).
     pub gpu_bloom: Option<f32>,
+    /// GPU time of the rest of [`GpuElement::Effects`] (ms): the planar
+    /// reflections (with the refracted water light), the reflection probe,
+    /// the scene copy (with the cut-out pass and the submerged water
+    /// particles), the SSR.
+    pub gpu_effects: Option<[f32; 4]>,
     /// CPU time of each step of the renderer's frame (ms), in
     /// [`RENDER_PHASES`] order; "acquire" is the wait for the swapchain.
     /// Spent on the render thread when there is one (then they are those
@@ -1509,6 +1530,13 @@ pub struct RenderStats {
     pub thread_ms: f32,
     /// Render thread: time it waited for the main thread's packet (ms).
     pub thread_idle_ms: f32,
+    /// From the moment the frame began reading its input to its
+    /// presentation (ms; None when it was not presented). What the GPU
+    /// still has to draw after `present` is not in it.
+    pub input_ms: Option<f32>,
+    /// Main thread: the sleep the frame pacing asks before the next frame
+    /// reads its input (pacing.rs, ms).
+    pub pace_ms: f32,
     /// Bytes of the frame's write journal (writes.rs).
     pub journal_bytes: u64,
 }
