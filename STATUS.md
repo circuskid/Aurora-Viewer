@@ -134,6 +134,17 @@ resource monitor and per-thread CPU empty on Linux (`sys_probe.rs`,
 closes; Wayland never flashes the taskbar; fonts ignore `XDG_DATA_HOME`.
 Upstream #1659 (`check.ps1` false green) was fixed by #1675.
 
+**#1760 hand-over (2026-10-31).** `ci.yml` job `clippy (Linux)`: `cargo test
+--profile ci --workspace --locked` on PRs and the queue, `--no-run` cache build
+on main pushes, `shared-key: linux-tests` (macos.yml's pattern). Passed locally
+headless (`env -i PATH HOME`, 6549 tests); check.ps1 All green; Fable and codex
+reviews clean after fixing the PR body's list of Linux-only tests (only
+`url_scheme.rs` `xdg_tests` and `slurl_handoff.rs`). If the maintainer finds
+the PR wall time (~11–14 min, estimated) too long: one-line change to
+`github.event_name == 'merge_group'`, already offered in the body. A first-run
+failure on a missing library goes in the `System libraries` step. Merged →
+drop worktree `aurora-viewer-contributing-91cc75` and the branch.
+
 ## Finished — read on demand
 
 - **Research for DLSS / FSR (2026-10-28), in case FSR work starts:**
