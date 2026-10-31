@@ -17,11 +17,11 @@ re-register links from the packaged build (gotcha below). **Open upstream
 `main` merged in, `check.ps1` All green, 6500 tests), #1703 GTAO Hilbert index
 on NVIDIA/Linux, #1704 egui discarded-pass click, #1705 per-effect profile
 timers. All four grid-validated by G.W. 2026-10-30 (except #1705, profiling
-only). Upstream #1659 (our `check.ps1` false-green report) is **fixed** by
-#1675. **#1748** (2026-10-31, script editor temp export 0700/0600) closes
-fork local issue #3 once synced. **#1752** (menu search keys, demo-OK) is
-worktree `new-viewer-update-d7fc5f`. Earlier PRs all merged. `circuskid` = `upstream/main` 55b3c4e9 (10 past
-`v0.8.4-beta.20261030.2`) plus `.claude/CLAUDE.md` and this file.
+only). **#1748** (script editor export 0700/0600) closes fork issue #3 once
+synced. **#1752** (menu search keys) is worktree `new-viewer-update-d7fc5f`.
+**#1753** (leftover `cef\cef_cache` removed) and **#1757** (NVIDIA Linux
+driver minimums): worktree `login-profile-pic-pixelated-960617`. `circuskid` =
+`upstream/main` 55b3c4e9 plus `.claude/CLAUDE.md` and this file.
 
 Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only;
 workspace tests not run), installed here as
@@ -41,9 +41,9 @@ workspace tests not run), installed here as
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702–#1705, #1748 and #1752.** `gh pr view <n> --repo
+3. **PRs #1702–#1705, #1748, #1752, #1753, #1757.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (#1702, #1748, #1752 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
+   (#1702, #1748, #1752, #1753 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
    in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
    All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
@@ -123,6 +123,16 @@ reviewed + `notify-send`, 2 lookup failed); state in `~/.local/state/` same name
   measured with `dbus-monitor`).
 
 ---
+
+### Linux review leftovers (2026-10-31, not queued)
+
+From the Linux review that produced #1753 and #1757: Linux-only unit tests
+absent from upstream's CI (`ci.yml` runs clippy plus two crates); keyboard
+layout detection is a no-op on Linux (AZERTY gets WASD, #1741-adjacent);
+resource monitor and per-thread CPU empty on Linux (`sys_probe.rs`,
+`thread_cpu.rs`); `xdg-open` children never reaped; GPU-stall box never
+closes; Wayland never flashes the taskbar; fonts ignore `XDG_DATA_HOME`.
+Upstream #1659 (`check.ps1` false green) was fixed by #1675.
 
 ## Finished — read on demand
 
