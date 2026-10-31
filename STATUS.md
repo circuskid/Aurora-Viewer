@@ -19,7 +19,8 @@ on NVIDIA/Linux, #1704 egui discarded-pass click, #1705 per-effect profile
 timers. All four grid-validated by G.W. 2026-10-30 (except #1705, profiling
 only). Upstream #1659 (our `check.ps1` false-green report) is **fixed** by
 #1675. **#1748** (2026-10-31, script editor temp export 0700/0600) closes
-fork local issue #3 once synced. Earlier PRs all merged. `circuskid` = `upstream/main` 55b3c4e9 (10 past
+fork local issue #3 once synced. **#1752** (menu search keys, demo-OK) is
+worktree `new-viewer-update-d7fc5f`. Earlier PRs all merged. `circuskid` = `upstream/main` 55b3c4e9 (10 past
 `v0.8.4-beta.20261030.2`) plus `.claude/CLAUDE.md` and this file.
 
 Latest package: tag `v0.8.4.1793391648` (2026-10-30, `check()` only;
@@ -40,9 +41,9 @@ workspace tests not run), installed here as
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702–#1705 and #1748.** `gh pr view <n> --repo
+3. **PRs #1702–#1705, #1748 and #1752.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (#1702, #1748 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
+   (#1702, #1748, #1752 have Auto-fix on; #1748's worktree: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
    in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
    All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
@@ -85,8 +86,7 @@ switch back and delete the branch.
 - **Each push re-runs first-contributor CI**, which waits for the
   maintainer to approve it, so batch the fixes for one review into one push.
 - **The maintainer merges, not us**; the next sync brings merged PRs in.
-  Then remove its worktree and branch. Probably done, check first:
-  `aurora-linux-improvements-5a6f8e`, `new-viewer-update-d7fc5f`.
+  Then remove its worktree and branch (check `aurora-linux-improvements-5a6f8e`).
 - **The fork cannot label PRs or publish captures upstream** (`push: false`;
   `pr-captures.ps1` pushes upstream's `captures` branch). The title's type
   carries the label; for screenshots, push them to the fork's own `captures`
