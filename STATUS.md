@@ -2,7 +2,7 @@
 
 Our fork of Aurora-Viewer/Aurora-Viewer. Rules: [.claude/CLAUDE.md](.claude/CLAUDE.md).
 
-## ▶ RESUME HERE — 2026-10-30
+## ▶ RESUME HERE — 2026-10-31
 
 Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid`
 (this file). `pkgbuilds/aurora-viewer` builds tags on `circuskid`.
@@ -96,13 +96,19 @@ switch back and delete the branch.
   green." (it works on Linux since #1675/#1681, on a branch cut after them),
   no ticked box for a check that didn't run, the human test stated.
 
+### WATCHING — the third-party AUR package `aurora-viewer-git`
+
+Uploaded 2026-10-30 by `jesusokay` (no project tie; their `lostorm-git` is
+ban-evasion HWID spoofing on `git.allthefallen.moe`). First PKGBUILD clean.
+G.W., 2026-10-31: watch only; any upstream post is drafted for G.W. first.
+Scheduled task `aur-aurora-viewer-watch` (Mon ~09:40, while the app is open)
+runs `~/.local/share/aur-aurora-viewer-watch/check.sh` (0 no change, 1 diff →
+reviewed + `notify-send`, 2 lookup failed); state in `~/.local/state/` same name.
+
 ### DECIDED — do not reopen
 
-- **DLSS: no.** Ruled 2026-10-28 by the user, matching upstream
-  Aurora-Viewer/Aurora-Viewer#209 (merged 2026-10-13, plan switched to FSR).
-  NVIDIA's RTX SDK licence (§4(e), §2(c), logo/notice terms) is
-  incompatible with GPLv3. **Frame generation: dropped too** (no Vulkan/Linux
-  path from NVIDIA or AMD). The FSR research is under Finished, below.
+- **DLSS: no** (user, 2026-10-28; upstream #209 chose FSR): the RTX SDK licence
+  is GPLv3-incompatible. **Frame generation: dropped** (no Vulkan/Linux path).
 
 ### NOT QUEUED
 
@@ -112,14 +118,9 @@ switch back and delete the branch.
   only if AMD reports continue once #1592 ships.
 - **Linux notification click-to-raise: the maintainer answered 2026-10-29**
   on Aurora-Viewer/Aurora-Viewer#1397 (merged): keep the ⬜ "later" line, and
-  make it a separate PR once it can be tested on a server that sends
-  `ActivationToken`. A click opens the
-  right conversation but cannot bring the window forward: winit 0.30.13's
-  Wayland `focus_window` is an empty function, and raising needs the
-  xdg-activation token a server may send with the click (`ActivationToken`).
-  Measured with `dbus-monitor` on a `notify-send` probe: quickshell 0.3.2 sends
-  only `ActionInvoked` then `NotificationClosed`, so on this desktop even our
-  own activation code would not raise it. Blocked on such a server.
+  a separate PR once testable on a server sending `ActivationToken` (winit
+  0.30.13's Wayland `focus_window` is empty; quickshell 0.3.2 sends no token,
+  measured with `dbus-monitor`).
 
 ---
 
