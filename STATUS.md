@@ -11,13 +11,14 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid` (this 
 035776f5 (no new tag; package not rebuilt), bringing in our merged #1753, #1757,
 #1762, #1765 and #1766 on top of #1625, #1630, #1703–#1705, #1748, #1752. Drop
 worktrees once they hold nothing else: `slurl-combined` (re-register links first,
-gotcha below), #1748's, #1752's, `login-profile-pic-pixelated-960617` (#1753/#1757),
+gotcha below), #1748's (`wgpu-performance-benefits-23c091`), #1752's, `login-profile-pic-pixelated-960617` (#1753/#1757),
 `awesome-dhawan-42ba61` (#1762), `reported-issue-review-14cf6d` (#1765/#1766).
 **Open upstream:** #1702 motion vectors for GTAO's history (worktree
 `linux-framerate-perf-2a2ce9`, head 34585fd2): the maintainer's A/B (2026-10-31) found
 a lifting-dress occlusion regression; they decide. **#1760** (Linux CI tests; changes
 requested: merge queue only): `aurora-viewer-contributing-91cc75`. **#1768** (Linux
-resource monitor; maintainer pushes the LONG_NAMES fix): `post-feedback-3b6d89`.
+resource monitor; maintainer pushes the LONG_NAMES fix): `post-feedback-3b6d89`. **#1796**
+(own-avatar steer, grid-OK 10-31): `festive-maxwell-3bee95`; overlaps #1792 in `scene/drawn.rs`.
 
 Latest package: tag `v0.8.5.1793480285` (2026-10-31, `check()` only, no workspace
 tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
@@ -36,10 +37,9 @@ tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702, #1760, #1768.** `gh pr view <n> --repo
+3. **PRs #1702, #1760, #1768, #1796.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (Auto-fix on #1702, #1768; #1760 unwatched, check by hand;
-   #1748's worktree, now merged: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
+   (Auto-fix on #1702, #1768, #1796; #1760 by hand). CI waits for the maintainer.
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
    in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
    All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
