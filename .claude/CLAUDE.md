@@ -59,8 +59,7 @@ reviews), which nothing else records.
   (#1332).
 - 🔴 **Every upstream `fix` PR has a bug issue** (G.W., 2026-11-01;
   overrides §15); features and other types don't. None found → file one
-  (draft first); link it in the body (`Closes`/`Refs #n`) and TASKS.md. After the merge, a `Refs` issue gets a drafted
-  comment on what is left; drop the PR's worktree and branch.
+  (draft first); link it in the body (`Closes`/`Refs #n`) and TASKS.md.
 - 🔴 **The maintainer removes contributors who skip the PR checks after being
   asked** (a contributor was removed on 2026-10-30, and all of their PRs
   closed). Their stated bar, every PR: `check.ps1` until "All green.", a
