@@ -14,14 +14,14 @@ once they hold nothing else: `slurl-combined` (re-register links first, gotcha b
 `awesome-dhawan-42ba61`, `reported-issue-review-14cf6d`, `aurora-viewer-contributing-91cc75`,
 `post-feedback-3b6d89`, `linux-framerate-perf-2a2ce9` (+ branches `test/motion-plus-hilbert`,
 `backup/linux-framerate-perf-pre-split`).
-**Open upstream, all changes requested 11-01, CI green.** **#1796** (`festive-maxwell-3bee95`):
+**Open upstream.** Changes requested 11-01, CI green: **#1796** (`festive-maxwell-3bee95`):
 `worn-own-mesh-drag` must steer every run (press hits a Blend mesh); ⬜ hover-cursor line.
 **#1792** (`attachment-interaction-issue-fe6583`, drop old branch of that name too): ask drawn
 faces at the 100 ms update pace (or profile numbers); Legacy name in app.rs comment. They
 conflict in `scene/drawn.rs`: second to merge uses the maintainer's
 `s.posed_by_gpu && !s.avatar && (s.own_rigged || !s.actionable)`. **#1797** (`status-check-b00dfc`,
 see *Windlight* below the rule): all four changes answered 11-01 (head `6d862b8e`, main merged,
-check + 3x39 demo reruns green); waits on the maintainer's CI approval and re-review. **#1861** (worktree `aurora-linux-crash-test-7caa4d`, branch `fix/heartbeat-off-frame-thread`, issue #1860, opened 2026-11-01): #1847 follow-up, the 15 s `login_wait::alive` write off the frame (its fsync cost 20 ms here). Grid-tested by G.W.; CI waits on the maintainer. Also promised on #1847: real-reset tests of #1809's fix once released (btrfs here; ext4 needs a USB-SSD Ubuntu setup). **#1865** (worktree `open-issues-review-bbd228`, branch `fix/remove-outfit-folder`, issues #1849 + #1417, opened 2026-11-01): inventory Remove from current outfit on any folder (dropped `require_outfit` from the take-off, like `takeOffOutfit`); new demo `AURORA_DEMO_APPEARANCE=take-off-folder`, 26 A/B runs, grid-tested by G.W.; CI waits on the maintainer. Captures on the fork's `captures` branch (`remove-outfit-folder/`).
+check + 3x39 demo reruns green); waits on the maintainer's CI approval and re-review. **#1861** (worktree `aurora-linux-crash-test-7caa4d`, branch `fix/heartbeat-off-frame-thread`, issue #1860, opened 2026-11-01): #1847 follow-up, the 15 s `login_wait::alive` write off the frame (its fsync cost 20 ms here). Grid-tested by G.W.; CI waits on the maintainer. Also promised on #1847: real-reset tests of #1809's fix once released (btrfs here; ext4 needs a USB-SSD Ubuntu setup). **#1865** (worktree `open-issues-review-bbd228`, branch `fix/remove-outfit-folder`, issues #1849 + #1417, opened 2026-11-01): inventory Remove from current outfit on any folder (dropped `require_outfit` from the take-off, like `takeOffOutfit`); new demo `AURORA_DEMO_APPEARANCE=take-off-folder`, 26 A/B runs, grid-tested by G.W.; CI waits on the maintainer. Captures on the fork's `captures` branch (`remove-outfit-folder/`). Next issue candidates: **#1815** (Movement button opens camera controls; `bars.rs` maps `"move"` right, suspect `controls_ui.show` in `app/controls.rs` with classic controls off), #1780, #1709; skip #1530. #1865's test method and a captures-branch trap: *#1865 notes* below the rule.
 
 Latest package: tag `v0.8.5.1793540223` (2026-11-01, base `v0.8.5-beta.20261101.1`,
 `check()` only), installed as `0.8.5.1793540223-1` (grid sees `0.8.5.0`). Tree clean; local `circuskid` is ahead of origin, unpushed (`00cc577a` is another session's: push only once it is theirs to ship).
@@ -122,6 +122,19 @@ reviewed + `notify-send`, 2 lookup failed); state in `~/.local/state/` same name
   measured with `dbus-monitor`).
 
 ---
+
+### #1865 notes — test method and the captures-branch trap (2026-11-01)
+
+- A/B = the branch vs. the branch with the old check put back (both carry the
+  new demo); a per-mode capture loop on workspace 4 and a pixel diff of the
+  window, with same-build runs as the noise floor. A scenario that only opens
+  a window cannot fail: drive the action at a frame. `AURORA_DEMO=1` alone has
+  no wearables (`AURORA_DEMO_APPEARANCE=<mode>` seeds them). Logs:
+  `~/.local/share/auroraviewer/logs/`.
+- Fork `captures` branch: other sessions push it, so fetch with
+  `+refs/heads/captures:refs/remotes/origin/captures` before building on it
+  (a plain fetch left it stale); in zsh write `"${c}:refs/heads/captures"`,
+  `$c:r` is a modifier.
 
 ### Windlight colors — #1797's background and leftovers (2026-11-01)
 
