@@ -63,6 +63,34 @@ Aurora team, so these are overridden:
   sun rays…) is a user option, **off by default**. A feature that costs a
   real share of the frame rate (their example: 30 fps) is refused, so measure
   before proposing one, and say the cost in the PR.
+- 🔴 **Pre-PR gate for anything touching rendering, run before the first push.**
+  `check.ps1` is the process bar; the maintainer reviews against AGENTS.md §11's
+  table, and every row we leave empty they fill themselves, then send back
+  (#1702, 2026-10-31: all five below were missed). The PR body carries each
+  result:
+  1. **Pixel A/B against `upstream/main`**, same settings, still **and**
+     moving scenes (camera orbit; avatars moving on their own,
+     `AURORA_DEMO_PHYSICS=1`), with the feature's debug view if it has one.
+     "Motion doesn't show in a still frame" is not an exemption: diff frame
+     sequences. Report what differs beyond main-vs-main noise, and look for
+     what the change could break (#1702's lifting dress dragged the ground's
+     occlusion for 15 frames, found by the maintainer).
+  2. **Cost on the Radeon 610M as well as the RTX 5090**, `AURORA_PROFILE=1`,
+     alternated runs, medians, before → after, as fps and ms. The 5090 alone
+     hides any cost.
+  3. **Cost with the feature off is measured, not argued.** A claim like
+     "off is unchanged" needs a number with it off (#1702's copies ran with
+     GTAO off).
+  4. **New visual behaviour is a setting, off by default** (rule above),
+     unless it only fixes a defect in existing output.
+  5. **Fresh overlap check** right before pushing: `git fetch --no-tags
+     upstream` and `git log upstream/main -- <files touched>`; merge main if
+     someone landed near us (#1753 duplicated #1749). Ask what the change
+     costs *them* too: CI minutes, review time (#1760 took their PR CI from
+     4 to 13-15 min).
+
+  TASKS.md and the body never say "validated" for the maintainer's own
+  validation step; we state our own test and its date only.
 - **`check.ps1` works on Linux** on a branch whose base has upstream #1675
   and #1681 (2026-10-31; our #1659 report). A step that throws now fails the
   check, the 5.1 parse runs through `pwsh` (#1655), and clippy passes
