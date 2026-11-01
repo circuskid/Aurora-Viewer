@@ -6,7 +6,11 @@
 //! (`Renderer::request_drawn`, aurora-render/src/drawn_pick.rs), and the
 //! objects the CPU cannot find where they are shown are designated from
 //! that answer: animated objects (animesh), rigged meshes worn by an
-//! avatar, and worn meshes in general.
+//! avatar, and worn meshes in general. A left click also takes a worn prim
+//! with a touch script or a click action from it: the CPU places a worn
+//! prim at the pose of the frame the answer comes in, a few frames after
+//! the click, and a small clicker on an animated avatar is off the ray by
+//! then.
 //!
 //! **Wanted difference from Firestorm.** There, a rigged mesh is only
 //! reached when `pick_rigged` is set: the right click
@@ -288,8 +292,8 @@ mod tests {
         for gesture in [Gesture::Touch, Gesture::Menu, Gesture::Build] {
             assert!(!reaches(gesture, prim, false), "{gesture:?}");
         }
-        // a worn prim and an avatar: only the menu takes them from what is
-        // drawn (the attachment in front of its wearer)
+        // a worn prim without an action and an avatar: only the menu takes
+        // them from what is drawn (the attachment in front of its wearer)
         let worn_prim = Status {
             worn: true,
             ..Status::default()

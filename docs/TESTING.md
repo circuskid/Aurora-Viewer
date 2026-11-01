@@ -1437,8 +1437,9 @@ and moves its wearer 8 cm a frame from 701 to 705, while the GPU answer of
 the press is on its way, as an animated avatar does: the press must still
 touch it (`demo touch_start: prim=975`). Add `-rub` to a `worn-*` mode to
 hold the press and slide the cursor over the attachment from 710 to 760,
-released at 761 (capture at 840): each `demo touch / grab update` line must
-give a new `st`, which a rubbing script reads. `photo-touch[-ctrl]` and `photo-hud[-ctrl]` open the photo viewfinder:
+released at 761 (capture at 840): every `demo touch / grab update` line must
+give a new `st` (none repeats the `touch_start` one), which a rubbing script
+reads. `photo-touch[-ctrl]` and `photo-hud[-ctrl]` open the photo viewfinder:
 Ctrl + left click touches the scripted cube or the HUD without moving the AF
 point, then releases the touch even if Ctrl is released before the GPU pick
 returns. The plain cube click moves the AF point instead; a visible HUD also

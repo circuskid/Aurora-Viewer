@@ -4244,7 +4244,8 @@ impl App {
             self.scene
                 .action_point(&self.world, ray, depth, self.build.open, self.settings.draw_distance)
         };
-        // a rigged mesh or a worn mesh shown there: the GPU alone poses it
+        // a rigged mesh, a worn mesh or a worn prim with an action shown
+        // there: what the GPU drew at the click (scene/drawn.rs)
         let shown = (!alt)
             .then(|| self.designate(crate::scene::drawn::Gesture::Touch, &picked, hit))
             .flatten();
@@ -4300,10 +4301,11 @@ impl App {
                     .map(|o| (o.key.local_id, o.click_action))
             );
         }
-        // the click acts on the rigged mesh it lands on, as on any object:
-        // also one we wear, like the scripted attachments Firestorm lets
-        // us touch (its rigged ones are out of the left click's reach);
-        // one without an action is not designated, the click went on behind
+        // the click acts on the rigged mesh or worn object it lands on, as on
+        // any object: also one we wear, like the scripted attachments
+        // Firestorm lets us touch (its rigged ones are out of the left
+        // click's reach); one without an action is not designated, the
+        // click went on behind
         if !alt
             && !self.ctrl
             && !self.shift
