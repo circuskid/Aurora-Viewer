@@ -20,7 +20,7 @@ requested: merge queue only): `aurora-viewer-contributing-91cc75`. **#1768** (Li
 resource monitor; maintainer pushes the LONG_NAMES fix): `post-feedback-3b6d89`. **#1796**
 (own-avatar steer, grid-OK 10-31): `festive-maxwell-3bee95`; overlaps #1792 in `scene/drawn.rs`.
 **#1792** (worn-attachment touch, grid-OK 10-31): worktree `attachment-interaction-issue-fe6583`;
-drop its old branch `claude/attachment-interaction-issue-fe6583` with it. **#1797** (colored sky ambient, grid-OK 10-31): `status-check-b00dfc`.
+drop its old branch `claude/attachment-interaction-issue-fe6583` with it. **#1797** (colored sky ambient, grid-OK 10-31): `status-check-b00dfc`; see *Windlight* below the rule.
 
 Latest package: tag `v0.8.5.1793480285` (2026-10-31, `check()` only, no workspace
 tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
@@ -123,6 +123,26 @@ reviewed + `notify-send`, 2 lookup failed); state in `~/.local/state/` same name
   measured with `dbus-monitor`).
 
 ---
+
+### Windlight colors — #1797's background and leftovers (2026-11-01)
+
+- **Why:** friends found Aurora's skies grey next to Alchemy 7.1.9. Aurora matches
+  Firestorm (checked on the grid); 7.1.9 runs LL's pre-nerf renderer: sky ambient
+  `srgb_to_linear(tmpAmbient * 0.7)`, colored, where FS/LL soften it (pow 0.9, x0.57)
+  and keep only its luminance on linear/HDR skies. #1797 restores that as an
+  experimental option, off. Probe blend is the same in both (not the cause).
+- **Decided, do not add:** a `RenderSkyAutoAdjustLegacy` switch (a contributor,
+  Darl, named it on Discord): on, it HDR-converts old skies, the opposite look;
+  Aurora already keeps them classic like FS (setting off).
+- **Pending:** G.W.'s Discord question to the maintainers (was the grey look a
+  choice?) — #1797 lets them decide. The PR's cost runs ran at 1226x2055 (workspace
+  4 tiles the window; `AURORA_WINDOW_SIZE` loses), stated in the body.
+- **Leftovers, remove on G.W.'s say:** Alchemy 7.1.9 at `~/.local/opt/alchemy-7.1.9`
+  (wine; launcher was a scratchpad script); a friend's Alchemy `settings.xml` in
+  `~/Downloads` (personal data: never copy). Branch
+  `claude/aurora-windlight-colors-cf28bd` (local, unpushed) holds the shelved
+  "Fuller probe colors" prototype (linear probe-ambiance blend; barely visible on
+  real skies) plus pre-PR copies of #1797's commits.
 
 ### Linux review leftovers (2026-10-31, not queued)
 
