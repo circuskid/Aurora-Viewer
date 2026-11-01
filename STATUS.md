@@ -74,7 +74,7 @@ Fetch the upstream tag with `--no-tags`, or the stamp tags follow it in.
 `circuskid` in the worktree, edit and commit there, then
 `git -C ~/Projects/aurora-viewer merge --ff-only <branch>`, push `circuskid`,
 switch back and delete the branch. **`.claude/CLAUDE.md` is capped at ~8,925 chars**
-(the worktree rules hook truncates past it; 8,861 on 2026-11-01): trim before adding. Check:
+(the worktree rules hook truncates past it; 8,811 on 2026-11-01): trim before adding. Check:
 `echo '{"cwd":"'$PWD'"}' | ~/.local/bin/claude-status-inject --rules | grep -c TRUNCATED` = 0.
 
 ### THEN — the next upstream PR

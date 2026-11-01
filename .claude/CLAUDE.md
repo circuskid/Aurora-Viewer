@@ -63,7 +63,9 @@ reviews), which nothing else records.
   closed). Their stated bar, every PR: `check.ps1` until "All green.", a
   test of your own (demo or grid) said in the PR, a `type(area): summary`
   title with the template filled in, and one PR per change with fixes pushed
-  to that same PR.
+  to that same PR. **Every test we skip, they run instead** (maintainer on
+  Discord, 2026-11-01: short of time, fixed parts of ours): before each push,
+  re-run every demo scenario touched, repeated runs, plus the neighbours.
 - 🔴 **A visual or rendering PR shows it regresses nothing and costs little**
   (the maintainer to contributors, aimed mostly at us, 2026-10-31). Every PR
   touching 3D or rendering carries A/B evidence: demo captures before/after at
@@ -100,14 +102,12 @@ reviews), which nothing else records.
   TASKS.md and the body never say "validated" for the maintainer's own
   validation step; we state our own test and its date only.
 - **`check.ps1` runs on Linux**: `pwsh -NoProfile -File scripts/check.ps1` in
-  the PR's worktree (its "All green." verified real on #1702). Sum the tests
-  over every `test result:` line (28) for the PR body.
+  the PR's worktree. Sum every `test result:` line (28) for the PR body.
 - 🔴 **Never tick a Tests box for a check that didn't run as written.** Tick
   the `check.ps1` box only when it printed "All green." on the head as
   pushed; list each step with its real result, and name the date of the
   human's grid test.
-  #1630 ticked "check.ps1 green" over filtered tests and had to be corrected
-  (2026-10-30).
+  (#1630, 2026-10-30.)
 - **What the maintainer's review checked on #1397** (2026-10-29; their review
   is a §11-shaped PR comment). Get these right in the first draft:
   - **The title's type must match the label they will set** (§9): we cannot
@@ -121,10 +121,8 @@ reviews), which nothing else records.
   - **Read every `cfg(windows)` arm you touch**: Linux clippy cannot see
     them, and Windows CI fails on what it would flag (an unreachable match
     arm failed #1397).
-- **Our PRs that touch the same area answer each other's nits.** When a
-  review nit is fixed by another of our open PRs (the `.desktop` `Icon=` line,
-  fixed by the desktop-identity PR), leave it out of this one and point to
-  the other instead of making the two PRs conflict.
+- **Our PRs answer each other's nits**: a nit another of our open PRs fixes is
+  left out of this one and pointed to, so the two PRs don't conflict.
 - Their reference sources: `../phoenix-firestorm` = `~/Projects/phoenix-firestorm`,
   a `--depth 1` clone, read-only, not one of our projects. Refresh it with
   `git -C ~/Projects/phoenix-firestorm pull --depth 1`.
