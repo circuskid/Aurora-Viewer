@@ -66,6 +66,7 @@ reviews), which nothing else records.
   to that same PR. **Every test we skip, they run instead** (maintainer on
   Discord, 2026-11-01: short of time, fixed parts of ours): before each push,
   re-run every demo scenario touched, repeated runs, plus the neighbours.
+  New PRs are welcome only "clean and tested, thoroughly" (same day).
 - 🔴 **A visual or rendering PR shows it regresses nothing and costs little**
   (the maintainer to contributors, aimed mostly at us, 2026-10-31). Every PR
   touching 3D or rendering carries A/B evidence: demo captures before/after at
