@@ -7,8 +7,8 @@ Our fork of Aurora-Viewer/Aurora-Viewer. Rules: [.claude/CLAUDE.md](.claude/CLAU
 Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid` (this file);
 `pkgbuilds/aurora-viewer` builds its tags; `~/Projects/phoenix-firestorm`: reference clone.
 
-**circuskid carries no patch of its own.** Synced 2026-11-01 to `upstream/main` 48ff165e
-(packaged, see below), bringing in our merged #1702, #1760, #1768. Drop worktrees
+**circuskid carries no patch of its own.** Synced 2026-11-01 to `upstream/main` 6ee98032
+(not packaged yet: the package below is 48ff165e), bringing in our merged #1702, #1760, #1768, #1796, #1797. Drop worktrees
 once they hold nothing else: `slurl-combined` (re-register links first, gotcha below),
 `wgpu-performance-benefits-23c091`, #1752's, `login-profile-pic-pixelated-960617`,
 `awesome-dhawan-42ba61`, `reported-issue-review-14cf6d`, `aurora-viewer-contributing-91cc75`,
