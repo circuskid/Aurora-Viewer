@@ -24,7 +24,7 @@ see *Windlight* below the rule): all four changes answered 11-01 (head `6d862b8e
 check + 3x39 demo reruns green); waits on the maintainer's CI approval and re-review. **#1861** (worktree `aurora-linux-crash-test-7caa4d`, branch `fix/heartbeat-off-frame-thread`, issue #1860, opened 2026-11-01): #1847 follow-up, the 15 s `login_wait::alive` write off the frame (its fsync cost 20 ms here). Grid-tested by G.W.; CI waits on the maintainer. Also promised on #1847: real-reset tests of #1809's fix once released (btrfs here; ext4 needs a USB-SSD Ubuntu setup).
 
 Latest package: tag `v0.8.5.1793540223` (2026-11-01, base `v0.8.5-beta.20261101.1`,
-`check()` only), installed as `0.8.5.1793540223-1` (grid sees `0.8.5.0`). Tree clean.
+`check()` only), installed as `0.8.5.1793540223-1` (grid sees `0.8.5.0`). Tree clean; local `circuskid` is 2 commits ahead of origin (`00cc577a` is another session's: push only once it is theirs to ship).
 
 ### FIRST — the two-minute check
 
@@ -40,7 +40,7 @@ Latest package: tag `v0.8.5.1793540223` (2026-11-01, base `v0.8.5-beta.20261101.
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1792, #1796, #1797.** `gh pr view <n> --repo
+3. **PRs #1792, #1796, #1797, #1861.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
    (Auto-fix on all three). CI waits for the maintainer. Answer reviews per
    THEN. #1702 merged 2026-11-01; next in that line: TAA motion vectors.
