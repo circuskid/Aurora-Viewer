@@ -14,8 +14,8 @@ worktrees once they hold nothing else: `slurl-combined` (re-register links first
 gotcha below), #1748's (`wgpu-performance-benefits-23c091`), #1752's, `login-profile-pic-pixelated-960617` (#1753/#1757),
 `awesome-dhawan-42ba61` (#1762), `reported-issue-review-14cf6d` (#1765/#1766).
 **Open upstream:** #1702 motion vectors for GTAO's history (worktree
-`linux-framerate-perf-2a2ce9`, head 34585fd2): the maintainer's A/B (2026-10-31) found
-a lifting-dress occlusion regression; they decide. **#1760** (Linux CI tests; changes
+`linux-framerate-perf-2a2ce9`, head ca501990: hem fix + upstream 035776f5 merged, All green
+11-01; reply posted, they decide). G.W.: leave as is; a further push needs the rendering gate. **#1760** (Linux CI tests; changes
 requested: merge queue only): `aurora-viewer-contributing-91cc75`. **#1768** (Linux
 resource monitor; maintainer pushes the LONG_NAMES fix): `post-feedback-3b6d89`. **#1796**
 (own-avatar steer, grid-OK 10-31): `festive-maxwell-3bee95`; overlaps #1792 in `scene/drawn.rs`.
