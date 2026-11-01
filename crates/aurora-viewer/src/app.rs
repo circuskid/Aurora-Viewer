@@ -3268,6 +3268,13 @@ impl App {
                         crate::settings::account_dir(&l.agent_id).join(crate::world::hover_height::FILE),
                     )
                 };
+                self.world.rlva.last_points = if self.demo {
+                    Default::default()
+                } else {
+                    crate::world::rlva::last_points::LastPoints::load(
+                        crate::settings::account_dir(&l.agent_id).join(crate::world::rlva::last_points::FILE),
+                    )
+                };
                 self.world.favorites = if self.demo {
                     Default::default()
                 } else {
@@ -9988,6 +9995,7 @@ impl App {
         // capture is waited for, its pixels are read in the tail below.
         let lists = if self.in_world() { &self.scene.lists } else { &self.empty_lists };
         let stats = gfx.renderer.render(fp, lists, Some(egui_frame));
+        self.photo_gpu_time(&stats);
         self.photo_drawn(&mut gfx.renderer);
         self.last_render = stats;
         if stats.presented && !gfx.shown {
@@ -12007,6 +12015,31 @@ impl App {
                 self.teleport_history(dest);
             }
             BarAction::TeleportTo(text) => self.teleport_to_text(&text),
+            // the location field's suggestions (LLNavigationBar::onLocationSelection):
+            // a landmark as the favourites go to one, a place of the history
+            // by its position, the history left where it is
+            BarAction::TeleportLandmark(asset) => {
+                self.request_user_teleport(
+                    NetCommand::TeleportLandmark(asset),
+                    aurora_i18n::tr!("common-landmark").into(),
+                    false,
+                );
+            }
+            BarAction::TeleportPlace { region, handle, position } => {
+                self.world.system_notice(
+                    aurora_i18n::tr!("app-teleporting-to-2", value0 = region.clone()),
+                    crate::world::notice_topics::Topic::Teleport,
+                );
+                self.request_user_teleport(
+                    NetCommand::TeleportTo {
+                        handle,
+                        position,
+                        look_at: Vec3::X,
+                    },
+                    region,
+                    Some(handle) != self.world.main_region,
+                );
+            }
             BarAction::SetStatus(m) => {
                 self.world.set_away(m.away);
                 self.auto_away = false;
@@ -13511,6 +13544,7 @@ impl App {
                 let favorites_shown = ui::bars::favorites::take_shown(&ctx);
                 let here = parcel_landmark.as_ref().is_some_and(|lm| lm.favorite);
                 let favorites = self.favorites_view(favorites_shown, here);
+                let location_landmarks = self.world.landmarks.named(&self.world.inventory);
                 let (classic_bars, islands) = self.bars_look();
                 self.poser_consent_ui(&ctx, &p);
                 let own_name = self.world.own_name();
@@ -13593,6 +13627,7 @@ impl App {
                     tp_back: self.world.tp_history.previous().map(|e| e.region.clone()),
                     tp_forward: self.world.tp_history.next().map(|e| e.region.clone()),
                     tp_session: self.world.tp_history.session(),
+                    landmarks: location_landmarks,
                     status: self.world.status.modes(),
                     local_env: self.world.eep.has_local(),
                     env_keys: self.env_keys(),

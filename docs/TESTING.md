@@ -1223,14 +1223,15 @@ when unfocused") is ignored during a screenshot.
   with the Legacy aim (the hover and free-look timeouts of the attention
   table, as in the Legacy Viewer).
 - **`AURORA_DEMO_KEYBOARD=system|wasd|zqsd|qwertz|fallback`**: fresh default
-  values of the movement keys and of the letter shortcuts with the Windows
-  layout, a simulated US QWERTY / French AZERTY / German QWERTZ, or a failed
-  detection (US QWERTY places); combine with `AURORA_DEMO_OPTIONS=8` to
-  examine the shortcuts. With `zqsd`, Mouselook shows M, World map Ctrl+M
-  and Snapshot to disk Ctrl+Ù (the AZERTY keys they are bound to); with
-  `qwertz`, Snapshot to disk shows Ctrl+Ö. Saved bindings keep their keys,
-  except the one-time move of the former US QWERTY defaults (settings
-  version 12).
+  values of the movement keys and of the letter shortcuts with the system's
+  layout (Windows, or the XKB keymap of the Wayland compositor or the X
+  server on Linux), a simulated US QWERTY / French AZERTY / German QWERTZ,
+  or a failed detection (US QWERTY places); combine with
+  `AURORA_DEMO_OPTIONS=8` to examine the shortcuts. With `zqsd`, Mouselook
+  shows M, World map Ctrl+M and Snapshot to disk Ctrl+Ù (the AZERTY keys
+  they are bound to); with `qwertz`, Snapshot to disk shows Ctrl+Ö. Saved
+  bindings keep their keys, except the one-time move of the former US QWERTY
+  defaults (settings version 12).
 - **`AURORA_DEMO_CHATCMD="calc 2+2;rolld 2 20"`**: lines typed in the chat
   bar at frame 240, separated by `;` (chat bar commands: `calc`, `rolld`,
   `gtp`…).
@@ -4380,7 +4381,7 @@ before (`amis`, `groupes`, `repere`, `historique`…) are still accepted.
 | `AURORA_CRASH_CAPTURE=<file.png>` | Screenshot of the recovery window in demo |
 | `AURORA_CRASH_CAPTURE_EXIT=1` | Closes the window after its screenshot in demo |
 | `AURORA_DEMO_UPDATE=<mode>` | Interactive update mock-up on the login screen |
-| `AURORA_DEMO_GPU_DRIVER=old\|aged` | Out of date graphics driver warning on the login screen |
+| `AURORA_DEMO_GPU_DRIVER=old\|old-linux\|aged` | Out of date graphics driver warning on the login screen |
 | `AURORA_DEMO_GPU_STALL=<frame>[:<seconds>]` | The render thread holds a frame as a graphics card that stopped answering would |
 | `AURORA_DEMO_GPU_LOST=<frame>` | The GPU device is taken as lost at that frame, as after a driver reset |
 | `AURORA_DEMO_OVERLAY_HOOK=<file>` | An overlay hook DLL counts as loaded in the viewer (Discord, Steam…) |
@@ -6188,15 +6189,17 @@ Human grid validation: remember MFA for account A and B, restart the viewer, the
   In a small window, the button stays reachable at the top right.
   `AURORA_DEMO_UPDATE_MAINTENANCE=cache|settings|both` shows the forced effects;
   when absent, the dialog announces the usual preservation and migrations.
-- **`AURORA_DEMO_GPU_DRIVER=old|aged`**, with `AURORA_DEMO=1`: the driver check
-  (`gpu_driver.rs`) reads a made-up card instead of the real one: `old` a
-  GeForce GTX 1060 on NVIDIA 546.33 (under the 572.16 minimum), `aged` an AMD
-  card whose driver was installed three years ago. The login screen shows the
-  caution-edged card in its top left corner (with `AURORA_DEMO_LOGIN=cards` or
-  `empty`); "Get the … driver" opens the vendor's page, "Ignore for this
-  driver" hides it and saves `gpu_driver_dismissed` in the demo profile
-  (clear it there to see the card again). Without the variable the real
-  driver is checked: the log line `graphics driver:` says the verdict.
+- **`AURORA_DEMO_GPU_DRIVER=old|old-linux|aged`**, with `AURORA_DEMO=1`: the
+  driver check (`gpu_driver.rs`) reads a made-up card instead of the real one:
+  `old` a GeForce GTX 1060 on NVIDIA 546.33 (under the 572.16 minimum),
+  `old-linux` the same card on the Linux driver 565.57.01 (under the Linux
+  minimum, 570.86), `aged` an AMD card whose driver was installed three years
+  ago. The login screen shows the caution-edged card in its top left corner
+  (with `AURORA_DEMO_LOGIN=cards` or `empty`); "Get the … driver" opens the
+  vendor's page, "Ignore for this driver" hides it and saves
+  `gpu_driver_dismissed` in the demo profile (clear it there to see the card
+  again). Without the variable the real driver is checked: the log line
+  `graphics driver:` says the verdict.
 - **`AURORA_DEMO_GPU_STALL=<frame>[:<seconds>]`**, with `AURORA_DEMO=1`: the
   render thread holds that frame (30 s by default) as a graphics card that
   stopped answering would. After 2 s the log says frames wait; the window
@@ -6742,7 +6745,13 @@ Human grid validation: remember MFA for account A and B, restart the viewer, the
   300), `tplist` (four earlier places put in the session's history before
   the arrival, the back arrow's list of them open at frame 300: the
   newest at the top with its arrival time, the place we are in lit; with
-  `legacy`, under the full-width bar's arrow), `netgraph` (Firestorm's traffic indicator shown before the audio
+  `legacy`, under the full-width bar's arrow), `locations` (the place
+  menu opened at frame 300, "Aur" typed in its destination field at frame
+  320: the landmarks whose name holds it, whatever the case, and the
+  history's places whose title holds it as typed, in dictionary order, the
+  first one lit for Enter; with `legacy`, typed in the location field, the
+  list under it; `tplist,locations`, in that order, for history places to
+  match), `netgraph` (Firestorm's traffic indicator shown before the audio
   controls), `sysperf` / `sysnet` (Performance opened from the island at
   frame 300, by its frame rate / its network: the full view 8 px under the
   island, its left and right edges on the island's, down to the work
@@ -8510,7 +8519,7 @@ What the inventory must show with these scenarios:
 | `AURORA_TEXTURE_BC7=0` | Textures never compressed to BC7 |
 | `AURORA_TEXTURE_BC7_CACHE=0` | BC7 without its disk cache |
 | `AURORA_RENDER_THREAD=0` | Frames drawn on the main thread |
-| `AURORA_FRAME_PACING=0` | No frame pacing: the input waits in the frame queue when the GPU sets the pace, as before |
+| `AURORA_FRAME_PACING=0\|always` | No frame pacing (the input waits in the frame queue when the GPU sets the pace), or the wait on every frame (0.8.4) |
 | `AURORA_FRAME_PRIORITY=normal` or `alt` | The frame's threads at normal priority, or both priorities alternately |
 | `AURORA_ALLOCATOR=system` | The system's memory allocator instead of mimalloc, as before |
 | `AURORA_EYE_RELATIVE=0` | Vertices of the objects and the terrain computed in region coordinates |
@@ -9290,9 +9299,16 @@ What the inventory must show with these scenarios:
   sets the pace, the next frame reads its input while the GPU draws frame
   N, at the same frame rate. Without it, the input of a frame waits three
   or four frames for the screen (windows dragged behind the cursor, a slow
-  camera, #1484). `pace` (that wait) and `input` (input to presentation)
-  in the `perf summary` line; with `0`, `pace` stays at 0
-  (`aurora-render/src/pacing.rs`).
+  camera, #1484). The wait is on only while the GPU's time covers the
+  main and render threads' together (smoothed over about ten frames, 5 %
+  margins): with the three stages close, a busy region on a fast card or
+  two viewers on one card, waiting cost a quarter of the frame rate
+  (#1711), so the frames overlap there as without pacing. Without GPU
+  timestamps it stays off. `pace` (that wait, 0 while it is off) and
+  `input` (input to presentation) in the `perf summary` line; with `0`,
+  `pace` stays at 0 (`aurora-render/src/pacing.rs`). `always` waits on
+  every frame, whoever sets the pace, as 0.8.4 did: the "before" of a
+  comparison in a busy region.
 - **`AURORA_FRAME_PRIORITY=normal|alt`**: by default the threads a frame
   waits for (the main thread, the render thread, the pool workers that
   help the main thread in the frame's parallel loops and the texture page
