@@ -1277,6 +1277,27 @@ fn specular_aa_now(on: bool) -> bool {
     SpecularAa::from_env().applied(on, secs)
 }
 
+/// Whether the probes' irradiance is blended with the sky ambient in
+/// proportion to their ambiance (common.wgsl `probe_ambient`), the setting
+/// being `on`. AURORA_PROBE_AMBIANCE forces it for a launch: `0` the Legacy
+/// Viewer's blend, `1` the proportional one, `alt` one second each.
+fn probe_ambiance_linear_now(on: bool) -> bool {
+    static MODE: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    let mode = MODE.get_or_init(|| std::env::var("AURORA_PROBE_AMBIANCE").ok().map(|v| v.trim().to_owned()));
+    let secs = START.get_or_init(Instant::now).elapsed().as_secs();
+    probe_ambiance_linear(mode.as_deref(), on, secs)
+}
+
+fn probe_ambiance_linear(mode: Option<&str>, on: bool, secs: u64) -> bool {
+    match mode {
+        Some("0") => false,
+        Some("1") => true,
+        Some("alt") => secs.is_multiple_of(2),
+        _ => on,
+    }
+}
+
 fn pbr_occlusion_now() -> bool {
     static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
     let secs = START.get_or_init(Instant::now).elapsed().as_secs();
@@ -5535,6 +5556,10 @@ impl Backend {
         if specular_aa_now(self.settings.specular_aa) {
             main.light_sets.mode[2] |= 0x8000;
         }
+        // (common.wgsl PROBE_AMBIANCE_LINEAR)
+        if probe_ambiance_linear_now(self.settings.probe_ambiance_linear) {
+            main.light_sets.mode[2] |= 0x20000;
+        }
         self.queue.write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&main));
         // a pixel whose drawn faces are asked: the same camera, narrowed to it
         let main_vp = Mat4::from_cols_array_2d(&main.view_proj);
@@ -8178,6 +8203,16 @@ mod tests {
         let data = readback.get_mapped_range(..).expect("mapped");
         assert_eq!(&data[..8], &pixel, "the existing picture survives atlas growth");
         assert_eq!(&data[256..264], &[0; 8], "a new page cannot alias the old one");
+    }
+
+    #[test]
+    fn probe_ambiance_follows_the_setting_unless_forced_and_alternates_each_second() {
+        assert!(!probe_ambiance_linear(None, false, 0));
+        assert!(probe_ambiance_linear(None, true, 1));
+        assert!(!probe_ambiance_linear(Some("0"), true, 0));
+        assert!(probe_ambiance_linear(Some("1"), false, 1));
+        assert!(probe_ambiance_linear(Some("alt"), false, 4));
+        assert!(!probe_ambiance_linear(Some("alt"), true, 5));
     }
 
     #[test]

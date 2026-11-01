@@ -660,6 +660,11 @@ fn reflections_and_water(cx: &mut Cx) {
                 .changed()
             },
         );
+        cx.experimental().toggle(
+            tr!("ui-options-probe-ambiance-linear"),
+            tr!("ui-options-probe-ambiance-linear-help"),
+            &field!(probe_ambiance_linear),
+        );
     });
     // Aurora's own water effects, experimental and off by default
     cx.group(tr!("ui-options-aurora-water"), |cx| {

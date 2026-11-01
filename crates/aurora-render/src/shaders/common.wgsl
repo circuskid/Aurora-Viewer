@@ -537,8 +537,7 @@ fn sample_probes_ex(pos: vec3<f32>, dir: vec3<f32>, lod: f32, irradiance: bool, 
         }
         var refcol: vec3<f32>;
         if (irradiance) {
-            let irr = textureSampleLevel(probe_irr_tex, probe_sampler, v, i32(p.slot.x), 0.0).rgb * p.params.x;
-            refcol = mix(amblit, irr, min(p.params.x, 1.0));
+            refcol = probe_ambient(amblit, textureSampleLevel(probe_irr_tex, probe_sampler, v, i32(p.slot.x), 0.0).rgb, p.params.x);
         } else {
             refcol = textureSampleLevel(probe_tex, probe_sampler, v, i32(p.slot.x), lod).rgb * p.params.y;
         }
@@ -573,6 +572,19 @@ struct ProbeLookup {
     irradiance: bool,
 }
 
+// A probe's irradiance `irr` blended with the sky's ambient `amblit` by the
+// probe's ambiance. The Legacy Viewer (tapIrradianceMap) scales the
+// irradiance by the ambiance and then blends by it again, so below 1 the
+// probe's share falls with the square of the ambiance (0.3 keeps 9 % of its
+// colour, the rest being the grey sky ambient). With PROBE_AMBIANCE_LINEAR
+// (Preferences, off by default) the blend alone fades it, the ambiance
+// still boosting the irradiance above 1: the share follows the ambiance.
+fn probe_ambient(amblit: vec3<f32>, irr: vec3<f32>, ambiance: f32) -> vec3<f32> {
+    let share = min(ambiance, 1.0);
+    let gain = select(ambiance, max(ambiance, 1.0), (frame.light_mode.z & PROBE_AMBIANCE_LINEAR) != 0u);
+    return mix(amblit, irr * gain, share);
+}
+
 struct ProbePair {
     a: vec4<f32>,
     b: vec4<f32>,
@@ -584,8 +596,7 @@ fn probe_tap(i: u32, v: vec3<f32>, lookup: ProbeLookup, amblit: vec3<f32>) -> ve
     let slot = i32(probe_set.probes[i].slot.x);
     let scale = probe_set.probes[i].params;
     if (lookup.irradiance) {
-        let irr = textureSampleLevel(probe_irr_tex, probe_sampler, v, slot, 0.0).rgb * scale.x;
-        return mix(amblit, irr, min(scale.x, 1.0));
+        return probe_ambient(amblit, textureSampleLevel(probe_irr_tex, probe_sampler, v, slot, 0.0).rgb, scale.x);
     }
     return textureSampleLevel(probe_tex, probe_sampler, v, slot, lookup.lod).rgb * scale.y;
 }
@@ -1135,6 +1146,9 @@ const BLEND_SCREEN_DEPTH: u32 = 0x10000u;
 // frame.light_mode.z: geometric specular anti-aliasing of the objects
 // (AURORA_SPECULAR_AA, specular_aa_roughness)
 const SPECULAR_AA: u32 = 0x8000u;
+// frame.light_mode.z: the probes' irradiance blended with the sky ambient in
+// proportion to their ambiance, not its square (probe_ambient)
+const PROBE_AMBIANCE_LINEAR: u32 = 0x20000u;
 
 // Geometric specular anti-aliasing (Kaplanyan & Hoffman 2016, "Stable
 // Geometric Specular Antialiasing with Projected-Space NDF Filtering", in

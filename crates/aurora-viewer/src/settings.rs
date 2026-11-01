@@ -1140,6 +1140,12 @@ pub struct Settings {
     /// pixel, so they stop shimmering as the camera moves. An Aurora
     /// improvement, on by default.
     pub specular_aa: bool,
+    /// Reflection probes' colour in the ambient light in proportion to the
+    /// sky's probe ambiance (common.wgsl `probe_ambient`). The Legacy Viewer
+    /// lets in the square of the ambiance, so a low-ambiance sky lights
+    /// mostly with its grey ambient; on, more of the surroundings' colour
+    /// shows. An Aurora difference, off by default.
+    pub probe_ambiance_linear: bool,
     /// 0 Khronos PBR Neutral, 1 ACES (RenderTonemapType: ACES by default,
     /// like the Legacy Viewer)
     pub tonemapper: u8,
@@ -1913,6 +1919,7 @@ impl Default for Settings {
             antialiasing: 6,
             render_scale_percent: 100,
             specular_aa: true,
+            probe_ambiance_linear: false,
             tonemapper: 1,
             tonemap_mix: TONEMAP_MIX,
             hdr_emissive: true,
@@ -2723,6 +2730,7 @@ impl Settings {
             screen_indirect_intensity: self.screen_indirect_intensity,
             contact_shadows: self.contact_shadows,
             specular_aa: self.specular_aa,
+            probe_ambiance_linear: self.probe_ambiance_linear,
             water_reflection_scale: Self::reflection_scale(self.water_reflections),
             mirror_scale: Self::reflection_scale(self.mirrors),
             probe_slots: self.probe_count.clamp(8, 64),

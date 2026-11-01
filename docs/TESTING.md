@@ -8564,6 +8564,7 @@ What the inventory must show with these scenarios:
 | `AURORA_BLOOM=0`, `1` or `alt` | Bloom off, on or one second in two for this launch |
 | `AURORA_AUTO_EXPOSURE=0`, `1` or `alt` | Automatic exposure of non-classic skies off, on or one second in two |
 | `AURORA_SPECULAR_AA=0`, `1` or `alt` | Specular anti-aliasing off, on or one second in two for this launch |
+| `AURORA_PROBE_AMBIANCE=0`, `1` or `alt` | Probe colour in the ambient light by the square of the sky's ambiance (Legacy Viewer), in proportion to it, or one second in two |
 | `AURORA_RIGGED_BLEND=split`, `runs`, `copy`, `depth05`, `write`, `sorted` or `alt` | Depth of the blended faces of rigged meshes: object by object, what is half covered writing its depth as drawn, then the fainter texels, then their depth from 1/255 on a copy (default); the same without the fainter texels' depth (#1024); where nearly opaque before their colour, then point by point where half covered (#966); from 1/255 on a copy (#948); where half covered before their colour; from 1/255; none (sorted with the others); or `split` by turns |
 | `AURORA_MESH_ORDER=asset` | Mesh faces keep the triangle order of the asset instead of the Legacy Viewer's vertex cache order |
 | `AURORA_BLEND_AO=new`, `none`, `old` or `alt` | Which blended faces take the screen-space occlusion and indirect light: those at least half covered (default), none, all, or `none` by turns |
@@ -8740,6 +8741,16 @@ What the inventory must show with these scenarios:
     all get their texture (capture after frame 1500 with
     `AURORA_DEMO_POS="160,126"`), `textures=` of `perf summary` never
     exceeds 6095 and the log has no `texture table full` line.
+
+- **`AURORA_PROBE_AMBIANCE=0|1|alt`**: overrides Preferences › Graphics ›
+  Fuller probe colors for this launch (`alt`: one second each). It only
+  changes skies with a reflection probe ambiance between 0 and 1: there
+  the Legacy Viewer lets a probe's irradiance into the ambient light by
+  the square of the ambiance (0.3 keeps 9 %, the rest grey sky ambient),
+  `1` by the ambiance itself (`probe_ambient` in common.wgsl). Look at a
+  floor or a wall near coloured surfaces (grass, a painted wall): with
+  `1` it takes more of their colour and less grey. A classic sky, a sky
+  with an ambiance of 0, or one of 1 and above looks the same either way.
 
 - **`AURORA_SPECULAR_AA=0|1|alt`**: overrides Preferences › Graphics ›
   Specular anti-aliasing for this launch (`alt`: on one second, off the

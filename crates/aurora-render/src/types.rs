@@ -971,6 +971,9 @@ pub struct RenderSettings {
     /// Geometric specular anti-aliasing of the objects' highlights
     /// (common.wgsl `specular_aa_roughness`, AURORA_SPECULAR_AA).
     pub specular_aa: bool,
+    /// The probes' irradiance blended with the sky ambient in proportion to
+    /// their ambiance rather than its square (common.wgsl `probe_ambient`).
+    pub probe_ambiance_linear: bool,
     /// Planar water reflections: fraction of the screen resolution (0 = off).
     pub water_reflection_scale: f32,
     /// Mirrors (reflection probes flagged as mirror): fraction of the screen
@@ -1004,6 +1007,7 @@ impl Default for RenderSettings {
             screen_indirect_intensity: 1.0,
             contact_shadows: false,
             specular_aa: true,
+            probe_ambiance_linear: false,
             water_reflection_scale: 0.25,
             mirror_scale: 0.25,
             ssr: false,

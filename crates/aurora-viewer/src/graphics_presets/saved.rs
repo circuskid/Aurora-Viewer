@@ -42,6 +42,7 @@ quality_fields! {
     exposure: f32,
     water_effects: crate::settings::WaterEffectsSettings,
     specular_aa: bool,
+    probe_ambiance_linear: bool,
     tonemapper: u8,
     tonemap_mix: f32,
     dof: crate::dof::Settings,
