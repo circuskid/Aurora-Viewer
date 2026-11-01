@@ -7,20 +7,21 @@ Our fork of Aurora-Viewer/Aurora-Viewer. Rules: [.claude/CLAUDE.md](.claude/CLAU
 Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid` (this file);
 `pkgbuilds/aurora-viewer` builds its tags; `~/Projects/phoenix-firestorm`: reference clone.
 
-**circuskid carries no patch of its own.** Synced 2026-11-01 to `upstream/main`
-035776f5 (no new tag; package build offered, unanswered), bringing in our merged #1753, #1757,
-#1762, #1765 and #1766 on top of #1625, #1630, #1703–#1705, #1748, #1752. Drop
-worktrees once they hold nothing else: `slurl-combined` (re-register links first,
-gotcha below), #1748's (`wgpu-performance-benefits-23c091`), #1752's, `login-profile-pic-pixelated-960617` (#1753/#1757),
-`awesome-dhawan-42ba61` (#1762), `reported-issue-review-14cf6d` (#1765/#1766).
-**Open upstream:** #1702 motion vectors for GTAO's history (worktree
-`linux-framerate-perf-2a2ce9`, head ca501990: hem fix + upstream 035776f5 merged, All green
-11-01; reply posted, they decide). G.W.: leave as is; a further push needs the rendering gate. **#1760** (Linux CI tests; changes
-requested: merge queue only): `aurora-viewer-contributing-91cc75`. **#1768** (Linux
-resource monitor; maintainer pushes the LONG_NAMES fix): `post-feedback-3b6d89`. **#1796**
-(own-avatar steer, grid-OK 10-31): `festive-maxwell-3bee95`; overlaps #1792 in `scene/drawn.rs`.
-**#1792** (worn-attachment touch, grid-OK 10-31): worktree `attachment-interaction-issue-fe6583`;
-drop its old branch `claude/attachment-interaction-issue-fe6583` with it. **#1797** (colored sky ambient, grid-OK 10-31): `status-check-b00dfc`; see *Windlight* below the rule.
+**circuskid carries no patch of its own.** Synced 2026-11-01 to `upstream/main` 48ff165e
+(no new tag, no package yet), bringing in our merged #1702, #1760, #1768. Drop worktrees
+once they hold nothing else: `slurl-combined` (re-register links first, gotcha below),
+`wgpu-performance-benefits-23c091`, #1752's, `login-profile-pic-pixelated-960617`,
+`awesome-dhawan-42ba61`, `reported-issue-review-14cf6d`, `aurora-viewer-contributing-91cc75`,
+`post-feedback-3b6d89`, `linux-framerate-perf-2a2ce9` (+ branches `test/motion-plus-hilbert`,
+`backup/linux-framerate-perf-pre-split`).
+**Open upstream, all changes requested 11-01, CI green.** **#1796** (`festive-maxwell-3bee95`):
+`worn-own-mesh-drag` must steer every run (press hits a Blend mesh); ⬜ hover-cursor line.
+**#1792** (`attachment-interaction-issue-fe6583`, drop old branch of that name too): ask drawn
+faces at the 100 ms update pace (or profile numbers); Legacy name in app.rs comment. They
+conflict in `scene/drawn.rs`: second to merge uses the maintainer's
+`s.posed_by_gpu && !s.avatar && (s.own_rigged || !s.actionable)`. **#1797** (`status-check-b00dfc`,
+see *Windlight* below the rule): rename `legacy_*` (e.g. `colored_sky_ambient`), cite DRTVWR-559,
+say classic skies only get the strength change, switch in Graphics › Sky + Preferences › Aurora.
 
 Latest package: tag `v0.8.5.1793480285` (2026-10-31, `check()` only, no workspace
 tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
@@ -39,14 +40,12 @@ tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702, #1760, #1768, #1792, #1796, #1797.** `gh pr view <n> --repo
+3. **PRs #1792, #1796, #1797.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (Auto-fix on #1702, #1768, #1792, #1796, #1797; #1760 by hand). CI waits for the maintainer.
-   Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
-   in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
-   All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
-   `backup/linux-framerate-perf-pre-split`. Next: TAA motion vectors. #1702's
-   610M cost is the Rgba16F width; 8-bit normals and an Rg8 target: ruled out.
+   (Auto-fix on all three). CI waits for the maintainer. Answer reviews per
+   THEN. #1702 merged 2026-11-01; next in that line: TAA motion vectors.
+   #1702's 610M cost is the Rgba16F width; 8-bit normals and an Rg8 target:
+   ruled out.
 
 ### Gotcha — this machine's `secondlife://` links run a worktree build
 
