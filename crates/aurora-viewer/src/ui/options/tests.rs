@@ -97,6 +97,7 @@ const BEFORE: &[&str] = &[
     "reflection_probes",
     "probe_count",
     "probe_ambiance_linear",
+    "legacy_colored_ambient",
     "antialiasing",
     "specular_aa",
     "tonemapper",

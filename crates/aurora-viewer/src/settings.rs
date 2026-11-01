@@ -1146,6 +1146,12 @@ pub struct Settings {
     /// mostly with its grey ambient; on, more of the surroundings' colour
     /// shows. An Aurora difference, off by default.
     pub probe_ambiance_linear: bool,
+    /// The sky ambient keeps its colour at full strength (x 0.7), as viewers
+    /// before the Legacy Viewer's PBR rework lit it, instead of the grey of
+    /// a softened ambient (Environment::with_colored_ambient). Warm or tinted
+    /// skies colour the interiors again. An experimental setting, off by
+    /// default.
+    pub legacy_colored_ambient: bool,
     /// 0 Khronos PBR Neutral, 1 ACES (RenderTonemapType: ACES by default,
     /// like the Legacy Viewer)
     pub tonemapper: u8,
@@ -1920,6 +1926,7 @@ impl Default for Settings {
             render_scale_percent: 100,
             specular_aa: true,
             probe_ambiance_linear: false,
+            legacy_colored_ambient: false,
             tonemapper: 1,
             tonemap_mix: TONEMAP_MIX,
             hdr_emissive: true,

@@ -8565,6 +8565,7 @@ What the inventory must show with these scenarios:
 | `AURORA_AUTO_EXPOSURE=0`, `1` or `alt` | Automatic exposure of non-classic skies off, on or one second in two |
 | `AURORA_SPECULAR_AA=0`, `1` or `alt` | Specular anti-aliasing off, on or one second in two for this launch |
 | `AURORA_PROBE_AMBIANCE=0`, `1` or `alt` | Probe colour in the ambient light by the square of the sky's ambiance (Legacy Viewer), in proportion to it, or one second in two |
+| `AURORA_COLORED_AMBIENT=0`, `1` or `alt` | Sky ambient grey and softened (Legacy Viewer), coloured at full strength like older viewers, or one second in two |
 | `AURORA_RIGGED_BLEND=split`, `runs`, `copy`, `depth05`, `write`, `sorted` or `alt` | Depth of the blended faces of rigged meshes: object by object, what is half covered writing its depth as drawn, then the fainter texels, then their depth from 1/255 on a copy (default); the same without the fainter texels' depth (#1024); where nearly opaque before their colour, then point by point where half covered (#966); from 1/255 on a copy (#948); where half covered before their colour; from 1/255; none (sorted with the others); or `split` by turns |
 | `AURORA_MESH_ORDER=asset` | Mesh faces keep the triangle order of the asset instead of the Legacy Viewer's vertex cache order |
 | `AURORA_BLEND_AO=new`, `none`, `old` or `alt` | Which blended faces take the screen-space occlusion and indirect light: those at least half covered (default), none, all, or `none` by turns |
@@ -8751,6 +8752,15 @@ What the inventory must show with these scenarios:
   floor or a wall near coloured surfaces (grass, a painted wall): with
   `1` it takes more of their colour and less grey. A classic sky, a sky
   with an ambiance of 0, or one of 1 and above looks the same either way.
+
+- **`AURORA_COLORED_AMBIENT=0|1|alt`**: overrides Preferences › Graphics ›
+  Colored sky ambient (older viewers) for this launch (`alt`: on one
+  second, off the next). `1` lights with the sky's ambient colour x 0.7,
+  made linear, as viewers before the Legacy Viewer's PBR rework did;
+  `0` with the grey luminance of the softened ambient (pow 0.9, x 0.57).
+  Look at an interior or a shaded floor under a sky with a warm or tinted
+  ambient (`AURORA_DEMO_SKY` with a coloured ambient): with `1` it takes
+  the sky's tint and is brighter.
 
 - **`AURORA_SPECULAR_AA=0|1|alt`**: overrides Preferences › Graphics ›
   Specular anti-aliasing for this launch (`alt`: on one second, off the
