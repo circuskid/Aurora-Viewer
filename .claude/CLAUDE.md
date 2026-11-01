@@ -57,9 +57,9 @@ reviews), which nothing else records.
 - 🔴 **Get §9's PR shape right before the first push**: a fix pushed after
   review re-runs first-contributor CI, which waits for maintainer approval
   (#1332).
-- 🔴 **Every upstream PR has an issue** (G.W., 2026-11-01; overrides §15):
-  none found → file one (draft first); link it in the body (`Closes`/`Refs #n`)
-  and the TASKS.md line. After the merge, a `Refs` issue gets a drafted
+- 🔴 **Every upstream `fix` PR has a bug issue** (G.W., 2026-11-01;
+  overrides §15); features and other types don't. None found → file one
+  (draft first); link it in the body (`Closes`/`Refs #n`) and TASKS.md. After the merge, a `Refs` issue gets a drafted
   comment on what is left; drop the PR's worktree and branch.
 - 🔴 **The maintainer removes contributors who skip the PR checks after being
   asked** (a contributor was removed on 2026-10-30, and all of their PRs
