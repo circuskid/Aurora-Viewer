@@ -109,14 +109,11 @@ reviews), which nothing else records.
   human's grid test.
   #1630 ticked "check.ps1 green" over filtered tests and had to be corrected
   (2026-10-30).
-- **What the maintainer's review checked on #1397** (2026-10-29). Their
-  review is a PR comment in the AGENTS.md §11 shape (`## Review`, `Verdict:`),
-  not a GitHub review. Get these right in the first draft:
-  - **The title's type is the type label's** (`feat` ↔ `feature`, `fix` ↔
-    `fix`), with an area (§9). A Linux path that was missing is a `feature`,
-    even when its issue reads like a bug. We cannot add labels (`gh pr edit
-    --add-label` is refused for our account), so the maintainer sets them;
-    the title must already match.
+- **What the maintainer's review checked on #1397** (2026-10-29; their review
+  is a §11-shaped PR comment). Get these right in the first draft:
+  - **The title's type must match the label they will set** (§9): we cannot
+    add labels. A Linux path that was missing is a `feature`, even when its
+    issue reads like a bug.
   - **Legacy Viewer claims go field by field.** Say which behaviours follow
     the Legacy Viewer source and which are Aurora additions, in the PR body
     and in the TASKS.md line. A blanket "as in the Legacy Viewer" gets
@@ -135,24 +132,12 @@ reviews), which nothing else records.
 
 ## Building and releasing
 
-- Dev build: `cargo build --release -p aurora-viewer` (the Arch deps are in
-  `docs/LINUX.md` *Building from source*). Upstream's scripts are PowerShell;
-  `pwsh` is installed (`powershell-bin`, 2026-10-30) and runs `check.ps1`
-  (see *Upstream's rules*).
-- **Package: `pkgbuilds/aurora-viewer`** (OWNER `aurora-viewer`). It builds a
-  tag on `circuskid`. 🔴 **`circuskid-release` can't run here** because it
-  requires `main`, and our `main` is upstream's. Release by hand, on `circuskid`:
-  1. `stamp=$(date -u +%s)`; base = the X.Y.Z of `git describe --tags --abbrev=0 upstream/main`.
-  2. `git tag v<base>.$stamp && git push origin v<base>.$stamp`.
-  3. In `~/Projects/pkgbuilds/aurora-viewer/PKGBUILD`: `pkgver=<base>.$stamp`,
-     `pkgrel=1`, `_upstream=` the full upstream tag name, then `updpkgsums`,
-     commit, push.
-- The binary reports `<upstream tag>+circuskid.<stamp>`; the PKGBUILD's
-  `check()` holds it to that. The grid sees only `X.Y.Z.0`.
-- 🔴 **No CI on the fork** (G.W., 2026-10-28). All eight inherited workflows
-  are disabled (`gh workflow list -R circuskid/Aurora-Viewer --all`): `Release`
+- Dev build: `cargo build --release -p aurora-viewer` (Arch deps:
+  `docs/LINUX.md` *Building from source*).
+- 🔴 **`circuskid-release` can't run here** (it requires `main`); release by
+  hand per [RELEASING.md](RELEASING.md).
+- 🔴 **No CI on the fork** (G.W., 2026-10-28). All inherited workflows are
+  disabled (`gh workflow list -R circuskid/Aurora-Viewer --all`): `Release`
   would publish on our stamp tags, `Crash triage` fires on every new issue.
-  An upstream merge that adds a workflow brings it in active, so check that
-  list after each merge and disable newcomers. Never the homelab runner: a
-  public repo would run strangers' PR code on it. Our upstream PRs are tested
-  by upstream's CI; our builds by `makepkg`.
+  After each upstream merge, disable any new workflow. Never the homelab
+  runner: a public repo would run strangers' PR code on it.
