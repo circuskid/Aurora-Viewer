@@ -20,8 +20,8 @@ once they hold nothing else: `slurl-combined` (re-register links first, gotcha b
 faces at the 100 ms update pace (or profile numbers); Legacy name in app.rs comment. They
 conflict in `scene/drawn.rs`: second to merge uses the maintainer's
 `s.posed_by_gpu && !s.avatar && (s.own_rigged || !s.actionable)`. **#1797** (`status-check-b00dfc`,
-see *Windlight* below the rule): rename `legacy_*` (e.g. `colored_sky_ambient`), cite DRTVWR-559,
-say classic skies only get the strength change, switch in Graphics › Sky + Preferences › Aurora.
+see *Windlight* below the rule): all four changes answered 11-01 (head `6d862b8e`, main merged,
+check + 3x39 demo reruns green); waits on the maintainer's CI approval and re-review.
 
 Latest package: tag `v0.8.5.1793540223` (2026-11-01, base `v0.8.5-beta.20261101.1`,
 `check()` only), installed as `0.8.5.1793540223-1` (grid sees `0.8.5.0`). Tree clean.
