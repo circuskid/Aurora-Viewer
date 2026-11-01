@@ -8,7 +8,7 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid` (this 
 `pkgbuilds/aurora-viewer` builds its tags; `~/Projects/phoenix-firestorm`: reference clone.
 
 **circuskid carries no patch of its own.** Synced 2026-11-01 to `upstream/main`
-035776f5 (no new tag; package not rebuilt), bringing in our merged #1753, #1757,
+035776f5 (no new tag; package build offered, unanswered), bringing in our merged #1753, #1757,
 #1762, #1765 and #1766 on top of #1625, #1630, #1703–#1705, #1748, #1752. Drop
 worktrees once they hold nothing else: `slurl-combined` (re-register links first,
 gotcha below), #1748's (`wgpu-performance-benefits-23c091`), #1752's, `login-profile-pic-pixelated-960617` (#1753/#1757),
@@ -69,14 +69,14 @@ mismatch. The PKGBUILD deletes the tags in its clone. To run the tests,
 clone with no tags (`git clone --no-tags --shared`, then delete what
 `--branch` fetched) and point `CARGO_TARGET_DIR` at the worktree's `target/`.
 Fetch the upstream tag with `--no-tags`, or the stamp tags follow it in.
-Count the tests over every `test result:` line of the full output (28 of
-them): a tail of the output drops crates and undercounts.
 
 **Editing this file from a worktree session:** a hook refuses edits in
 `~/Projects/aurora-viewer` (the main checkout, on `circuskid`). Branch from
 `circuskid` in the worktree, edit and commit there, then
 `git -C ~/Projects/aurora-viewer merge --ff-only <branch>`, push `circuskid`,
-switch back and delete the branch.
+switch back and delete the branch. **`.claude/CLAUDE.md` is capped at ~8,925 chars**
+(the worktree rules hook truncates past it; 8,861 on 2026-11-01): trim before adding. Check:
+`echo '{"cwd":"'$PWD'"}' | ~/.local/bin/claude-status-inject --rules | grep -c TRUNCATED` = 0.
 
 ### THEN — the next upstream PR
 
