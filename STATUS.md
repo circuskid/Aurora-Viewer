@@ -131,8 +131,8 @@ reviewed + `notify-send`, 2 lookup failed); state in `~/.local/state/` same name
   `srgb_to_linear(tmpAmbient * 0.7)`, colored, where FS/LL soften it (pow 0.9, x0.57)
   and keep only its luminance on linear/HDR skies. #1797 restores that as an
   experimental option, off. Probe blend is the same in both (not the cause).
-- **Decided, do not add:** a `RenderSkyAutoAdjustLegacy` switch (a contributor,
-  Darl, named it on Discord): on, it HDR-converts old skies, the opposite look;
+- **Decided, do not add:** a `RenderSkyAutoAdjustLegacy` switch (a contributor
+  named it on Discord): on, it HDR-converts old skies, the opposite look;
   Aurora already keeps them classic like FS (setting off).
 - **Pending:** G.W.'s Discord question to the maintainers (was the grey look a
   choice?) — #1797 lets them decide. The PR's cost runs ran at 1226x2055 (workspace
