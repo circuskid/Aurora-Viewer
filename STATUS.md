@@ -8,7 +8,7 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid` (this 
 `pkgbuilds/aurora-viewer` builds its tags; `~/Projects/phoenix-firestorm`: reference clone.
 
 **circuskid carries no patch of its own.** Synced 2026-11-01 to `upstream/main` 48ff165e
-(no new tag, no package yet), bringing in our merged #1702, #1760, #1768. Drop worktrees
+(packaged, see below), bringing in our merged #1702, #1760, #1768. Drop worktrees
 once they hold nothing else: `slurl-combined` (re-register links first, gotcha below),
 `wgpu-performance-benefits-23c091`, #1752's, `login-profile-pic-pixelated-960617`,
 `awesome-dhawan-42ba61`, `reported-issue-review-14cf6d`, `aurora-viewer-contributing-91cc75`,
@@ -23,8 +23,8 @@ conflict in `scene/drawn.rs`: second to merge uses the maintainer's
 see *Windlight* below the rule): rename `legacy_*` (e.g. `colored_sky_ambient`), cite DRTVWR-559,
 say classic skies only get the strength change, switch in Graphics › Sky + Preferences › Aurora.
 
-Latest package: tag `v0.8.5.1793480285` (2026-10-31, `check()` only, no workspace
-tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
+Latest package: tag `v0.8.5.1793540223` (2026-11-01, base `v0.8.5-beta.20261101.1`,
+`check()` only), installed as `0.8.5.1793540223-1` (grid sees `0.8.5.0`). Tree clean.
 
 ### FIRST — the two-minute check
 
