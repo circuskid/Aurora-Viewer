@@ -20,7 +20,7 @@ requested: merge queue only): `aurora-viewer-contributing-91cc75`. **#1768** (Li
 resource monitor; maintainer pushes the LONG_NAMES fix): `post-feedback-3b6d89`. **#1796**
 (own-avatar steer, grid-OK 10-31): `festive-maxwell-3bee95`; overlaps #1792 in `scene/drawn.rs`.
 **#1792** (worn-attachment touch, grid-OK 10-31): worktree `attachment-interaction-issue-fe6583`;
-drop its old branch `claude/attachment-interaction-issue-fe6583` with it.
+drop its old branch `claude/attachment-interaction-issue-fe6583` with it. **#1797** (colored sky ambient, grid-OK 10-31): `status-check-b00dfc`.
 
 Latest package: tag `v0.8.5.1793480285` (2026-10-31, `check()` only, no workspace
 tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
@@ -39,9 +39,9 @@ tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702, #1760, #1768, #1792, #1796.** `gh pr view <n> --repo
+3. **PRs #1702, #1760, #1768, #1792, #1796, #1797.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (Auto-fix on #1702, #1768, #1792, #1796; #1760 by hand). CI waits for the maintainer.
+   (Auto-fix on #1702, #1768, #1792, #1796, #1797; #1760 by hand). CI waits for the maintainer.
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
    in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.
    All merged → drop it, the worktree, branches `test/motion-plus-hilbert`,
