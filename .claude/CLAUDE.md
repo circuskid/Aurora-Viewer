@@ -14,6 +14,13 @@ edits it, so merging upstream never conflicts with us.
 - **`circuskid` is what we build**: upstream plus our patches plus our docs
   (this file, `STATUS.md`). The main checkout stays on it. Bring upstream in
   with `git merge upstream/main`, not a rebase: the release tags sit on it.
+- 🔴 **Every sync reviews upstream's policy diff** before merging:
+  `git diff <reviewed> upstream/main -- AGENTS.md HUMANS.md CONTRIBUTING.md
+  .github/ docs/BRANDING.md docs/TRANSLATING.md`. A rule that contradicts an
+  override below, or a process change that touches our PRs, is told to G.W.
+  and reflected here; then move the mark. A commit count says nothing about
+  rules: they land as `chore(tooling)` among ~80 commits a day.
+  **Reviewed through `c6a3185c` (2026-10-31).**
 - **An upstream PR branch is cut from `upstream/main`**, never from
   `circuskid`: `git switch -c fix/<name> upstream/main`. Our docs must never
   reach a PR. Push it to `origin`, open the PR against `Aurora-Viewer:main`.
@@ -21,35 +28,30 @@ edits it, so merging upstream never conflicts with us.
 
 ## Upstream's rules (AGENTS.md)
 
-AGENTS.md loads through upstream's `CLAUDE.md`. **Its code rules bind us**:
-Rust style, demo-mode testing, `tr!` strings in en/fr/ja, "Legacy Viewer",
-never Firestorm, in anything new, English in the repo. 🔴 So do its §1 rules:
-never connect to a grid and never handle credentials. G.W. logs in.
+🔴 **AGENTS.md binds us in full, current version, except the overrides
+below.** It loads through upstream's `CLAUDE.md` in every worktree, so read it
+there; this file never restates it (a copy drifts: the feedback board, #1543,
+and the `on-hold` PR label, #1772, went unnoticed for days). This section holds
+only our overrides and what the maintainer said outside the repo (Discord,
+reviews), which nothing else records.
 
-**Its team process does not bind us.** We are outside contributors, not on the
-Aurora team, so these are overridden:
+**Overrides**, because we are outside contributors, not on the Aurora team:
 - No `scripts/new-task.ps1`, no `../work/` worktrees: sessions use our
   `.claude/worktrees` like any other repo.
 - 🔴 **We never merge, review-approve, label, triage or move board items
-  upstream**, and we never touch TASKS.md for them except inside our own PR's diff.
+  upstream** (§5, §8 steps 8–10, §11's posting, §15's board), and we never touch
+  TASKS.md for them except inside our own PR's diff. An `on-hold` label on our
+  PR also means no push and no comment until it is removed.
 - 🔴 **Every PR, issue or comment upstream is drafted and shown to G.W. first**
   (global *Safety* rule: a project we don't own).
-- **A feature request is not a GitHub issue upstream**: it goes to
-  https://feedback.aurora-viewer.org (AGENTS.md §15, #1543). Bugs stay issues.
-- **An `on-hold` label on our PR means stop** (AGENTS.md §9, #1772): no push,
-  no comment, no ping until the maintainer removes it; their comment says
-  what unblocks it.
 - 🔴 **Upstream, follow §10: no AI mention anywhere** (G.W., 2026-10-28). No
   `Posted by an AI agent` line on PRs, issues or comments (an exception to the
   global *Safety* rule, which names this repo), and no `Co-Authored-By` or
   `Session:` trailer on upstream PR branches. The draft-first gate above still
   holds. Commits on `circuskid` follow our usual trailers.
-- 🔴 **Their PR-shape rules DO bind our PRs**, because the maintainer reviews
-  against them: a TASKS.md line we add names its issue, then its PR
-  (`#n` then `PR #m`, each linked, as its neighbours do; AGENTS.md §9), plus the PR template
-  and `Closes`/`Refs`. Get them right before the first push: a fix pushed after
+- 🔴 **Get §9's PR shape right before the first push**: a fix pushed after
   review re-runs first-contributor CI, which waits for maintainer approval
-  (missed on #1332, 2026-10-28).
+  (TASKS.md line format missed on #1332, 2026-10-28).
 - 🔴 **The maintainer removes contributors who skip the PR checks after being
   asked** (a contributor was removed on 2026-10-30, and all of their PRs
   closed). Their stated bar, every PR: `check.ps1` until "All green.", a

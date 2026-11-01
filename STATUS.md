@@ -26,9 +26,9 @@ tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
 ### FIRST — the two-minute check
 
 1. **Upstream drift.** `git fetch --no-tags upstream && git rev-list
-   --count circuskid..upstream/main`. Since we carry no code, a sync should
-   be conflict-free; ship when G.W. wants a build (steps in
-   `.claude/CLAUDE.md`). Upstream now tags betas of the next version
+   --count circuskid..upstream/main`, then the policy diff (`.claude/CLAUDE.md`
+   *Branches*). A sync should be conflict-free (no code of ours); ship when
+   G.W. wants a build. Upstream now tags betas of the next version
    (`v0.8.5-beta.*`): the package base is that tag's X.Y.Z.
 2. **Grid follow-ups G.W. owns:** #1407 Linux voice: initial grid test
    passed 2026-10-30; the full one (mic open under load, device switch
