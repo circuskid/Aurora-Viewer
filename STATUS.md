@@ -20,7 +20,7 @@ too): main with #1796 merged in 86ee2135, overlap resolved as the maintainer ask
 
 Latest package: tag `v0.8.5.1793564791` (2026-11-01, base `v0.8.5-beta.20261101.2`
 plus 11, `check()` only), installed as `0.8.5.1793564791-1` (grid sees `0.8.5.0`). Tree clean, `circuskid`
-pushed. Stamp tags past the newest three (`v0.8.2.*`–`v0.8.4.*`, 8) still on the fork: deleting them needs G.W.'s OK.
+pushed. Stamp tags trimmed to the newest three.
 
 ### FIRST — the two-minute check
 
