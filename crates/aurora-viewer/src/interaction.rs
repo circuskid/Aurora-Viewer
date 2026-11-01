@@ -217,10 +217,16 @@ pub struct Held {
     pub offset: glam::Vec3,
     pub position: glam::Vec3,
     pub surface: aurora_net::TouchSurface,
-    /// The surface was read from the faces the GPU drew (a rigged mesh,
-    /// scene/drawn.rs): the CPU cannot follow the cursor on it, the
-    /// touch keeps the surface of its press.
+    /// The surface was read from the faces the GPU drew (a rigged mesh, a
+    /// worn object: scene/drawn.rs): the CPU cannot follow the cursor on
+    /// it, so the faces drawn under the cursor are asked for again while
+    /// it moves (`drawn`).
     pub shown: bool,
+    /// The request for the faces drawn under the cursor, while the answer
+    /// is on its way.
+    pub drawn: Option<u64>,
+    /// The surface its last answer gave, until it is sent.
+    pub followed: Option<aurora_net::TouchSurface>,
     pub cursor: (f32, f32),
     pub last: Instant,
     pub physical: bool,

@@ -1774,7 +1774,12 @@ impl App {
                     self.world.system_message(aurora_i18n::tr!("app-demo-touch-start-simulated"));
                 }
                 NetCommand::ObjectGrabUpdate { surface, .. } => {
-                    log::info!("demo touch / grab update: face={}, uv={:?}", surface.face, surface.uv);
+                    log::info!(
+                        "demo touch / grab update: face={}, uv={:?}, st={:?}",
+                        surface.face,
+                        surface.uv,
+                        surface.st
+                    );
                 }
                 NetCommand::ObjectRelease { local_id, surface, .. } => {
                     log::info!("demo touch_end: prim={local_id}, face={}", surface.face);
@@ -9736,7 +9741,7 @@ impl App {
         if let Some(drop) = library_drop {
             self.apply_texture_library_drop(drop);
         }
-        self.update_object_hold(&gfx.renderer);
+        self.update_object_hold(&mut gfx.renderer);
         if let Some(url) = self.interactions.media_url.take() {
             if self.demo {
                 log::info!("demo open media: external browser request simulated");

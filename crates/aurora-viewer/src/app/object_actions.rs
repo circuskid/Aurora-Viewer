@@ -108,6 +108,8 @@ impl App {
                     position: pos,
                     surface,
                     shown: shown.is_some(),
+                    drawn: None,
+                    followed: None,
                     cursor: self.cursor_pos,
                     last: now,
                     physical,
@@ -153,7 +155,7 @@ impl App {
                         .and_then(|idx| self.scene.touch_surface(&self.world, idx, ray))
                         .unwrap_or_default()
                 })
-                .unwrap_or(h.surface);
+                .unwrap_or(h.followed.unwrap_or(h.surface));
             self.send(NetCommand::ObjectRelease {
                 handle: h.target.key.region,
                 local_id: h.target.key.local_id,
@@ -162,8 +164,11 @@ impl App {
         }
     }
 
-    pub(super) fn update_object_hold(&mut self, renderer: &Renderer) {
+    pub(super) fn update_object_hold(&mut self, renderer: &mut Renderer) {
         if self.build.open || !self.left_down {
+            if let Some(ticket) = self.interactions.held.as_mut().and_then(|h| h.drawn.take()) {
+                renderer.forget_drawn(ticket);
+            }
             self.release_object_hold();
             return;
         }
@@ -174,14 +179,21 @@ impl App {
             .index_of(&h.target.key)
             .filter(|i| self.world.objects.get(*i).is_some_and(|o| o.full_id == h.target.object))
         else {
+            if let Some(ticket) = h.drawn {
+                renderer.forget_drawn(ticket);
+            }
             self.interactions.held = None;
             return;
         };
+        if h.shown {
+            self.follow_shown_hold(renderer, idx);
+        }
+        let Some(h) = self.interactions.held.as_ref() else { return };
         if h.last.elapsed() < Duration::from_millis(100) {
             return;
         }
         let surface = if h.shown {
-            h.surface
+            h.followed.unwrap_or(h.surface)
         } else {
             self.scene
                 .object_cursor_ray(idx, self.cursor_pos, renderer.cursor_ray(self.cursor_pos.0, self.cursor_pos.1))
@@ -225,7 +237,31 @@ impl App {
         };
         h.cursor = self.cursor_pos;
         h.surface = surface;
+        h.followed = None;
         h.last = Instant::now();
         self.send(cmd);
+    }
+
+    /// LLToolGrabBase::handleHoverNonPhysical: the touch follows the cursor
+    /// on the held object (LLPickInfo::getSurfaceInfo intersects that object
+    /// alone), so a script reading llDetectedTouchST / UV / Pos sees a
+    /// rub. On a surface the GPU alone poses, that is the faces drawn under
+    /// the cursor, asked for when the last answer is in and the cursor has
+    /// moved: the held object there gives its surface, anything else the
+    /// Legacy Viewer's "off the object" (face -1).
+    fn follow_shown_hold(&mut self, renderer: &mut Renderer, idx: usize) {
+        let Some(h) = self.interactions.held.as_mut() else { return };
+        if let Some(ticket) = h.drawn {
+            let Some(drawn) = renderer.take_drawn(ticket) else { return };
+            h.drawn = None;
+            let on_held = [(drawn.blend, true), (drawn.opaque, false)].into_iter().find_map(|(hit, blend)| {
+                let hit = hit?;
+                let (i, face) = self.scene.record_object(hit.record)?;
+                (i == idx).then_some(crate::scene::drawn::DrawnObject { idx, face, blend, hit })
+            });
+            h.followed = Some(on_held.and_then(|d| self.scene.drawn_surface(&self.world, &d)).unwrap_or_default());
+        } else if self.cursor_pos != h.cursor {
+            h.drawn = Some(renderer.request_drawn(self.cursor_pos.0, self.cursor_pos.1, aurora_render::DrawnMode::Interaction));
+        }
     }
 }
