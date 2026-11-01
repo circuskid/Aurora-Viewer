@@ -38,6 +38,12 @@ reviews), which nothing else records.
 **Overrides**, because we are outside contributors, not on the Aurora team:
 - No `scripts/new-task.ps1`, no `../work/` worktrees: sessions use our
   `.claude/worktrees` like any other repo.
+- 🔴 **A viewer you start to test or capture goes on workspace 4**, not
+  §4's bare `cargo run` (it put capture loops on G.W.'s workspace 1,
+  2026-11-01): `hyprctl eval 'hl.exec_cmd("cd $PWD && <cmd>", { workspace =
+  "4 silent" })'`, then wait on the capture file, not the process. Only a
+  viewer G.W. will use himself opens where he is (no workspace). `--title`
+  is for demo and capture runs; a grid test viewer runs without it (STATUS).
 - 🔴 **We never merge, review-approve, label, triage or move board items
   upstream** (§5, §8 steps 8–10, §11's posting, §15's board), and we never touch
   TASKS.md for them except inside our own PR's diff. An `on-hold` label on our
@@ -93,16 +99,9 @@ reviews), which nothing else records.
 
   TASKS.md and the body never say "validated" for the maintainer's own
   validation step; we state our own test and its date only.
-- **`check.ps1` works on Linux** on a branch whose base has upstream #1675
-  and #1681 (2026-10-31; our #1659 report). A step that throws now fails the
-  check, the 5.1 parse runs through `pwsh` (#1655), and clippy passes
-  `-A dead-code` off Windows, as the Linux CI job does. Run
-  `pwsh -NoProfile -File scripts/check.ps1` in the PR's worktree; its "All
-  green." was verified real on #1702 (all four steps ran, 6500 tests). Still
-  sum the tests over every `test result:` line (28) for the PR body. It
-  rewrites `~/Projects/.cargo/config.toml` (sccache) the same each time. On
-  an older base, run its steps by hand with the same commands, including
-  `-A dead-code`.
+- **`check.ps1` runs on Linux**: `pwsh -NoProfile -File scripts/check.ps1` in
+  the PR's worktree (its "All green." verified real on #1702). Sum the tests
+  over every `test result:` line (28) for the PR body.
 - 🔴 **Never tick a Tests box for a check that didn't run as written.** Tick
   the `check.ps1` box only when it printed "All green." on the head as
   pushed; list each step with its real result, and name the date of the
