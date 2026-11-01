@@ -24,7 +24,7 @@ see *Windlight* below the rule): all four changes answered 11-01 (head `6d862b8e
 check + 3x39 demo reruns green); waits on the maintainer's CI approval and re-review. **#1861** (worktree `aurora-linux-crash-test-7caa4d`, branch `fix/heartbeat-off-frame-thread`, issue #1860, opened 2026-11-01): #1847 follow-up, the 15 s `login_wait::alive` write off the frame (its fsync cost 20 ms here). Grid-tested by G.W.; CI waits on the maintainer. Also promised on #1847: real-reset tests of #1809's fix once released (btrfs here; ext4 needs a USB-SSD Ubuntu setup).
 
 Latest package: tag `v0.8.5.1793540223` (2026-11-01, base `v0.8.5-beta.20261101.1`,
-`check()` only), installed as `0.8.5.1793540223-1` (grid sees `0.8.5.0`). Tree clean; local `circuskid` is 2 commits ahead of origin (`00cc577a` is another session's: push only once it is theirs to ship).
+`check()` only), installed as `0.8.5.1793540223-1` (grid sees `0.8.5.0`). Tree clean; local `circuskid` is ahead of origin, unpushed (`00cc577a` is another session's: push only once it is theirs to ship).
 
 ### FIRST — the two-minute check
 
