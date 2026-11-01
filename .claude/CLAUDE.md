@@ -1,10 +1,10 @@
 # aurora-viewer — our fork of Aurora-Viewer/Aurora-Viewer
 
 Not our project. Upstream is `Aurora-Viewer/Aurora-Viewer` (GPLv3, a Rust/Vulkan
-Second Life viewer); our fork is `circuskid/Aurora-Viewer`, personal account,
-public (G.W., 2026-10-28). We build our own packages from it and send PRs
-upstream. This file sits beside upstream's `CLAUDE.md` (`@AGENTS.md`) and never
-edits it, so merging upstream never conflicts with us.
+Second Life viewer); our fork is `circuskid/Aurora-Viewer`, public. We build
+our own packages from it and send PRs upstream. This file sits beside
+upstream's `CLAUDE.md` (`@AGENTS.md`) and never edits it, so merging upstream
+never conflicts with us.
 
 ## Branches (G.W., 2026-10-28)
 
@@ -18,8 +18,8 @@ edits it, so merging upstream never conflicts with us.
   `git diff <reviewed> upstream/main -- AGENTS.md HUMANS.md CONTRIBUTING.md
   .github/ docs/BRANDING.md docs/TRANSLATING.md`. A rule that contradicts an
   override below, or a process change that touches our PRs, is told to G.W.
-  and reflected here; then move the mark. A commit count says nothing about
-  rules: they land as `chore(tooling)` among ~80 commits a day.
+  and reflected here; then move the mark. Rules land as `chore(tooling)`
+  among ~80 commits a day.
   **Reviewed through `48ff165e` (2026-11-01).**
 - **An upstream PR branch is cut from `upstream/main`**, never from
   `circuskid`: `git switch -c fix/<name> upstream/main`. Our docs must never
@@ -51,13 +51,16 @@ reviews), which nothing else records.
 - 🔴 **Every PR, issue or comment upstream is drafted and shown to G.W. first**
   (global *Safety* rule: a project we don't own).
 - 🔴 **Upstream, follow §10: no AI mention anywhere** (G.W., 2026-10-28). No
-  `Posted by an AI agent` line on PRs, issues or comments (an exception to the
-  global *Safety* rule, which names this repo), and no `Co-Authored-By` or
-  `Session:` trailer on upstream PR branches. The draft-first gate above still
-  holds. Commits on `circuskid` follow our usual trailers.
+  `Posted by an AI agent` line (an exception to the global *Safety* rule), no
+  `Co-Authored-By` or `Session:` trailer on upstream PR branches. The
+  draft-first gate above still holds. `circuskid` keeps our usual trailers.
 - 🔴 **Get §9's PR shape right before the first push**: a fix pushed after
   review re-runs first-contributor CI, which waits for maintainer approval
-  (TASKS.md line format missed on #1332, 2026-10-28).
+  (#1332).
+- 🔴 **Every upstream PR has an issue** (G.W., 2026-11-01; overrides §15):
+  none found → file one (draft first); link it in the body (`Closes`/`Refs #n`)
+  and the TASKS.md line. After the merge, a `Refs` issue gets a drafted
+  comment on what is left; drop the PR's worktree and branch.
 - 🔴 **The maintainer removes contributors who skip the PR checks after being
   asked** (a contributor was removed on 2026-10-30, and all of their PRs
   closed). Their stated bar, every PR: `check.ps1` until "All green.", a
@@ -109,8 +112,7 @@ reviews), which nothing else records.
   pushed; list each step with its real result, and name the date of the
   human's grid test.
   (#1630, 2026-10-30.)
-- **What the maintainer's review checked on #1397** (2026-10-29; their review
-  is a §11-shaped PR comment). Get these right in the first draft:
+- **What #1397's review checked** (2026-10-29); get these right first:
   - **The title's type must match the label they will set** (§9): we cannot
     add labels. A Linux path that was missing is a `feature`, even when its
     issue reads like a bug.
@@ -124,9 +126,8 @@ reviews), which nothing else records.
     arm failed #1397).
 - **Our PRs answer each other's nits**: a nit another of our open PRs fixes is
   left out of this one and pointed to, so the two PRs don't conflict.
-- Their reference sources: `../phoenix-firestorm` = `~/Projects/phoenix-firestorm`,
-  a `--depth 1` clone, read-only, not one of our projects. Refresh it with
-  `git -C ~/Projects/phoenix-firestorm pull --depth 1`.
+- Reference sources: `../phoenix-firestorm` = `~/Projects/phoenix-firestorm`,
+  a read-only `--depth 1` clone; refresh with `git -C <it> pull --depth 1`.
 
 ## Building and releasing
 
