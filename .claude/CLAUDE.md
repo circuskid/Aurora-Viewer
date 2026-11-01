@@ -51,6 +51,13 @@ Aurora team, so these are overridden:
   test of your own (demo or grid) said in the PR, a `type(area): summary`
   title with the template filled in, and one PR per change with fixes pushed
   to that same PR.
+- 🔴 **A visual or rendering PR shows it regresses nothing and costs little**
+  (the maintainer to contributors, aimed mostly at us, 2026-10-31). Every PR
+  touching 3D or rendering carries A/B evidence: demo captures before/after at
+  the same settings and `AURORA_PROFILE=1` numbers. A new visual feature (fog,
+  sun rays…) is a user option, **off by default**. A feature that costs a
+  real share of the frame rate (their example: 30 fps) is refused, so measure
+  before proposing one, and say the cost in the PR.
 - **`check.ps1` works on Linux** on a branch whose base has upstream #1675
   and #1681 (2026-10-31; our #1659 report). A step that throws now fails the
   check, the 5.1 parse runs through `pwsh` (#1655), and clippy passes
