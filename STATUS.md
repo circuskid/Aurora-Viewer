@@ -14,12 +14,11 @@ drop the `slurl-combined` worktree and re-register links from the packaged build
 (gotcha below), and drop the worktrees of #1748 and #1752 once they hold nothing else.
 **Open upstream (2026-10-31):** #1702 motion vectors for GTAO's history (worktree
 `linux-framerate-perf-2a2ce9`; review answered 2026-10-31, head 34585fd2, `check.ps1` All
-green; waits for the maintainer's A/B). **#1753** (cef cache), **#1757** (NVIDIA
-minimums): `login-profile-pic-pixelated-960617`. **#1760** (Linux CI tests):
-`aurora-viewer-contributing-91cc75`. **#1762** (XKB layout): `awesome-dhawan-42ba61`.
-**#1765**, **#1766** (black photos, slow GPUs; maintainer's review ✅ 2026-10-31, waits
-for CI): `reported-issue-review-14cf6d`. **#1768** (Linux resource monitor):
-`post-feedback-3b6d89`.
+green; waits for the maintainer's A/B). **#1760** (Linux CI tests):
+`aurora-viewer-contributing-91cc75`. **#1768** (Linux resource monitor):
+`post-feedback-3b6d89`. **Merged upstream after f4a5fc29, not synced yet:** #1753,
+#1757 (`login-profile-pic-pixelated-960617`), #1762 (`awesome-dhawan-42ba61`), #1765,
+#1766 (`reported-issue-review-14cf6d`): drop those worktrees after the next sync.
 
 Latest package: tag `v0.8.5.1793480285` (2026-10-31, `check()` only, no workspace
 tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
@@ -38,9 +37,9 @@ tests), installed as `0.8.5.1793480285-1` (grid sees `0.8.5.0`). Tree clean.
    grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
    once merged). Test viewers: no `--title` (changes the D-Bus name);
    quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1702, #1753, #1757, #1760, #1762, #1765, #1766, #1768.** `gh pr view <n> --repo
+3. **PRs #1702, #1760, #1768.** `gh pr view <n> --repo
    Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (Auto-fix on #1702, #1753, #1768; #1757/#1760/#1762 unwatched, check by hand;
+   (Auto-fix on #1702, #1768; #1760 unwatched, check by hand;
    #1748's worktree, now merged: `wgpu-performance-benefits-23c091`). CI waits for the maintainer's approval.
    Answer reviews per THEN. #1702's head: worktree `.scratch/motion-merge`
    in this one (pushed as `feat/gtao-motion-vectors`); merge, never rebase.

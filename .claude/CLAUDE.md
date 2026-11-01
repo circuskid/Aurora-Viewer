@@ -34,6 +34,11 @@ Aurora team, so these are overridden:
   upstream**, and we never touch TASKS.md for them except inside our own PR's diff.
 - 🔴 **Every PR, issue or comment upstream is drafted and shown to G.W. first**
   (global *Safety* rule: a project we don't own).
+- **A feature request is not a GitHub issue upstream**: it goes to
+  https://feedback.aurora-viewer.org (AGENTS.md §15, #1543). Bugs stay issues.
+- **An `on-hold` label on our PR means stop** (AGENTS.md §9, #1772): no push,
+  no comment, no ping until the maintainer removes it; their comment says
+  what unblocks it.
 - 🔴 **Upstream, follow §10: no AI mention anywhere** (G.W., 2026-10-28). No
   `Posted by an AI agent` line on PRs, issues or comments (an exception to the
   global *Safety* rule, which names this repo), and no `Co-Authored-By` or
