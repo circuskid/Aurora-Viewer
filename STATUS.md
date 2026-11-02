@@ -29,8 +29,9 @@ Release steps: `.claude/RELEASING.md` (it exists; an older line here said it did
    *Branches*). A sync should be conflict-free (no code of ours); ship when
    G.W. wants a build. Upstream now tags betas of the next version
    (`v0.8.5-beta.*`): the package base is that tag's X.Y.Z. After the sync,
-   from the main checkout: `.claude/bin/aurora-sweep` (dry run), then
-   `--apply`. It pushes unsaved commits to `archive/*`, archives `.scratch/`,
+   from the main checkout: `.claude/bin/aurora-sweep` (dry run); `--apply` only
+   with G.W.'s go-ahead each time (architect, 2026-11-02: a prototype until G.W.
+   rules on shared tooling). It pushes unsaved commits to `archive/*`, archives `.scratch/`,
    and keeps open PRs and the app's unarchived sessions; dahab's
    `cargo-build-sweep` reaps the build dirs left behind.
 2. **Grid follow-ups G.W. owns:** #1407 Linux voice: initial grid test
