@@ -2,51 +2,36 @@
 
 Our fork of Aurora-Viewer/Aurora-Viewer. Rules: [.claude/CLAUDE.md](.claude/CLAUDE.md).
 
-## ▶ RESUME HERE — 2026-11-01
+## ▶ RESUME HERE — 2026-11-02
 
 Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid` (this file);
 `pkgbuilds/aurora-viewer` builds its tags; `~/Projects/phoenix-firestorm`: reference clone.
 
-**circuskid carries no patch of its own.** Synced 2026-11-02 to `upstream/main` c610e3bc
-(packaged, see below), bringing in our merged #1841.
-**Worktrees cleaned 2026-11-02**: 23 removed, 78 merged or pushed branches deleted; their
-`.scratch/` folders moved to `~/.local/share/aurora-viewer-scratch-archive/2026-11-02/` (1.4 GB,
-delete when unneeded). Left: `wgpu-performance-benefits-23c091` (#1921/#1922), `new-viewer-update-d7fc5f`
-(haze), `transparency-pr-test-viewer-543e74` (the #1963 session), `linux-framerate-perf-2a2ce9`
-(drop it from another session). The 10 local branches with commits nowhere else
-(`test/motion-plus-hilbert`, `backup/linux-framerate-perf-pre-split`, `pr-1788`, …) are pushed
-to the fork as `archive/<branch>`; the local copies can go.
-**Open upstream: only #1921 and #1922.** Merged 11-01/02: #1792, #1796, #1797, #1821, #1830, #1832, #1838, #1841, #1861, #1865. **#1921** (issue #1919) and **#1922** (issue #1920), both opened 11-01 from worktree `wgpu-performance-benefits-23c091` (drop it, and its branches, once both merge): a worn unrigged mesh hidden by the transparent texture now takes the touch (a slapper); a worn animesh keeps its touch (#1796's `own_rigged` had caught it: Mochi on G.W.'s head). Both grid-tested by G.W., codex + Fable reviewed, 144-run `worn-*` sweep identical; they clash on one TESTING.md line, whichever merges second merges main. 11-02: #1921 has a ✅ team review; its red macOS check is the runner abandoning the `rest` part, not our code. #1922: no review or CI yet. Power-cut A/B of #1847 posted on #1847 11-01 (loop image + dm, ext4 and btrfs, native NVIDIA: logs lost before 11/12, after 0/12). Still promised there: one or two real `sysrq` resets on btrfs (claim the machine from active peers first; the dm method is in that comment, to redo for ext4 or other files). **#1865** (worktree `open-issues-review-bbd228`, branch `fix/remove-outfit-folder`, issues #1849 + #1417, opened 2026-11-01): inventory Remove from current outfit on any folder (dropped `require_outfit` from the take-off, like `takeOffOutfit`); new demo `AURORA_DEMO_APPEARANCE=take-off-folder`, 26 A/B runs, grid-tested by G.W.; CI waits on the maintainer. Captures on the fork's `captures` branch (`remove-outfit-folder/`). **Haze sun glow** (worktree `new-viewer-update-d7fc5f`, local branch `fix/haze-sun-glow` 909da1e4, not pushed, no issue yet): a tester sees a soft sun through opaque rock (Bloom and Glow off), locked to the sky sun, gone under Midday. Cause: objects and terrain ran calcAtmosphericVars in world space, so its haze glow peaks on whatever is in front of the sun (#1781 fixed only the water); the fix runs it in eye space everywhere, plus demo `AURORA_DEMO_SKY_SUN`. A glow-only probe build shows the hotspot on the demo hill (world) and none (eye); a normal demo frame has not shown it yet (sunrise light too weak). Next: G.W. tests the fix build at the reported spot (location in this session, not in the repo), then demo A/B, 5090 + 610M timings (`AURORA_GPU=1`), check.ps1, issue + PR drafts. Next issue candidates: **#1815** (Movement button opens camera controls; `bars.rs` maps `"move"` right, suspect `controls_ui.show` in `app/controls.rs` with classic controls off), #1780, #1709; skip #1530. #1865's test method and a captures-branch trap: *#1865 notes* below the rule.
+**State.** `circuskid` = upstream `c610e3bc` + our docs, no patch of its own; main checkout
+clean; policy reviewed through `c610e3bc`. Package `v0.8.5.1793627160` (pkgbuilds e56e23c,
+`check()` passed) installed by G.W. 2026-11-02. Upstream was 2 commits ahead at checkpoint.
+Nothing is half-done.
 
-Latest package: tag `v0.8.5.1793627160` (2026-11-02, `circuskid` 7d98826d, merge of upstream `c610e3bc`,
-`check()` passed, pkgbuilds e56e23c), installed by G.W. (grid sees `0.8.5.0`). Four stamp tags remain (0.8.5.1793540223 onward); the auto-mode classifier refuses tag deletes, so they run in a terminal tab G.W. approves (`v0.8.5.1793480285` gone 11-02).
-Release steps: `.claude/RELEASING.md` (it exists; an older line here said it did not).
+**Open upstream: only #1921 and #1922** (worktree `wgpu-performance-benefits-23c091`; drop it
+and its branches once both merge). #1921 (issue #1919): a worn unrigged mesh hidden by the
+transparent texture takes the touch (a slapper). #1922 (issue #1920): a worn animesh keeps its
+touch (#1796's `own_rigged` had caught it). Both grid-tested by G.W., codex + Fable reviewed,
+144-run `worn-*` sweep identical. Whichever merges second merges main (one TESTING.md line).
+11-02: #1921 ✅ team review (red macOS = runner abandoned `rest`, not us); #1922 no review yet.
+
+**Worktrees left** (23 removed 2026-11-02): `wgpu-performance-benefits-23c091` (#1921/#1922), `new-viewer-update-d7fc5f` (haze), `transparency-pr-test-viewer-543e74` (the #1963 session), `linux-framerate-perf-2a2ce9` (the checkpointing session's own; drop it from another session). Unsaved branches are on the fork as `archive/<branch>` (local copies deleted); removed worktrees' `.scratch/` is in `~/.local/share/aurora-viewer-scratch-archive/2026-11-02/` (1.4 GB; G.W. deletes it when unneeded).
 
 ### FIRST — the two-minute check
 
-1. **Upstream drift.** `git fetch --no-tags upstream && git rev-list
-   --count circuskid..upstream/main`, then the policy diff (`.claude/CLAUDE.md`
-   *Branches*). A sync should be conflict-free (no code of ours); ship when
-   G.W. wants a build. Upstream now tags betas of the next version
-   (`v0.8.5-beta.*`): the package base is that tag's X.Y.Z. After the sync,
-   from the main checkout: `.claude/bin/aurora-sweep` (dry run); `--apply` only
-   with G.W.'s go-ahead each time (architect, 2026-11-02: a prototype until G.W.
-   rules on shared tooling). It pushes unsaved commits to `archive/*`, archives `.scratch/`,
-   and keeps open PRs and the app's unarchived sessions; dahab's
-   `cargo-build-sweep` reaps the build dirs left behind.
-2. **Grid follow-ups G.W. owns:** #1407 Linux voice: initial grid test
-   passed 2026-10-30; the full one (mic open under load, device switch
-   mid-call) waits until G.W. uses voice (rarely); blocks nothing. The
-   maintainer sets its TASKS.md 🟡; nothing for us to push. #1625 + #1630:
-   grid-OK on local `test/slurl-plus-place-fix` (worktree `slurl-combined`, drop
-   once merged). Test viewers: no `--title` (changes the D-Bus name);
-   quit from the menu, never kill (the next login gets no caps).
-3. **PRs #1792, #1796, #1797.** `gh pr view <n> --repo
-   Aurora-Viewer/Aurora-Viewer --json state,reviews,comments` for each
-   (Auto-fix on all three). CI waits for the maintainer. Answer reviews per
-   THEN. #1702 merged 2026-11-01; next in that line: TAA motion vectors.
-   #1702's 610M cost is the Rgba16F width; 8-bit normals and an Rg8 target:
-   ruled out.
+1. **Upstream drift.** `git fetch --no-tags upstream && git rev-list --count circuskid..upstream/main`, then the policy diff (`.claude/CLAUDE.md` *Branches*). Sync and ship when G.W. wants a build (`.claude/RELEASING.md`; a beta `v0.8.5-beta.*` gives base X.Y.Z). After a sync, from the main checkout: `.claude/bin/aurora-sweep` (dry run); 🔴 `--apply` only with G.W.'s go-ahead each time. **Architect, 2026-11-02:** it stays a prototype here until G.W. rules on shared tooling (`agent-config/docs/architect-audit-2026-10-23.md`); the push rule is in agent-config 405ca90 `worktree-sessions.md`. Its traps are in its comments.
+2. **#1921 / #1922:** `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer --json state,reviews,comments`. Answer reviews per THEN below (one batched push: each push re-runs first-contributor CI).
+
+### NEXT — the work, in order
+
+- **Haze sun glow** (worktree `new-viewer-update-d7fc5f`, branch `fix/haze-sun-glow` 909da1e4, not pushed, no issue yet). A tester sees a soft sun through opaque rock (Bloom and Glow off), locked to the sky sun, gone under Midday. Cause: objects and terrain ran calcAtmosphericVars in world space, so its haze glow peaks on whatever is in front of the sun (#1781 fixed only the water); the fix runs it in eye space everywhere, plus demo `AURORA_DEMO_SKY_SUN`. A glow-only probe shows the hotspot on the demo hill (world) and none (eye); a normal demo frame has not shown it yet. **Waits on G.W.** testing the fix build at the reported spot (location in that session, not the repo); then demo A/B, 5090 + 610M timings (`AURORA_GPU=1`), check.ps1, issue + PR drafts.
+- **#1847 promise:** one or two real `sysrq` resets on btrfs (claim the machine from active peers first; the dm method is in the A/B comment on #1847, 11-01).
+- **Next issues:** #1963 (0.8.5 FPS drop in inventory/appearance; the "1963" session is on it), **#1815** (Movement button opens camera controls; `bars.rs` maps `"move"` right, suspect `controls_ui.show` in `app/controls.rs` with classic controls off), #1780, #1709; skip #1530. #1702's line continues with TAA motion vectors (610M cost is the Rgba16F width; 8-bit normals and an Rg8 target: ruled out).
+- **G.W. owns:** #1407 Linux voice full test (mic under load, device switch mid-call) when he next uses voice; blocks nothing. Test viewers: no `--title` (changes the D-Bus name); quit from the menu, never kill (the next login gets no caps). Four stamp tags remain (`v0.8.5.1793540223` on): tag deletes run in a terminal tab G.W. approves (the classifier refuses them).
 
 ### Gotcha — `secondlife://` links and test builds
 
