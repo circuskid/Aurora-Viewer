@@ -20,7 +20,7 @@ never conflicts with us.
   override below, or a process change that touches our PRs, is told to G.W.
   and reflected here; then move the mark. Rules land as `chore(tooling)`
   among ~80 commits a day.
-  **Reviewed through `6ee98032` (2026-11-01).**
+  **Reviewed through `e6aa3eab` (2026-11-01).**
 - **An upstream PR branch is cut from `upstream/main`**, never from
   `circuskid`: `git switch -c fix/<name> upstream/main`. Our docs must never
   reach a PR. Push it to `origin`, open the PR against `Aurora-Viewer:main`.
