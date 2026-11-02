@@ -8,13 +8,15 @@ Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid` (this 
 `pkgbuilds/aurora-viewer` builds its tags; `~/Projects/phoenix-firestorm`: reference clone.
 
 **circuskid carries no patch of its own.** Synced 2026-11-02 to `upstream/main` c610e3bc
-(packaged, see below), bringing in our merged #1841. Drop worktrees
-once they hold nothing else: `slurl-combined` (re-register links first, gotcha below),
-`wgpu-performance-benefits-23c091`, #1752's, `login-profile-pic-pixelated-960617`,
-`awesome-dhawan-42ba61`, `reported-issue-review-14cf6d`, `aurora-viewer-contributing-91cc75`,
-`post-feedback-3b6d89`, `linux-framerate-perf-2a2ce9` (+ branches `test/motion-plus-hilbert`,
-`backup/linux-framerate-perf-pre-split`).
-**Open upstream: only #1921 and #1922.** Merged 11-01/02: #1792, #1796, #1797, #1821, #1830, #1832, #1838, #1841, #1861, #1865 (drop their worktrees: `festive-maxwell-3bee95`, `status-check-b00dfc`, `attachment-interaction-issue-fe6583` + its old branch, `linux-small-fixes-d9b801`, `open-issues-review-bbd228`). **#1921** (issue #1919) and **#1922** (issue #1920), both opened 11-01 from worktree `wgpu-performance-benefits-23c091` (drop it, and its branches, once both merge): a worn unrigged mesh hidden by the transparent texture now takes the touch (a slapper); a worn animesh keeps its touch (#1796's `own_rigged` had caught it: Mochi on G.W.'s head). Both grid-tested by G.W., codex + Fable reviewed, 144-run `worn-*` sweep identical; they clash on one TESTING.md line, whichever merges second merges main. 11-02: #1921 has a ✅ team review; its red macOS check is the runner abandoning the `rest` part, not our code. #1922: no review or CI yet. Power-cut A/B of #1847 posted on #1847 11-01 (loop image + dm, ext4 and btrfs, native NVIDIA: logs lost before 11/12, after 0/12). Still promised there: one or two real `sysrq` resets on btrfs (claim the machine from active peers first; the dm method is in that comment, to redo for ext4 or other files). **#1865** (worktree `open-issues-review-bbd228`, branch `fix/remove-outfit-folder`, issues #1849 + #1417, opened 2026-11-01): inventory Remove from current outfit on any folder (dropped `require_outfit` from the take-off, like `takeOffOutfit`); new demo `AURORA_DEMO_APPEARANCE=take-off-folder`, 26 A/B runs, grid-tested by G.W.; CI waits on the maintainer. Captures on the fork's `captures` branch (`remove-outfit-folder/`). **Haze sun glow** (worktree `new-viewer-update-d7fc5f`, local branch `fix/haze-sun-glow` 909da1e4, not pushed, no issue yet): a tester sees a soft sun through opaque rock (Bloom and Glow off), locked to the sky sun, gone under Midday. Cause: objects and terrain ran calcAtmosphericVars in world space, so its haze glow peaks on whatever is in front of the sun (#1781 fixed only the water); the fix runs it in eye space everywhere, plus demo `AURORA_DEMO_SKY_SUN`. A glow-only probe build shows the hotspot on the demo hill (world) and none (eye); a normal demo frame has not shown it yet (sunrise light too weak). Next: G.W. tests the fix build at the reported spot (location in this session, not in the repo), then demo A/B, 5090 + 610M timings (`AURORA_GPU=1`), check.ps1, issue + PR drafts. Next issue candidates: **#1815** (Movement button opens camera controls; `bars.rs` maps `"move"` right, suspect `controls_ui.show` in `app/controls.rs` with classic controls off), #1780, #1709; skip #1530. #1865's test method and a captures-branch trap: *#1865 notes* below the rule.
+(packaged, see below), bringing in our merged #1841.
+**Worktrees cleaned 2026-11-02**: 23 removed, 78 merged or pushed branches deleted; their
+`.scratch/` folders moved to `~/.local/share/aurora-viewer-scratch-archive/2026-11-02/` (1.4 GB,
+delete when unneeded). Left: `wgpu-performance-benefits-23c091` (#1921/#1922), `new-viewer-update-d7fc5f`
+(haze), `transparency-pr-test-viewer-543e74` (the #1963 session), `linux-framerate-perf-2a2ce9`
+(drop it from another session). The 10 local branches with commits nowhere else
+(`test/motion-plus-hilbert`, `backup/linux-framerate-perf-pre-split`, `pr-1788`, …) are pushed
+to the fork as `archive/<branch>`; the local copies can go.
+**Open upstream: only #1921 and #1922.** Merged 11-01/02: #1792, #1796, #1797, #1821, #1830, #1832, #1838, #1841, #1861, #1865. **#1921** (issue #1919) and **#1922** (issue #1920), both opened 11-01 from worktree `wgpu-performance-benefits-23c091` (drop it, and its branches, once both merge): a worn unrigged mesh hidden by the transparent texture now takes the touch (a slapper); a worn animesh keeps its touch (#1796's `own_rigged` had caught it: Mochi on G.W.'s head). Both grid-tested by G.W., codex + Fable reviewed, 144-run `worn-*` sweep identical; they clash on one TESTING.md line, whichever merges second merges main. 11-02: #1921 has a ✅ team review; its red macOS check is the runner abandoning the `rest` part, not our code. #1922: no review or CI yet. Power-cut A/B of #1847 posted on #1847 11-01 (loop image + dm, ext4 and btrfs, native NVIDIA: logs lost before 11/12, after 0/12). Still promised there: one or two real `sysrq` resets on btrfs (claim the machine from active peers first; the dm method is in that comment, to redo for ext4 or other files). **#1865** (worktree `open-issues-review-bbd228`, branch `fix/remove-outfit-folder`, issues #1849 + #1417, opened 2026-11-01): inventory Remove from current outfit on any folder (dropped `require_outfit` from the take-off, like `takeOffOutfit`); new demo `AURORA_DEMO_APPEARANCE=take-off-folder`, 26 A/B runs, grid-tested by G.W.; CI waits on the maintainer. Captures on the fork's `captures` branch (`remove-outfit-folder/`). **Haze sun glow** (worktree `new-viewer-update-d7fc5f`, local branch `fix/haze-sun-glow` 909da1e4, not pushed, no issue yet): a tester sees a soft sun through opaque rock (Bloom and Glow off), locked to the sky sun, gone under Midday. Cause: objects and terrain ran calcAtmosphericVars in world space, so its haze glow peaks on whatever is in front of the sun (#1781 fixed only the water); the fix runs it in eye space everywhere, plus demo `AURORA_DEMO_SKY_SUN`. A glow-only probe build shows the hotspot on the demo hill (world) and none (eye); a normal demo frame has not shown it yet (sunrise light too weak). Next: G.W. tests the fix build at the reported spot (location in this session, not in the repo), then demo A/B, 5090 + 610M timings (`AURORA_GPU=1`), check.ps1, issue + PR drafts. Next issue candidates: **#1815** (Movement button opens camera controls; `bars.rs` maps `"move"` right, suspect `controls_ui.show` in `app/controls.rs` with classic controls off), #1780, #1709; skip #1530. #1865's test method and a captures-branch trap: *#1865 notes* below the rule.
 
 Latest package: tag `v0.8.5.1793627160` (2026-11-02, `circuskid` 7d98826d, merge of upstream `c610e3bc`,
 `check()` passed, pkgbuilds e56e23c), installed by G.W. (grid sees `0.8.5.0`). Four stamp tags remain (0.8.5.1793540223 onward); the auto-mode classifier refuses tag deletes, so they run in a terminal tab G.W. approves (`v0.8.5.1793480285` gone 11-02).
@@ -42,15 +44,12 @@ Latest package: tag `v0.8.5.1793627160` (2026-11-02, `circuskid` 7d98826d, merge
    #1702's 610M cost is the Rgba16F width; 8-bit normals and an Rg8 target:
    ruled out.
 
-### Gotcha — this machine's `secondlife://` links run a worktree build
+### Gotcha — `secondlife://` links and test builds
 
-Packages before `0.8.5.1793480285` had no Linux link support; until the links are
-re-registered from the installed `0.8.5` build (Preferences switch off, then on), still
-`~/.local/share/applications/aurora-viewer-slurl.desktop` points at
-`linux-items-status-afad2d/target/debug/aurora-viewer` (hand-repaired
-2026-10-30 from a `(deleted)` path). Removing that worktree breaks links:
-turn the Preferences switch off first, or re-register from the build that
-replaces it. Check: `gio mime x-scheme-handler/secondlife`.
+The link handler `~/.local/share/applications/aurora-viewer-slurl.desktop` runs
+`/usr/bin/aurora-viewer` (checked 2026-11-02). Registering links from a worktree build
+points it at that build, and removing the worktree then breaks links: re-register from
+the installed package. Check: `gio mime x-scheme-handler/secondlife` and the file's `Exec`.
 
 ### Gotcha — dev builds on `circuskid` panic
 
