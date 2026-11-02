@@ -19,6 +19,13 @@ package (`pkgbuilds/aurora-viewer`, OWNER `aurora-viewer`) builds a tag on
 3. In `~/Projects/pkgbuilds/aurora-viewer/PKGBUILD`: `pkgver=<base>.$stamp`,
    `pkgrel=1`, `_upstream=` the full upstream tag name, then `updpkgsums`,
    commit, push.
+4. G.W. runs `paru`: it builds the package, publishes it to the `[circuskid]`
+   repo and installs it. Don't `makepkg` and `pacman -U` it yourself (done on
+   2026-11-02): the install then runs ahead of the repo, and pacman warns
+   "local is newer than circuskid" until the repo catches up. `paru` needs a
+   working directory that exists: started in a deleted worktree, `repo-add`
+   fails on every relative path and the build stays in
+   `~/.cache/circuskid-repo/staging` (2026-11-02).
 
 ## What the build reports
 
