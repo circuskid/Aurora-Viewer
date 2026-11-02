@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# aurora-sweep — remove finished worktrees and branches of this fork's checkout.
+#
+# Sessions outlive nothing: the maintainer merges our PRs hours or days after
+# the session that opened them went idle, so its worktree and branches stay.
+# On 2026-11-02 that was 23 worktrees and 88 branches, 10 of them holding
+# commits that existed nowhere else. Run at each upstream sync (STATUS, the
+# two-minute check), from the main checkout.
+#
+# A worktree is removed when nothing runs in it, it has no uncommitted or
+# untracked files, and either its branch's PR (ours, upstream) is merged or
+# closed, or it is idle $IDLE_DAYS with no commit of its own (one with commits
+# of its own and no PR is kept and reported). A branch is deleted when no
+# worktree has it checked out, no PR of it is open, and it has not moved in
+# $IDLE_DAYS (a running session in a detached worktree still owns one).
+# Nothing is lost: commits found on no remote, not on circuskid and not inside
+# the branch's merged PR head are first pushed to the fork as
+# archive/<branch> (archive/wt/<worktree> for a detached HEAD), and a non-empty
+# .scratch/ is moved to $ARCHIVE/<date>/<worktree> before its worktree goes.
+# The cargo build dirs a removed worktree leaves are dahab's cargo-build-sweep's.
+#
+# Usage: aurora-sweep [--apply]     (dry run without --apply)
+# Env:   AURORA_SWEEP_IDLE_DAYS (7)
+#        AURORA_SWEEP_ARCHIVE (~/.local/share/aurora-viewer-scratch-archive)
+# Exit:  0 ok · 2 could not check (not the main checkout, fetch or gh failed)
+set -euo pipefail
+
+idle_days=${AURORA_SWEEP_IDLE_DAYS:-7}
+archive=${AURORA_SWEEP_ARCHIVE:-$HOME/.local/share/aurora-viewer-scratch-archive}/$(date +%F)
+apply=0
+[[ ${1:-} == --apply ]] && apply=1
+
+die() { echo "aurora-sweep: $*" >&2; exit 2; }
+run() { if ((apply)); then "$@"; else echo "      would: $*"; fi; }
+
+main=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || die "not in a git checkout"
+main=${main%/.git}
+cd "$main"
+[[ $(git symbolic-ref -q --short HEAD) == circuskid ]] || die "the main checkout is not on circuskid"
+# origin's configured refspec fetches main only, so --remotes never sees the
+# fork's other branches (archive/* included): mirror them all, privately.
+git fetch -q --no-tags --prune origin '+refs/heads/*:refs/sweep/origin/*' || die "fetch origin failed"
+git fetch -q --no-tags upstream || die "fetch upstream failed"
+
+# branch <TAB> state <TAB> head oid, newest PR first; an empty list means gh
+# broke, not that we have no PRs.
+prs=$(gh pr list --repo Aurora-Viewer/Aurora-Viewer --author @me --state all --limit 300 \
+    --json headRefName,state,headRefOid --jq '.[] | [.headRefName, .state, .headRefOid] | @tsv') \
+    || die "gh pr list failed"
+[[ -n $prs ]] || die "gh listed no PR; refusing"
+pr_field() { awk -F'\t' -v b="$1" -v f="$2" '$1 == b { print $f; exit }' <<<"$prs"; }
+
+# Worktrees and branches of the desktop app's unarchived sessions in this repo.
+# Its auto-archive (PR closed, or a day idle) retires the rest. This is the
+# app's own state, undocumented: if it moves, refuse rather than guess.
+sessions_dir=$HOME/.config/Claude/claude-code-sessions
+[[ -d $sessions_dir ]] || die "no app session records at $sessions_dir"
+sessions=$(python3 -I - "$sessions_dir" "$main" <<'EOF'
+import glob, json, os, sys
+root, repo = sys.argv[1], sys.argv[2]
+for f in glob.glob(os.path.join(root, "*", "*", "local_*.json")):
+    try:
+        s = json.load(open(f))
+    except (OSError, ValueError):
+        continue
+    if s.get("isArchived") or s.get("originCwd") != repo:
+        continue
+    print("w\t" + (s.get("worktreePath") or ""))
+    print("b\t" + (s.get("branch") or ""))
+EOF
+) || die "could not read the app's session records"
+[[ -n $sessions ]] || die "no open session found for $main (this one should be); refusing"
+session_worktrees=$(sed -n 's/^w\t//p' <<<"$sessions")
+session_branches=$(sed -n 's/^b\t//p' <<<"$sessions")
+
+# Commits of $1 found on no fork or upstream branch and not on circuskid.
+# (--branches=circuskid would mean circuskid/*: a pattern without a wildcard
+# gets /* appended.)
+own_commits() {
+    git rev-list --count "$1" --not --remotes --glob='refs/sweep/origin/*' refs/heads/circuskid
+}
+# $1 is inside the head of branch $2's merged PR.
+in_merged_pr() {
+    local h
+    [[ $(pr_field "$2" 2) == MERGED ]] || return 1
+    h=$(pr_field "$2" 3)
+    git cat-file -e "$h^{commit}" 2>/dev/null || git fetch -q --no-tags origin "$h" 2>/dev/null || return 1
+    git merge-base --is-ancestor "$1" "$h"
+}
+# Push $1 to the fork as archive/$2 when its commits exist nowhere else.
+save() {
+    [[ $(own_commits "$1") == 0 ]] && return 0
+    in_merged_pr "$1" "$3" && return 0
+    echo "      save: $(own_commits "$1") commits -> origin archive/$2"
+    run git push -q origin "$(git rev-parse "$1"):refs/heads/archive/$2"
+}
+# A process (a session, an editor, a viewer) has its cwd inside $1.
+in_use() {
+    local c
+    for c in /proc/[0-9]*/cwd; do
+        c=$(readlink "$c" 2>/dev/null) || continue
+        [[ $c == "$1" || $c == "$1"/* ]] && return 0
+    done
+    return 1
+}
+idle() { [[ -z $(command find "$1" -path "$1/target" -prune -o -mtime "-$idle_days" -print -quit 2>/dev/null) ]]; }
+
+echo "== worktrees"
+removed=0
+while IFS= read -r wt; do
+    [[ $wt == "$main" ]] && continue
+    name=${wt#"$main"/.claude/worktrees/}
+    br=$(git -C "$wt" symbolic-ref -q --short HEAD || true)
+    state=$( [[ -n $br ]] && pr_field "$br" 2 || true)
+    why=""
+    if grep -qxF "$wt" <<<"$session_worktrees"; then echo "keep  $name: an open session's"; continue; fi
+    if in_use "$wt"; then echo "keep  $name: in use"; continue; fi
+    if [[ -n $(git -C "$wt" status --porcelain) ]]; then echo "keep  $name: uncommitted files"; continue; fi
+    head=$(git -C "$wt" rev-parse HEAD)
+    case $state in
+        OPEN) echo "keep  $name: PR open ($br)"; continue ;;
+        MERGED|CLOSED) why="PR ${state,,}" ;;
+        *)
+            # Work with no PR yet (a fix awaiting a grid test) is G.W.'s to drop.
+            if [[ $(own_commits "$head") != 0 ]]; then
+                echo "keep  $name: $(own_commits "$head") unpushed commits, no PR — push them (CLAUDE.md)"
+                continue
+            fi
+            idle "$wt" && why="idle ${idle_days}d+, nothing of its own" ;;
+    esac
+    [[ -n $why ]] || { echo "keep  $name: active in the last ${idle_days}d"; continue; }
+    echo "rm    $name ($why${br:+, $br})"
+    save "$head" "${br:-wt/$name}" "$br"
+    if [[ -n $(ls -A "$wt/.scratch" 2>/dev/null) ]]; then
+        echo "      scratch -> $archive/$name"
+        run mkdir -p "$archive"
+        run mv "$wt/.scratch" "$archive/$name"
+    fi
+    run git worktree remove "$wt"
+    removed=$((removed + 1))
+done < <(git worktree list --porcelain | sed -n 's/^worktree //p')
+((apply)) && git worktree prune
+
+echo "== branches"
+checked_out=$(git worktree list --porcelain | sed -n 's#^branch refs/heads/##p')
+deleted=0
+while IFS= read -r b; do
+    [[ $b =~ ^(main|circuskid|captures)$ ]] && continue
+    grep -qxF "$b" <<<"$checked_out" && continue
+    [[ $(pr_field "$b" 2) == OPEN ]] && { echo "keep  $b: PR open"; continue; }
+    # A session in a detached worktree still owns its branch. Neither commit
+    # date (cut from circuskid), reflog (the app writes none) nor ref mtime
+    # (auto-gc packs refs) says so; the app's record does.
+    grep -qxF "$b" <<<"$session_branches" && { echo "keep  $b: an open session's"; continue; }
+    echo "rm    $b"
+    save "$b" "$b" "$b"
+    run git branch -D -q "$b"
+    deleted=$((deleted + 1))
+done < <(git for-each-ref --format='%(refname:short)' refs/heads)
+
+verb=$( ((apply)) && echo removed || echo "would remove")
+echo "aurora-sweep: $verb $removed worktrees and $deleted branches"

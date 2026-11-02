@@ -18,22 +18,24 @@ never conflicts with us.
   `git diff <reviewed> upstream/main -- AGENTS.md HUMANS.md CONTRIBUTING.md
   .github/ docs/BRANDING.md docs/TRANSLATING.md`. A rule that contradicts an
   override below, or a process change that touches our PRs, is told to G.W.
-  and reflected here; then move the mark. Rules land as `chore(tooling)`
-  among ~80 commits a day.
+  and reflected here; then move the mark (rules land as
+  `chore(tooling)`, ~80 commits a day).
   **Reviewed through `c610e3bc` (2026-11-02).**
 - **An upstream PR branch is cut from `upstream/main`**, never from
   `circuskid`: `git switch -c fix/<name> upstream/main`. Our docs must never
   reach a PR. Push it to `origin`, open the PR against `Aurora-Viewer:main`.
   A patch we want before upstream takes it is merged into `circuskid` too.
+- 🔴 **Push a branch with commits to the fork before handing back**
+  (`archive/<name>` for an experiment). `.claude/bin/aurora-sweep` (STATUS)
+  clears the finished ones.
 
 ## Upstream's rules (AGENTS.md)
 
 🔴 **AGENTS.md binds us in full, current version, except the overrides
 below.** It loads through upstream's `CLAUDE.md` in every worktree, so read it
-there; this file never restates it (a copy drifts: the feedback board, #1543,
-and the `on-hold` PR label, #1772, went unnoticed for days). This section holds
-only our overrides and what the maintainer said outside the repo (Discord,
-reviews), which nothing else records.
+there; never restate it here (a copy drifts: #1543, #1772). This section
+holds only our overrides and what the maintainer said outside the repo
+(Discord, reviews), which nothing else records.
 
 **Overrides**, because we are outside contributors, not on the Aurora team:
 - No `scripts/new-task.ps1`, no `../work/` worktrees: sessions use our

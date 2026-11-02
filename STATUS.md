@@ -20,8 +20,7 @@ to the fork as `archive/<branch>`; the local copies can go.
 
 Latest package: tag `v0.8.5.1793627160` (2026-11-02, `circuskid` 7d98826d, merge of upstream `c610e3bc`,
 `check()` passed, pkgbuilds e56e23c), installed by G.W. (grid sees `0.8.5.0`). Four stamp tags remain (0.8.5.1793540223 onward); the auto-mode classifier refuses tag deletes, so they run in a terminal tab G.W. approves (`v0.8.5.1793480285` gone 11-02).
-`RELEASING.md`, which
-`.claude/CLAUDE.md` names, does not exist: the release steps came from the PKGBUILD comments.
+Release steps: `.claude/RELEASING.md` (it exists; an older line here said it did not).
 
 ### FIRST — the two-minute check
 
@@ -29,7 +28,11 @@ Latest package: tag `v0.8.5.1793627160` (2026-11-02, `circuskid` 7d98826d, merge
    --count circuskid..upstream/main`, then the policy diff (`.claude/CLAUDE.md`
    *Branches*). A sync should be conflict-free (no code of ours); ship when
    G.W. wants a build. Upstream now tags betas of the next version
-   (`v0.8.5-beta.*`): the package base is that tag's X.Y.Z.
+   (`v0.8.5-beta.*`): the package base is that tag's X.Y.Z. After the sync,
+   from the main checkout: `.claude/bin/aurora-sweep` (dry run), then
+   `--apply`. It pushes unsaved commits to `archive/*`, archives `.scratch/`,
+   and keeps open PRs and the app's unarchived sessions; dahab's
+   `cargo-build-sweep` reaps the build dirs left behind.
 2. **Grid follow-ups G.W. owns:** #1407 Linux voice: initial grid test
    passed 2026-10-30; the full one (mic open under load, device switch
    mid-call) waits until G.W. uses voice (rarely); blocks nothing. The
@@ -67,9 +70,11 @@ Fetch the upstream tag with `--no-tags`, or the stamp tags follow it in.
 `~/Projects/aurora-viewer` (the main checkout, on `circuskid`). Branch from
 `circuskid` in the worktree, edit and commit there, then
 `git -C ~/Projects/aurora-viewer merge --ff-only <branch>`, push `circuskid`,
-switch back and delete the branch. **`.claude/CLAUDE.md` is capped at ~8,925 chars**
-(the worktree rules hook truncates past it; 8,811 on 2026-11-01): trim before adding. Check:
-`echo '{"cwd":"'$PWD'"}' | ~/.local/bin/claude-status-inject --rules | grep -c TRUNCATED` = 0.
+switch back and delete the branch. **`.claude/CLAUDE.md` is capped at 9,000 characters**
+(`BUDGET` in `claude-status-inject`; it counts characters, and `wc -c` counts bytes, 🔴 = 4;
+8,857 on 2026-11-02): trim before adding. Check, in characters:
+`python3 -c 'import sys;print(len(open(sys.argv[1]).read()))' .claude/CLAUDE.md`. The
+`--rules | grep TRUNCATED` check reads the main checkout's copy, not your branch's.
 
 ### THEN — the next upstream PR
 
