@@ -459,8 +459,8 @@ fn close_fade(near: f32, proj_y: f32, height: i32) -> [f32; 4] {
     [near, 2.0 / (proj_y * height as f32), from, to]
 }
 
-const CLOSE_FADE_FROM: f32 = 0.05;
-const CLOSE_FADE_TO: f32 = 0.10;
+const CLOSE_FADE_FROM: f32 = 0.015;
+const CLOSE_FADE_TO: f32 = 0.025;
 
 /// The light of the frame as Bend takes it: the direction towards it (w =
 /// 0) through the view-projection the depth prepass was drawn with.
