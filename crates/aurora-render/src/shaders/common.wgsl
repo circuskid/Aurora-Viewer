@@ -2101,19 +2101,15 @@ struct LLAtmos {
     atten: vec3<f32>,
 };
 
-// calcAtmosphericVars: `rel` = point minus camera (world, z up).
-fn ll_atmos(rel_in: vec3<f32>) -> LLAtmos {
-    return ll_atmos_core(rel_in, vec3<f32>(0.0, 0.0, 1.0), frame.sky_light.xyz, frame.sun_dir.xyz);
-}
-
-// calcAtmosphericVars as hazeF.glsl runs it over a surface: the point in
-// eye space (rebuilt from the depth), `lightnorm` in world GL axes
-// (LLEnvironment::toLightNorm: x north, y up, z east) and `light_dir` in eye
-// space. The haze glow's first factor thus mixes eye and world axes: its
-// hotspot is not along the sun for rays down to the water, where the
-// world-space ll_atmos put a second sun on the sea (the Legacy Viewer shows
+// calcAtmosphericVars as softenLightF.glsl and hazeF.glsl run it over a
+// surface: the point in eye space (rebuilt from the depth), `lightnorm` in
+// world GL axes (LLEnvironment::toLightNorm: x north, y up, z east) and
+// `light_dir` in eye space. The haze glow's first factor thus mixes eye and
+// world axes: its hotspot is not along the sun. In world space both factors
+// peaked together on whatever lay in front of the sun, and the glow drew a
+// second sun on the sea, the ground and the objects (the Legacy Viewer shows
 // none). `rel_world` = point minus camera (world, z up).
-fn ll_atmos_eye(rel_world: vec3<f32>) -> LLAtmos {
+fn ll_atmos(rel_world: vec3<f32>) -> LLAtmos {
     let forward = normalize((frame.inv_view_proj_rot * vec4<f32>(0.0, 0.0, 0.5, 1.0)).xyz);
     let up = normalize(frame.cam_up.xyz - forward * dot(frame.cam_up.xyz, forward));
     let right = cross(forward, up);

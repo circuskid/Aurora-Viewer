@@ -5553,8 +5553,11 @@ pub fn events() -> Vec<NetEvent> {
         let haze = fields.next().and_then(|s| s.parse::<f64>().ok());
         let ambient = fields.next().and_then(demo_ambient);
         let probe_ambiance = fields.next().and_then(|s| s.parse::<f64>().ok());
+        // AURORA_DEMO_SKY_SUN=<azimuth>,<elevation>: that sky's own sun, low
+        // enough for an object to stand in front of it (the haze glow)
+        let sun = std::env::var("AURORA_DEMO_SKY_SUN").ok().and_then(|v| parse_sun(&v));
         Some(demo_sky(
-            Vec3::new(0.55, 0.35, 0.6).normalize(),
+            sun.unwrap_or(Vec3::new(0.55, 0.35, 0.6).normalize()),
             gamma,
             haze,
             ambient,

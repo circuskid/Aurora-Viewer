@@ -1378,8 +1378,8 @@ fn water_pixel(in: WaterOut) -> vec4<f32> {
         // a hazy, bright classic sky. Through ll_haze, as the objects beside
         // it (hazeF.glsl's blend uses atten.r, ll_haze the whole atten:
         // TASKS.md), with calcAtmosphericVars in hazeF's eye space
-        // (ll_atmos_eye): in world space its glow put a second sun on the sea.
-        color = ll_haze(color, ll_atmos_eye(in.world_pos - frame.camera_pos.xyz));
+        // (ll_atmos): in world space its glow put a second sun on the sea.
+        color = ll_haze(color, ll_atmos(in.world_pos - frame.camera_pos.xyz));
     }
     return vec4<f32>(color, 1.0);
 }
