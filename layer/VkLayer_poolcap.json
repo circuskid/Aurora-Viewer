@@ -1,0 +1,15 @@
+{
+  "file_format_version": "1.0.0",
+  "layer": {
+    "name": "VK_LAYER_TEST_poolcap",
+    "type": "GLOBAL",
+    "library_path": "./libVkLayer_poolcap.so",
+    "api_version": "1.3.0",
+    "implementation_version": "1",
+    "description": "Refuses update-after-bind descriptor pools above a total",
+    "functions": {
+      "vkGetInstanceProcAddr": "poolcap_GetInstanceProcAddr",
+      "vkGetDeviceProcAddr": "poolcap_GetDeviceProcAddr"
+    }
+  }
+}

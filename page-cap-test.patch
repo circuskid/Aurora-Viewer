@@ -1,0 +1,42 @@
+diff --git a/crates/aurora-render/src/main_thread.rs b/crates/aurora-render/src/main_thread.rs
+index b02326d2..8395bc19 100644
+--- a/crates/aurora-render/src/main_thread.rs
++++ b/crates/aurora-render/src/main_thread.rs
+@@ -1692,7 +1692,8 @@ fn open_device(
+     }
+     // Aurora's own pipeline cache on disk (pipeline_cache.rs)
+     features |= crate::pipeline_cache::feature(afeat);
+-    let max_textures = texture_page_limit(&alim);
++    let max_textures = texture_page_limit(&alim).min(pool_page_limit(adapter));
++    log::info!("texture pages: {max_textures}");
+     let descriptor = wgpu::DeviceDescriptor {
+         label: Some("aurora"),
+         required_features: features,
+@@ -1756,6 +1757,27 @@ fn detect_vram_mb(adapter: &wgpu::Adapter) -> Option<u64> {
+     (bytes > 0).then_some(bytes / (1024 * 1024))
+ }
+ 
++// wgpu-hal sizes a descriptor pool for at least 64 sets of a layout; the
++// texture layout's pool (pages + sampler + buffer per set) must fit the
++// driver's update-after-bind total.
++#[cfg(not(target_os = "macos"))]
++fn pool_page_limit(adapter: &wgpu::Adapter) -> u32 {
++    use ash::vk;
++    // SAFETY: the hal adapter is only borrowed for this property query.
++    let Some(hal) = (unsafe { adapter.as_hal::<wgpu::hal::api::Vulkan>() }) else {
++        return u32::MAX;
++    };
++    let instance = hal.shared_instance().raw_instance();
++    let mut di = vk::PhysicalDeviceDescriptorIndexingProperties::default();
++    let mut props = vk::PhysicalDeviceProperties2::default().push_next(&mut di);
++    unsafe { instance.get_physical_device_properties2(hal.raw_physical_device(), &mut props) };
++    (di.max_update_after_bind_descriptors_in_all_pools / 64).saturating_sub(2)
++}
++#[cfg(target_os = "macos")]
++fn pool_page_limit(_adapter: &wgpu::Adapter) -> u32 {
++    u32::MAX
++}
++
+ // Binding-array entries have their own limit; they do not consume the
+ // ordinary sampled-texture slots used by frame attachments.
+ fn texture_page_limit(limits: &wgpu::Limits) -> u32 {
