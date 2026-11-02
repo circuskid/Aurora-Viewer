@@ -866,7 +866,7 @@ fn temporal(@builtin(global_invocation_id) id: vec3<u32>) {
         }
         // the point moved on its own when its motion parts from the camera's
         // by more than half a pixel
-        let own = length((prev_uv - cam_uv) * size) > 0.5;
+        let own = length((prev_uv - cam_uv) * size) > g.own.z;
         own_w = select(0.0, g.own.x, own);
         let pp = prev_uv * size - vec2<f32>(0.5);
         let base = vec2<i32>(floor(pp));

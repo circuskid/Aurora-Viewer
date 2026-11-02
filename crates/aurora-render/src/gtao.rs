@@ -81,6 +81,20 @@ const TEMPORAL_CLIP: f32 = 1.25;
 /// keeps the ground's), and GTAO's wide grain leaves the usual clip loose.
 const TEMPORAL_OWN_WEIGHT: f32 = 0.2;
 const TEMPORAL_OWN_CLIP: f32 = 0.6;
+// Prototype: AURORA_GTAO_OWN=weight,clip,pixels overrides the own-motion
+// history (pixels: how far a point moves apart from the camera to count).
+fn own_params() -> [f32; 4] {
+    let mut v = [TEMPORAL_OWN_WEIGHT, TEMPORAL_OWN_CLIP, 0.5, 0.0];
+    if let Ok(s) = std::env::var("AURORA_GTAO_OWN") {
+        for (i, p) in s.split(',').take(3).enumerate() {
+            if let Ok(x) = p.trim().parse::<f32>() {
+                v[i] = x;
+            }
+        }
+    }
+    v
+}
+
 /// Times more slices on a frame that accumulates without a history.
 const NO_HISTORY_SLICES: u32 = 4;
 /// Frames the noise goes through before it repeats (XeGTAO's 64).
@@ -478,7 +492,7 @@ fn uniforms(
             let m = normal_view(view);
             [m.x_axis.extend(0.0), m.y_axis.extend(0.0), m.z_axis.extend(0.0)].map(|c| c.to_array())
         }),
-        own: [TEMPORAL_OWN_WEIGHT, TEMPORAL_OWN_CLIP, 0.0, 0.0],
+        own: own_params(),
         photo: [0.0, 0.0, 1.0, 1.0],
         context: [0.0; 4],
     }
