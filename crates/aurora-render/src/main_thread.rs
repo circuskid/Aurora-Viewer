@@ -270,6 +270,7 @@ impl Renderer {
         vsync: bool,
         gpu: &str,
     ) -> Result<Renderer, RenderError> {
+        crate::start_progress::enter(crate::start_progress::Phase::GpuDevice);
         let desc = || {
             let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
             desc.backends = crate::BACKENDS;
@@ -416,6 +417,7 @@ impl Renderer {
             wgpu::DeviceLostReason::Destroyed => log::info!("GPU device released: {message}"),
             _ => {
                 on_lost.set();
+                crate::pipeline_cache::device_lost();
                 log::error!("GPU device lost ({reason:?}): {message}");
             }
         });
@@ -467,6 +469,10 @@ impl Renderer {
         let vr = Arc::new(crate::vr_control::Control::new(xr_graphics.is_some()));
         #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
         let vr = Arc::new(crate::vr_control::Control::new(false));
+        // the compiled pipelines of the earlier starts (pipeline_cache.rs),
+        // before the first one is made
+        crate::pipeline_cache::open(&device, &ainfo);
+        crate::start_progress::enter(crate::start_progress::Phase::Pipelines);
         let backend = Backend::new(BackendInit {
             vr: vr.clone(),
             gpu_frames: gpu_frames.clone(),
@@ -510,6 +516,8 @@ impl Renderer {
                 "frames drawn on the main thread (AURORA_RENDER_THREAD=0)"
             }
         );
+        crate::start_progress::enter(crate::start_progress::Phase::Ready);
+        crate::pipeline_cache::log_start();
         Ok(Renderer {
             host,
             vr,
@@ -1592,6 +1600,21 @@ struct OpenedDevice {
     max_textures: u32,
 }
 
+/// The blocks of video memory wgpu's allocator carves resources out of
+/// (its `Performance` hint: 128 to 256 MB). Anything larger gets a block of
+/// its own, given back to the driver the moment it is destroyed; a smaller
+/// one only once its whole block is empty. With 16 MB blocks every render
+/// target of a 4K window (16 to 64 MB each) has its own: when they shrink
+/// (a window behind past its budget pauses its 3D drawing, #1808; a resize)
+/// the driver gets their memory back at once. Demo crowd at 3840 x 2054:
+/// the driver counted 2,585 MB for 1,772 MB of resources, 2,250 MB with
+/// 16 MB blocks, and 2,640 MB against 1,385 MB once the 3D drawing paused;
+/// the render thread's resource writes took 0.04 ms more a frame. Texture
+/// pages have memory of their own (dedicated.rs), so the cost of a new
+/// block under the allocator's lock, which ruled out 64 MB blocks for them,
+/// no longer falls on the pages.
+const MEMORY_BLOCK: u64 = 16 << 20;
+
 /// Open `adapter` with the features the renderer needs and the optional
 /// ones it has; an error when it lacks a needed one or the device fails.
 fn open_device(
@@ -1667,13 +1690,17 @@ fn open_device(
     if afeat.contains(wgpu::Features::MULTI_DRAW_INDIRECT_COUNT) {
         features |= wgpu::Features::MULTI_DRAW_INDIRECT_COUNT;
     }
+    // Aurora's own pipeline cache on disk (pipeline_cache.rs)
+    features |= crate::pipeline_cache::feature(afeat);
     let max_textures = texture_page_limit(&alim);
     let descriptor = wgpu::DeviceDescriptor {
         label: Some("aurora"),
         required_features: features,
         required_limits: alim.clone(),
         experimental_features: wgpu::ExperimentalFeatures::disabled(),
-        memory_hints: wgpu::MemoryHints::Performance,
+        memory_hints: wgpu::MemoryHints::Manual {
+            suballocated_device_memory_block_size: MEMORY_BLOCK..MEMORY_BLOCK,
+        },
         trace: wgpu::Trace::Off,
     };
     #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
