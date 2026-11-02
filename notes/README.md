@@ -23,5 +23,5 @@ Newest first.
 
 | Note | Date | What |
 |---|---|---|
-| [gtao-snow-on-skin-under-hair-is-blended-hair-casting-occlusion.md](gtao-snow-on-skin-under-hair-is-blended-hair-casting-occlusion.md) | 2026-11-02 | Snow beside hair goes with `AURORA_BLEND_AO=alt`: #889 lets blended strands cast GTAO. Not #1702, half res or quality, which only change its look. |
+| [gtao-snow-on-skin-under-hair-is-blended-hair-casting-occlusion.md](gtao-snow-on-skin-under-hair-is-blended-hair-casting-occlusion.md) | 2026-11-02 | Snow beside hair goes with `AURORA_BLEND_AO=alt`: #889 lets blended hair cast GTAO specks. Hair still needs its own AO; #1702, half res and quality only change the look. |
 | [nixos-prebuilt-viewer-will-not-start-without-steam-run.md](nixos-prebuilt-viewer-will-not-start-without-steam-run.md) | 2026-11-01 | NixOS has no /lib or standard loader, so prebuilt viewers fail; `steam-run` fakes them. A user report, never tested here. |

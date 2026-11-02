@@ -45,13 +45,25 @@ it became visible in 0.8.5. #1702's own-motion path (current weight 0.2, clip
 0.6 σ) then throws away the history where those specks change the occlusion,
 so it crawls in motion.
 
-## Proposed fix (not built)
+## Proposed fix (being prototyped)
 
-Blended faces receive the occlusion but do not cast it: GTAO keeps the
-occlusion depth for the pixel it shades (#889's heads still darken) and
-searches its horizons in the prepass depth alone (`depth_ss`, which already
-exists every frame). Hair keeps its own depth, normal and motion, so #1702's
-reprojection of it does not change. To check against: #889's demo
+Two designs were ruled out before any code:
+
+- **Blended faces receive but do not cast** (horizons searched in the prepass
+  depth alone): a blended-but-opaque mesh head is all blended faces, so its
+  nose and eye sockets would stop occluding it, the regression #889 fixed.
+- **Hair kept out of the occlusion depth** (the faces whose texture has real
+  transparency, `classify_alpha` in scene/jobs.rs): G.W. watched the hair in
+  `AURORA_BLEND_AO=alt`'s off seconds on 2026-11-02, "it loses a lot of its
+  shading and depth".
+
+What is left: hair shades hair, but does not cast on anything else. A second
+depth holds the prepass and only the blended faces whose texture is opaque;
+a pixel on hair (where the two depths differ) searches its horizons in the
+full occlusion depth, every other pixel in the one without hair. Hair keeps
+its own depth, normal and motion, so #1702's reprojection of it does not
+change. The skin loses the hair's soft shadow, the band the snow was in. To
+check against: #889's demo
 (`AURORA_DEMO_BLEND_AO=1`), and the maintainer's hem measurement on #1702
 (`AURORA_DEMO_PHYSICS=1`, `AURORA_AO=gtao:2`, `AURORA_AUTO_EXPOSURE=0`, the
 dress region at frames 1322–1338 against `AURORA_GTAO_TEMPORAL=0`). Check the
