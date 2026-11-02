@@ -187,6 +187,10 @@ pub mod flags {
     /// Bit of flags[3], above the texture animation's 24 packed bits.
     /// World faces whose material permits Blend texture alpha only.
     pub const WORLD_BLEND_PICK: u32 = 1 << 31;
+    /// Bit of flags[3]: a blended face whose texture is cut out (hair,
+    /// lashes, fringes). It shades itself in the occlusion but casts on
+    /// nothing else (gtao.wgsl, `choose_occluders`).
+    pub const CUTOUT_TEX: u32 = 1 << 30;
 }
 
 pub const PORTAL_HALF_WIDTH: f32 = 1.0;
@@ -341,6 +345,14 @@ impl DrawRecord {
     /// flags[3]'s texture-animation mode and dimensions.
     pub fn set_world_blend_pick(&mut self, enabled: bool) {
         self.flags[3] = (self.flags[3] & !flags::WORLD_BLEND_PICK) | if enabled { flags::WORLD_BLEND_PICK } else { 0 };
+    }
+
+    /// Whether this is a blended face with a cut-out texture
+    /// ([`flags::CUTOUT_TEX`]); returns whether the bit changed.
+    pub fn set_cutout(&mut self, cutout: bool) -> bool {
+        let before = self.flags[3];
+        self.flags[3] = (self.flags[3] & !flags::CUTOUT_TEX) | if cutout { flags::CUTOUT_TEX } else { 0 };
+        before != self.flags[3]
     }
 
     /// Upper 16 bits of flags.x: visual HUD zoom in units of 1/4096.
@@ -2060,7 +2072,11 @@ mod tests {
             assert_eq!(record.flags[3] & 0x00ff_ffff, animation);
             assert_eq!(record.flags[0] & 0xffff, flags::PLANAR | flags::TEX_ANIM);
         }
+        record.set_cutout(true);
         record.set_world_blend_pick(false);
+        assert_eq!(record.flags[3] & 0x00ff_ffff, animation);
+        assert!(!record.set_cutout(true));
+        assert!(record.set_cutout(false));
         assert_eq!(record.flags[3], animation);
     }
 }

@@ -777,6 +777,10 @@ struct Targets {
     /// blended faces at least half covered drawn over it (#882), when one
     /// of them is ready.
     ao_depth: Option<(wgpu::Texture, wgpu::TextureView)>,
+    /// `ao_depth` without the cut-out blended faces (`flags::CUTOUT_TEX`),
+    /// which GTAO searches under the hair: hair shades hair and casts on
+    /// nothing else.
+    ao_depth_solid: Option<(wgpu::Texture, wgpu::TextureView)>,
     /// The contact shadows' mask (contact_shadows.rs), when they are on or
     /// `AURORA_CONTACT_SHADOWS` keeps it ready.
     contact: Option<crate::contact_shadows::Targets>,
@@ -897,6 +901,8 @@ struct Pipelines {
     pre_contact: SidedPipelines,
     /// `pre_contact` with GTAO's mesh normals, into the occlusion's depth.
     pre_contact_normal: SidedPipelines,
+    /// `pre_contact` without the cut-out faces, into `ao_depth_solid`.
+    pre_contact_solid: SidedPipelines,
     /// Depth prepass into the scene pass's own multisampled depth (MSAA
     /// only): ordinary / portal-clipped, each one-sided and two-sided.
     pre_msaa: Option<[[wgpu::RenderPipeline; 2]; 2]>,
@@ -3783,6 +3789,8 @@ impl Backend {
         // both sides: a double-sided blended face casts either way, the
         // nearer one keeps the depth
         let pre_contact = std::array::from_fn(|side| pre("prepass contact", "vs_main", Some("fs_depth_contact"), blend_cull(side != 0)));
+        let pre_contact_solid =
+            std::array::from_fn(|side| pre("prepass contact solid", "vs_main", Some("fs_depth_contact_solid"), blend_cull(side != 0)));
         // the depth of the blended faces under the water, from 1/255, into
         // the single-sampled scene depth the water samples for its
         // refraction and fog (with MSAA the scene pass writes another)
@@ -4059,6 +4067,7 @@ impl Backend {
             pre_normal_portal,
             pre_contact,
             pre_contact_normal,
+            pre_contact_solid,
             pre_msaa,
             refl_sky,
             refl_terrain,
@@ -4211,6 +4220,9 @@ impl Backend {
             make_view(device, "occlusion depth", w, h, DEPTH_FORMAT, 1, sampled | copies)
         });
         let ao_depth_view = ao_depth.as_ref().map_or(&depth_ss, |(_, view)| view);
+        let ao_depth_solid = (s.ssao > 0 && gtao_ao && std::env::var_os("AURORA_GTAO_HAIR_CAST").is_none())
+            .then(|| make_view(device, "occlusion depth solid", w, h, DEPTH_FORMAT, 1, sampled | wgpu::TextureUsages::COPY_DST));
+        let ao_depth_solid_view = ao_depth_solid.as_ref().map_or(ao_depth_view, |(_, view)| view);
         let ao = (s.ssao > 0 && legacy_ao).then(|| {
             let (hw, hh) = (w.div_ceil(2), h.div_ceil(2));
             (
@@ -4237,7 +4249,7 @@ impl Backend {
         let indirect = crate::gtao::Indirect::from_env().needed(s.screen_indirect);
         let gtao = (s.ssao > 0 && gtao_ao).then(|| {
             let scene = indirect.then_some(&scene_copy);
-            gtao.targets(device, ao_depth_view, scene, w, h, ao_override.level(s.ao_method))
+            gtao.targets(device, ao_depth_view, ao_depth_solid_view, scene, w, h, ao_override.level(s.ao_method))
         });
         // the method shown first; `AURORA_AO=alt` switches it each second
         let gtao_shown = gtao.is_some() && !legacy_ao;
@@ -4287,6 +4299,7 @@ impl Backend {
             gtao,
             gtao_shown,
             ao_depth,
+            ao_depth_solid,
             contact,
             depth_ss_tex,
             water_refl,
@@ -7077,6 +7090,33 @@ impl Backend {
                 };
                 draw_sided(&mut pass, pipe, rg.blend, 0);
                 draw_under(&mut pass, pipe, rg.blend_under);
+            }
+        }
+        if let Some((tex, view)) = &self.targets.ao_depth_solid {
+            encoder.copy_texture_to_texture(
+                self.targets.depth_ss_tex.as_image_copy(),
+                tex.as_image_copy(),
+                self.targets.depth_ss_tex.size(),
+            );
+            if blend_in_ao_depth {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("occlusion depth solid"),
+                    color_attachments: &[],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                    multiview_mask: None,
+                });
+                bind_mesh(&mut pass, &self.groups.a);
+                draw_sided(&mut pass, &self.pipelines.pre_contact_solid, rg.blend, 0);
+                draw_under(&mut pass, &self.pipelines.pre_contact_solid, rg.blend_under);
             }
         }
         // ---- SSAO

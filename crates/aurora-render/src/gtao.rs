@@ -640,7 +640,7 @@ fn storage_entry(binding: u32, format: wgpu::TextureFormat) -> wgpu::BindGroupLa
 }
 
 const UNFILTERED: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: false };
-const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
 /// The visibility and the bent normal while they are blurred.
 const AO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 const EDGES_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -688,6 +688,7 @@ impl Gtao {
                     uniform_entry(),
                     texture_entry(1, wgpu::TextureSampleType::Depth),
                     storage_entry(3, DEPTH_FORMAT),
+                    texture_entry(22, wgpu::TextureSampleType::Depth),
                 ],
             ),
             prefilter: make(
@@ -867,12 +868,14 @@ impl Gtao {
     }
 
     /// Targets for a window of `width` x `height` reading `depth` (the
-    /// single-sample depth prepass), and with `scene` (the previous frame's
+    /// single-sample depth prepass) and `solid` (the same without the
+    /// cut-out blended faces), and with `scene` (the previous frame's
     /// lit colour) those of the indirect light.
     pub(crate) fn targets(
         &self,
         device: &wgpu::Device,
         depth: &wgpu::TextureView,
+        solid: &wgpu::TextureView,
         scene: Option<&wgpu::TextureView>,
         width: u32,
         height: u32,
@@ -979,7 +982,7 @@ impl Gtao {
                 entries: &all,
             })
         };
-        let prefilter0 = group(&self.prefilter0.1, &[(1, depth), (3, &mip_view(0))]);
+        let prefilter0 = group(&self.prefilter0.1, &[(1, depth), (3, &mip_view(0)), (22, solid)]);
         let prefilter = (1..mip_count)
             .map(|l| group(&self.prefilter.1, &[(2, &mip_view(l - 1)), (3, &mip_view(l))]))
             .collect();
