@@ -686,7 +686,10 @@ fn main_bitmask(@builtin(global_invocation_id) id: vec3<u32>) {
     let uv = (vec2<f32>(px) + vec2<f32>(0.5)) * pixel;
 
     let zc = depth0(px);
-    choose_occluders(px, zc);
+    // the whole occlusion depth: the light comes from the previous frame's
+    // colour at each sample, which is the cut-out face's where one lies in
+    // front (searched behind it, its colour would light from where it is not)
+    occluders = 0u;
     let zl = depth0(px + vec2<i32>(-1, 0));
     let zr = depth0(px + vec2<i32>(1, 0));
     let zt = depth0(px + vec2<i32>(0, -1));
