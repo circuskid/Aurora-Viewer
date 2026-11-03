@@ -1372,7 +1372,7 @@ fn video_card(ui: &mut egui::Ui, p: &Palette, pv: &mut Previews, k: u64, url: &s
             link: url.to_owned(),
             title: title.clone(),
             web: {
-                let mut web = WebView::default();
+                let mut web = WebView::with_volume();
                 match (&clip, video) {
                     (Some(clip), _) => web.navigate(&clip.player_page(&options, k)),
                     (None, Some(video)) => web.navigate(&video.player_page(&options)),

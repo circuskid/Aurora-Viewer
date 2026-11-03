@@ -45,6 +45,8 @@ pub struct WebView {
     private_root: Option<PathBuf>,
     /// The profile of the running private browser.
     profile: Option<PrivateProfile>,
+    /// The owner sets the page's volume (`MediaPlugin::launch_with_volume`).
+    with_volume: bool,
     texture: Option<egui::TextureHandle>,
     /// Page to show (loaded once the plugin runs).
     url: String,
@@ -76,6 +78,17 @@ impl WebView {
     pub fn private(root: PathBuf) -> WebView {
         WebView {
             private_root: Some(root),
+            ..Default::default()
+        }
+    }
+
+    /// A browser whose sound follows the viewer's volume: the owner calls
+    /// `set_volume` on its plugin every frame (a video played from a chat
+    /// preview). On Linux the plugin does not apply that volume itself, so
+    /// it is set on the sound server instead (aurora-media's stream_volume).
+    pub fn with_volume() -> WebView {
+        WebView {
+            with_volume: true,
             ..Default::default()
         }
     }
@@ -176,14 +189,21 @@ impl WebView {
             };
             let launched = match (&private, paths) {
                 (Err(e), _) => Some(Err(std::io::Error::new(e.kind(), e.to_string()))),
-                (Ok(settings), Some(paths)) => Some(MediaPlugin::launch(
-                    paths,
-                    "media_plugin_cef",
-                    px.0,
-                    px.1,
-                    settings.as_ref().unwrap_or(browser),
-                    "",
-                )),
+                (Ok(settings), Some(paths)) => {
+                    let launch = if self.with_volume {
+                        MediaPlugin::launch_with_volume
+                    } else {
+                        MediaPlugin::launch
+                    };
+                    Some(launch(
+                        paths,
+                        "media_plugin_cef",
+                        px.0,
+                        px.1,
+                        settings.as_ref().unwrap_or(browser),
+                        "",
+                    ))
+                }
                 (Ok(_), None) => None,
             };
             match launched {

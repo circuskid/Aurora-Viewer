@@ -17,11 +17,12 @@
 //! stream's volume per application name, so a page we mute would have left
 //! the user's own Chromium muted.
 //!
-//! Only the pages of the world are tagged (`MediaPlugin::launch_in_world`),
+//! Only the pages whose volume the viewer sets are tagged (the world's, and
+//! the videos played from chat previews: `MediaPlugin::launch_with_volume`),
 //! and a stream is only touched once its plugin has been given a volume. The
-//! web windows keep CEF's own stream name and the sound they always had: with
-//! our name they would start at the volume the server saved for it, the last
-//! one set on a world page.
+//! other web windows keep CEF's own stream name and the sound they always
+//! had: with our name they would start at the volume the server saved for
+//! it, the last one set on a tagged page.
 //!
 //! All of it runs on a thread of its own, over the server's protocol
 //! (`pulseaudio`, through pipewire-pulse under PipeWire): the frame only
