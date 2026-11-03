@@ -12,19 +12,21 @@ clean; policy reviewed through `c610e3bc`. Package `v0.8.5.1793627160` (pkgbuild
 `check()` passed) installed by G.W. 2026-11-02. Upstream was 2 commits ahead at checkpoint.
 Nothing is half-done.
 
-**Open upstream: only #1921 and #1922** (worktree `wgpu-performance-benefits-23c091`; drop it
+**Open upstream: #1921, #1922, #2077** (worktree `wgpu-performance-benefits-23c091`; drop it
 and its branches once both merge). #1921 (issue #1919): a worn unrigged mesh hidden by the
 transparent texture takes the touch (a slapper). #1922 (issue #1920): a worn animesh keeps its
 touch (#1796's `own_rigged` had caught it). Both grid-tested by G.W., codex + Fable reviewed,
 144-run `worn-*` sweep identical. Whichever merges second merges main (one TESTING.md line).
 11-02: #1921 ✅ team review (red macOS = runner abandoned `rest`, not us); #1922 no review yet.
+**#2077** (issue #2025; worktree `adapter-choice-match-22edad`, branch `fix/gpu-adapter-name-match` f936367a): a saved GPU name matching several adapters takes the first that can present, an exact name beats a longer one containing it, and the warning tells "no adapter matches" from "cannot present". check.ps1 green, demo ×3, G.W. tested the Preferences path, codex + Fable ×2; Auto-fix on.
+#2025's cause is unproven: our comment asks the reporter for J4, the `GPU adapter` log lines and `vulkaninfo --summary`; their reply decides `Refs` vs `Closes`. The TASKS line lacks the PR link (add it with any review push).
 
 **Worktrees left** (23 removed 2026-11-02): `wgpu-performance-benefits-23c091` (#1921/#1922), `new-viewer-update-d7fc5f` (haze), `transparency-pr-test-viewer-543e74` (the #1963 session), `contact-shadow-investigation-58c69f` (contact-shadow fade; its `target/debug/av-*` test builds, ~3 GB, go with it), `previous-work-continuation-06803e` (GTAO snow, branch `fix/gtao-hair-cast-occlusion`), `linux-framerate-perf-2a2ce9` (the checkpointing session's own; drop it from another session). Unsaved branches are on the fork as `archive/<branch>` (local copies deleted); removed worktrees' `.scratch/` is in `~/.local/share/aurora-viewer-scratch-archive/2026-11-02/` (1.4 GB; G.W. deletes it when unneeded).
 
 ### FIRST — the two-minute check
 
 1. **Upstream drift.** `git fetch --no-tags upstream && git rev-list --count circuskid..upstream/main`, then the policy diff (`.claude/CLAUDE.md` *Branches*). Sync and ship when G.W. wants a build (`.claude/RELEASING.md`; a beta `v0.8.5-beta.*` gives base X.Y.Z). After a sync, from the main checkout: `.claude/bin/aurora-sweep` (dry run); 🔴 `--apply` only with G.W.'s go-ahead each time. **Architect, 2026-11-02:** it stays a prototype here until G.W. rules on shared tooling (`agent-config/docs/architect-audit-2026-10-23.md`); the push rule is in agent-config 405ca90 `worktree-sessions.md`. Its traps are in its comments.
-2. **#1921 / #1922:** `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer --json state,reviews,comments`. Answer reviews per THEN below (one batched push: each push re-runs first-contributor CI).
+2. **#1921 / #1922 / #2077** (+ #2025 for the reporter): `gh pr view <n> --repo Aurora-Viewer/Aurora-Viewer --json state,reviews,comments`. Answer reviews per THEN below (one batched push: each push re-runs first-contributor CI).
 
 ### NEXT — the work, in order
 
