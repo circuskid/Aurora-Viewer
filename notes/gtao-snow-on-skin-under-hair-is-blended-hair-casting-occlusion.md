@@ -128,6 +128,25 @@ Legacy Viewer's source before saying its SSAO ignores blended faces. The
 contact shadows read the same depth (the grain beside the hair with them on)
 but cast from blended faces on purpose (mesh shoes); that belongs to #988.
 
+## Grid test of the hair fix, and what is next
+
+2026-11-02, branch `fix/gtao-hair-snow` 9d61b9ff (the hair/skin test made
+exact, the hair-free depth drawn with the occlusion depth's own vertex
+shader): G.W. on the grid, the hair-band snow is fixed; the hair may shade
+a little less than before. What he still sees, soft mottling on open skin
+and stepped edges along strands while the avatar animates, is cause 2, and
+by eye the two look alike. Decision: no PR until cause 2 is fixed too, then
+both are judged together. Cost of the hair fix (`g_ssao`): RTX 5090 4K
+GTAO Ultra 1.17 → 1.43 ms, Radeon 610M 720p GTAO Low 4.55 → 5.40 ms; on the
+610M half is the second blended pass, half the Rg32 depth levels and the
+copy (two R32 chains would save that half).
+
+Leads for cause 2, untried: count a point as moving on its own from its
+motion *relative to its neighbourhood* (a hem leaves the still ground, a
+breathing torso moves with itself), not relative to the camera; or keep the
+long history and widen the depth test only, since the hem's fix needed both
+the weight and the clip.
+
 ## What was ruled out
 
 - **#1702's weight and clip as the cause.** (Its own-motion *threshold* is
