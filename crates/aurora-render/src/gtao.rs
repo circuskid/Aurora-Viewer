@@ -86,18 +86,6 @@ const TEMPORAL_OWN_CLIP: f32 = 0.6;
 /// itself, a hem leaves the ground. 4 kept less than half of the hem's fix
 /// in demo; 12 and 16 all of it, with the same grain as without the path.
 const TEMPORAL_OWN_REACH: f32 = 16.0;
-// PROTOTYPE (out before a PR): AURORA_GTAO_OWN=weight,clip,reach
-fn own_params() -> [f32; 4] {
-    let mut v = [TEMPORAL_OWN_WEIGHT, TEMPORAL_OWN_CLIP, TEMPORAL_OWN_REACH, 0.0];
-    if let Ok(s) = std::env::var("AURORA_GTAO_OWN") {
-        for (i, p) in s.split(',').take(3).enumerate() {
-            if let Ok(x) = p.trim().parse::<f32>() {
-                v[i] = x;
-            }
-        }
-    }
-    v
-}
 /// Times more slices on a frame that accumulates without a history.
 const NO_HISTORY_SLICES: u32 = 4;
 /// Frames the noise goes through before it repeats (XeGTAO's 64).
@@ -495,7 +483,7 @@ fn uniforms(
             let m = normal_view(view);
             [m.x_axis.extend(0.0), m.y_axis.extend(0.0), m.z_axis.extend(0.0)].map(|c| c.to_array())
         }),
-        own: own_params(),
+        own: [TEMPORAL_OWN_WEIGHT, TEMPORAL_OWN_CLIP, TEMPORAL_OWN_REACH, 0.0],
         photo: [0.0, 0.0, 1.0, 1.0],
         context: [0.0; 4],
     }
