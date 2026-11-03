@@ -117,7 +117,7 @@ struct GtaoParams {
 @group(0) @binding(0) var<uniform> g: GtaoParams;
 @group(0) @binding(1) var depth_tex: texture_depth_2d;
 @group(0) @binding(2) var src_mip: texture_2d<f32>;
-@group(0) @binding(3) var dst_mip: texture_storage_2d<r32float, write>;
+@group(0) @binding(3) var dst_mip: texture_storage_2d<rg32float, write>;
 @group(0) @binding(4) var depth_mips: texture_2d<f32>;
 @group(0) @binding(5) var ao_out: texture_storage_2d<rgba16float, write>;
 @group(0) @binding(6) var edges_out: texture_storage_2d<rgba8unorm, write>;
@@ -144,6 +144,17 @@ struct GtaoParams {
 // A tiled photo's view depth and its levels, of the whole photo drawn small
 // before the tiles (`PhotoContext` in types.rs).
 @group(0) @binding(21) var photo_context: texture_2d<f32>;
+// The occlusion depth without the blended faces whose texture is cut out
+// (hair, lashes, fringes): the depth levels keep it in .y beside the whole
+// occlusion depth in .x.
+@group(0) @binding(22) var solid_depth_tex: texture_depth_2d;
+
+// Which depth the horizons of this pixel search: .x on a cut-out blended
+// face (hair shades hair), .y everywhere else. Hair enters the occlusion
+// depth texel by texel where it is half covered, scattered strands with
+// gaps between them, and cast them on the skin under it as a speckle that
+// crawled as the hair moved; what lies under the hair now takes none of it.
+var<private> occluders: u32 = 1u;
 
 const PI: f32 = 3.1415926535897932;
 const PI_HALF: f32 = 1.5707963267948966;
@@ -187,7 +198,8 @@ fn prefilter_depth0(@builtin(global_invocation_id) id: vec3<u32>) {
     let full = vec2<i32>(textureDimensions(depth_tex));
     let src = min(vec2<i32>(id.xy) * i32(g.misc.y), full - vec2<i32>(1));
     let z = view_depth(textureLoad(depth_tex, src, 0));
-    textureStore(dst_mip, vec2<i32>(id.xy), vec4<f32>(z, 0.0, 0.0, 0.0));
+    let z_solid = view_depth(textureLoad(solid_depth_tex, src, 0));
+    textureStore(dst_mip, vec2<i32>(id.xy), vec4<f32>(z, z_solid, 0.0, 0.0));
 }
 
 // XeGTAO_DepthMIPFilter: the four depths weighted by how far they are
@@ -217,11 +229,13 @@ fn prefilter_depth(@builtin(global_invocation_id) id: vec3<u32>) {
     }
     let src = vec2<i32>(textureDimensions(src_mip));
     let base = vec2<i32>(id.xy) * 2;
-    let d0 = textureLoad(src_mip, min(base, src - vec2<i32>(1)), 0).x;
-    let d1 = textureLoad(src_mip, min(base + vec2<i32>(1, 0), src - vec2<i32>(1)), 0).x;
-    let d2 = textureLoad(src_mip, min(base + vec2<i32>(0, 1), src - vec2<i32>(1)), 0).x;
-    let d3 = textureLoad(src_mip, min(base + vec2<i32>(1, 1), src - vec2<i32>(1)), 0).x;
-    textureStore(dst_mip, vec2<i32>(id.xy), vec4<f32>(depth_mip_filter(d0, d1, d2, d3), 0.0, 0.0, 0.0));
+    let d0 = textureLoad(src_mip, min(base, src - vec2<i32>(1)), 0).xy;
+    let d1 = textureLoad(src_mip, min(base + vec2<i32>(1, 0), src - vec2<i32>(1)), 0).xy;
+    let d2 = textureLoad(src_mip, min(base + vec2<i32>(0, 1), src - vec2<i32>(1)), 0).xy;
+    let d3 = textureLoad(src_mip, min(base + vec2<i32>(1, 1), src - vec2<i32>(1)), 0).xy;
+    let all = depth_mip_filter(d0.x, d1.x, d2.x, d3.x);
+    let solid = depth_mip_filter(d0.y, d1.y, d2.y, d3.y);
+    textureStore(dst_mip, vec2<i32>(id.xy), vec4<f32>(all, solid, 0.0, 0.0));
 }
 
 // ---- 3: the occlusion
@@ -243,7 +257,24 @@ fn depth_at(uv_in: vec2<f32>, mip: f32) -> f32 {
     let lvl = i32(clamp(floor(mip + 0.5), 0.0, MIP_LEVELS - 1.0));
     let size = vec2<i32>(textureDimensions(depth_mips, lvl));
     let c = clamp(vec2<i32>(floor(uv * vec2<f32>(size))), vec2<i32>(0), size - vec2<i32>(1));
-    return textureLoad(depth_mips, c, lvl).x;
+    return pick_occluders(textureLoad(depth_mips, c, lvl).xy);
+}
+
+fn pick_occluders(d: vec2<f32>) -> f32 {
+    return select(d.y, d.x, occluders == 0u);
+}
+
+// Choose the depth this pixel's horizons search (`occluders`): the whole
+// occlusion depth where a cut-out blended face lies in front of what the
+// depth without them holds. The two depths are the same bits wherever no
+// cut-out face drew, so any step counts: a strand lying on the skin is
+// still hair (with a relative margin, a strand within a few millimetres of
+// the scalp searched the depth without hair against its own normal and
+// came out as a dark dot).
+fn choose_occluders(px: vec2<i32>, zc: f32) {
+    let size = vec2<i32>(textureDimensions(depth_mips, 0));
+    let z_solid = textureLoad(depth_mips, clamp(px, vec2<i32>(0), size - vec2<i32>(1)), 0).y;
+    occluders = select(1u, 0u, z_solid > zc);
 }
 
 fn outside(uv: vec2<f32>) -> bool {
@@ -262,7 +293,7 @@ fn context_depth(photo_uv: vec2<f32>, mip: f32) -> f32 {
     let lvl = i32(clamp(floor(mip + log2(g.photo.z * whole / tile) + 0.5), 0.0, levels - 1.0));
     let size = vec2<i32>(textureDimensions(photo_context, lvl));
     let c = clamp(vec2<i32>(floor(photo_uv * vec2<f32>(size))), vec2<i32>(0), size - vec2<i32>(1));
-    return textureLoad(photo_context, c, lvl).x;
+    return pick_occluders(textureLoad(photo_context, c, lvl).xy);
 }
 
 fn depth0(px: vec2<i32>) -> f32 {
@@ -455,6 +486,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let uv = (vec2<f32>(px) + vec2<f32>(0.5)) * pixel;
 
     let zc = depth0(px);
+    choose_occluders(px, zc);
     let zl = depth0(px + vec2<i32>(-1, 0));
     let zr = depth0(px + vec2<i32>(1, 0));
     let zt = depth0(px + vec2<i32>(0, -1));
@@ -653,6 +685,7 @@ fn main_bitmask(@builtin(global_invocation_id) id: vec3<u32>) {
     let uv = (vec2<f32>(px) + vec2<f32>(0.5)) * pixel;
 
     let zc = depth0(px);
+    choose_occluders(px, zc);
     let zl = depth0(px + vec2<i32>(-1, 0));
     let zr = depth0(px + vec2<i32>(1, 0));
     let zt = depth0(px + vec2<i32>(0, -1));

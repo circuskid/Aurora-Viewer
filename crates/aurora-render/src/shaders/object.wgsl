@@ -814,6 +814,25 @@ fn fs_depth_contact(in: VsOut, @builtin(front_facing) front: bool) {
     depth_contact(in.record, in.uv, in.world_pos);
 }
 
+// fs_depth_contact without the cut-out faces: the occlusion depth that
+// what lies under the hair searches (gtao.wgsl, `choose_occluders`).
+@fragment
+fn fs_depth_contact_solid(in: VsOut, @builtin(front_facing) front: bool) {
+    if (!front && (records[in.record].flags.x & FLAG_DOUBLE_SIDED) == 0u) { discard; }
+    if ((records[in.record].flags.w & FLAG_CUTOUT_TEX) != 0u) { discard; }
+    depth_contact(in.record, in.uv, in.world_pos);
+}
+
+// fs_depth_contact_solid after the vertex shader of the normals: the
+// occlusion depth draws the blended faces with it then, and GTAO tells
+// hair from what lies under it by the two depths differing at all.
+@fragment
+fn fs_depth_contact_solid_mask(in: DepthMaskOut, @builtin(front_facing) front: bool) {
+    if (!front && (records[in.record].flags.x & FLAG_DOUBLE_SIDED) == 0u) { discard; }
+    if ((records[in.record].flags.w & FLAG_CUTOUT_TEX) != 0u) { discard; }
+    depth_contact(in.record, in.uv, in.world_pos);
+}
+
 // fs_depth_contact with the normal, into the occlusion's depth.
 @fragment
 fn fs_depth_contact_normal(in: DepthMaskOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
