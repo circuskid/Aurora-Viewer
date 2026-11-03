@@ -876,12 +876,16 @@ fn temporal(@builtin(global_invocation_id) id: vec3<u32>) {
         // occlusion and its own, a torso that breathes or sways moves with
         // itself and keeps the long history (else at half resolution its
         // grain showed as mottling and squares)
+        // (no surface around to compare with, behind it the sky or one
+        // too far in depth: the camera's test alone)
         let own_d = (prev_uv - cam_uv) * size;
-        var own = length(own_d) > 0.5;
+        let own_cam = length(own_d) > 0.5;
+        var own = own_cam;
         if (own && g.own.z > 0.0 && g.misc.w > 0.5) {
             let full = vec2<i32>(textureDimensions(normal_tex));
             let scale = i32(g.misc.y);
             var apart = 0.0;
+            var compared = false;
             // two rings of eight, at half and the whole reach
             for (var k = 0; k < 16; k++) {
                 let a = f32(k % 8) * 0.7853982;
@@ -901,8 +905,9 @@ fn temporal(@builtin(global_invocation_id) id: vec3<u32>) {
                 let src = min(q * scale, full - vec2<i32>(1));
                 let dq = (uvq - textureLoad(normal_tex, src, 0).zw - cam_q) * size;
                 apart = max(apart, length(own_d - dq));
+                compared = true;
             }
-            own = apart > 0.5;
+            own = apart > 0.5 || !compared;
         }
         own_w = select(0.0, g.own.x, own);
         let pp = prev_uv * size - vec2<f32>(0.5);
@@ -919,10 +924,12 @@ fn temporal(@builtin(global_invocation_id) id: vec3<u32>) {
         // stood still: only that depth matches, so a surface the camera
         // uncovers rejects its occluder's history. What moved on its own
         // was at its depth now if it moved with the camera, and in between
-        // for most of the rest: either end and the span between match)
+        // for most of the rest: either end and the span between match;
+        // the camera's test, since a body that moves with itself also left
+        // the camera's estimate)
         let slope = 1.5 * (gx + gy);
-        let z_lo = select(clip.w, min(clip.w, zc), own);
-        let z_hi = select(clip.w, max(clip.w, zc), own);
+        let z_lo = select(clip.w, min(clip.w, zc), own_cam);
+        let z_hi = select(clip.w, max(clip.w, zc), own_cam);
         var weight = 0.0;
         var sum = vec4<f32>(0.0);
         for (var k = 0; k < 4; k++) {
