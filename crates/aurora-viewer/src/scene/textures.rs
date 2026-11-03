@@ -3146,6 +3146,10 @@ impl TextureStreamer {
     /// is minimised (`press` gives the textures back behind,
     /// texture_budget::Background).
     pub fn set_window_state(&mut self, in_front: bool, minimized: bool) {
+        // AURORA_DEMO_HOLD_FRONT: a soak on a hidden workspace measures the
+        // budget of a window in front, not the highest step of one behind
+        let held = std::env::var_os("AURORA_DEMO_HOLD_FRONT").is_some();
+        let (in_front, minimized) = (in_front || held, minimized && !held);
         self.in_front = in_front;
         self.minimized = minimized;
     }
