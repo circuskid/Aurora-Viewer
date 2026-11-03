@@ -7,10 +7,10 @@ Our fork of Aurora-Viewer/Aurora-Viewer. Rules: [.claude/CLAUDE.md](.claude/CLAU
 Fork `circuskid/Aurora-Viewer`, `main` = upstream, our branch `circuskid` (this file);
 `pkgbuilds/aurora-viewer` builds its tags; `~/Projects/phoenix-firestorm`: reference clone.
 
-**State.** `circuskid` = upstream `c610e3bc` + our docs, no patch of its own; main checkout
-clean; policy reviewed through `c610e3bc`. Package `v0.8.5.1793627160` (pkgbuilds e56e23c,
-`check()` passed) installed by G.W. 2026-11-02. `circuskid` not synced since (upstream at `5aea1db1`
-on 2026-11-03). Nothing is half-done.
+**State.** `circuskid` = upstream `0caf816d` + our docs, no patch of its own; main checkout
+clean; policy reviewed through `0caf816d`. Package `v0.8.5.1793627160` (pkgbuilds e56e23c,
+`check()` passed) installed by G.W. 2026-11-02; no package of `0caf816d` built yet (synced
+2026-11-03). Nothing is half-done.
 
 **Open upstream: #1921, #1922, #2077, #2078, #2083, #2085, #2086, #2087, #2090, #2091, #2093, #2097, #2149** (worktree `wgpu-performance-benefits-23c091`; drop it
 and its branches once both merge). #1921 (issue #1919): a worn unrigged mesh hidden by the

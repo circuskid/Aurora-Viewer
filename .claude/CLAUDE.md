@@ -20,7 +20,7 @@ never conflicts with us.
   override below, or a process change that touches our PRs, is told to G.W.
   and reflected here; then move the mark (rules land as
   `chore(tooling)`, ~80 commits a day).
-  **Reviewed through `c610e3bc` (2026-11-02).**
+  **Reviewed through `0caf816d` (2026-11-03).**
 - **An upstream PR branch is cut from `upstream/main`**, never from
   `circuskid`: `git switch -c fix/<name> upstream/main`. Our docs must never
   reach a PR. Push it to `origin`, open the PR against `Aurora-Viewer:main`.
@@ -125,6 +125,8 @@ holds only our overrides and what the maintainer said outside the repo
   - **Read every `cfg(windows)` arm you touch**: Linux clippy cannot see
     them, and Windows CI fails on what it would flag (an unreachable match
     arm failed #1397).
+- **A merge of main never answers `## Changes requested`** (#2046, 2026-11-03): the
+  maintainer's tracking keeps the PR on us until a commit of our own lands.
 - **Our PRs answer each other's nits**: a nit another of our open PRs fixes is
   left out of this one and pointed to, so the two PRs don't conflict.
 - Reference sources: `../phoenix-firestorm` = `~/Projects/phoenix-firestorm`,
