@@ -555,8 +555,9 @@ fn face_mode(f: &FaceDraw, alpha: &[AlphaKind], channel: &[bool], object_auto_ma
 }
 
 /// A blended face whose texture has see-through texels (hair, lashes,
-/// fringes): it enters the occlusion depth strand by strand, so it shades
-/// itself but casts on nothing else (`flags::CUTOUT_TEX`).
+/// fringes, lace): where its texture is sparse it enters the occlusion depth
+/// strand by strand, so there it shades itself but casts on nothing else
+/// (`flags::CUTOUT_TEX`; object.wgsl's `solid_clip` decides per pixel).
 fn is_cutout(pass: Pass, alpha: &[AlphaKind], slot: u32) -> bool {
     pass == Pass::Blend && alpha.get(slot as usize).is_some_and(|&a| a != AlphaKind::Opaque)
 }

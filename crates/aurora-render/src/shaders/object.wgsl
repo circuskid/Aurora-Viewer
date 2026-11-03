@@ -814,12 +814,34 @@ fn fs_depth_contact(in: VsOut, @builtin(front_facing) front: bool) {
     depth_contact(in.record, in.uv, in.world_pos);
 }
 
-// fs_depth_contact without the cut-out faces: the occlusion depth that
-// what lies under the hair searches (gtao.wgsl, `choose_occluders`).
+// Coverage of a cut-out face's texture around `uv`, four levels coarser
+// than the one drawn (about 16 screen pixels): strands are sparse there, the
+// cloth of a dress around its lace is not.
+override SOLID_COVER: f32 = 0.9;
+
+// A cut-out face (`FLAG_CUTOUT_TEX`) stays out of the depth without hair
+// where its texture is sparse around `uv` (strands, lace): there it entered
+// the occlusion depth as scattered specks, each casting its own spot. Where
+// it is covered all around (the body of a blended dress), it casts as the
+// other blended faces do.
+fn solid_clip(record: u32, uv: vec2<f32>) {
+    let rec = records[record];
+    if ((rec.flags.w & FLAG_CUTOUT_TEX) == 0u) {
+        return;
+    }
+    let loc = tex_loc[rec.tex.x];
+    let around = textureSampleBias(tex_pages[loc >> 16u], tex_sampler, uv, loc & 0xffffu, 4.0).a;
+    if (around * rec.base_color.a < SOLID_COVER) {
+        discard;
+    }
+}
+
+// fs_depth_contact without the sparse cut-out faces: the occlusion depth
+// that what lies under the hair searches (gtao.wgsl, `choose_occluders`).
 @fragment
 fn fs_depth_contact_solid(in: VsOut, @builtin(front_facing) front: bool) {
     if (!front && (records[in.record].flags.x & FLAG_DOUBLE_SIDED) == 0u) { discard; }
-    if ((records[in.record].flags.w & FLAG_CUTOUT_TEX) != 0u) { discard; }
+    solid_clip(in.record, in.uv);
     depth_contact(in.record, in.uv, in.world_pos);
 }
 
@@ -829,7 +851,7 @@ fn fs_depth_contact_solid(in: VsOut, @builtin(front_facing) front: bool) {
 @fragment
 fn fs_depth_contact_solid_mask(in: DepthMaskOut, @builtin(front_facing) front: bool) {
     if (!front && (records[in.record].flags.x & FLAG_DOUBLE_SIDED) == 0u) { discard; }
-    if ((records[in.record].flags.w & FLAG_CUTOUT_TEX) != 0u) { discard; }
+    solid_clip(in.record, in.uv);
     depth_contact(in.record, in.uv, in.world_pos);
 }
 
