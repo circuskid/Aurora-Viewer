@@ -232,6 +232,12 @@ pub struct ToolbarUi {
     pub movelock_active: bool,
     pub movement_active: bool,
     pub water_walk_active: bool,
+    /// Our profile is shown on its Picks tab (Avatar.IsPicksTabOpen).
+    pub picks_active: bool,
+    /// The nearby chat bar is shown (MainChatbarVisible).
+    pub chat_bar_active: bool,
+    /// "Show Friends Only" is on (FSRenderFriendsOnly).
+    pub friends_only_active: bool,
     pub movelock_status: String,
     /// The violet of the Grid status button's flash (0: none), given by
     /// the app on a new entry of the grid's status feed.

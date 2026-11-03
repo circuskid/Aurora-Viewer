@@ -301,6 +301,8 @@ pub fn demo(st: &mut OptionsUi, value: &str) {
         st.modified_view = true;
     } else if what == "cogs" {
         st.demo_open_cogs = true;
+    } else if what == "system-fonts" || what == "system-fonts-scroll" {
+        st.demo_font_list = Some(what == "system-fonts-scroll");
     } else if let Some(query) = what.strip_prefix("search=") {
         st.query = query.to_owned();
     } else if page == Page::Shortcuts && !what.is_empty() && what != "altgr" && st.reveal.is_none() {
@@ -383,6 +385,9 @@ pub struct OptionsUi {
     pub demo_reset: bool,
     /// Open every cog once counted (`AURORA_DEMO_OPTIONS=…:cogs`, captures).
     pub demo_open_cogs: bool,
+    /// Keep the system font list open, scrolling it when true
+    /// (`AURORA_DEMO_OPTIONS=appearance:system-fonts`, `…:system-fonts-scroll`).
+    pub demo_font_list: Option<bool>,
     interface_scale: scale::ScaleSlider,
     text_scale: scale::ScaleSlider,
     /// The account's content ceiling and the rating it wants, while logged
@@ -391,6 +396,12 @@ pub struct OptionsUi {
     /// The account settings the grid keeps (Privacy), while logged in (set
     /// by the app).
     pub account: Option<privacy::Account>,
+    /// The session's "Show my favorite landmarks at login", while logged in
+    /// with an account the login screen remembers (set by the app).
+    pub login_favorites: Option<bool>,
+    /// The account's "Keep Show Friends Only after teleporting", while
+    /// logged in (set by the app).
+    pub friends_only_keep: Option<bool>,
     system_fonts: Option<Vec<SystemFont>>,
     font_filter: String,
     /// Disk cache usage (bytes) and whether a clear is running; set by the app.
@@ -609,6 +620,10 @@ pub struct OptionsResult {
     pub maturity: Option<u8>,
     /// An account setting of Privacy changed, to send to the server.
     pub account: Option<crate::world::user_info::Change>,
+    /// "Show my favorite landmarks at login" switched (Privacy).
+    pub login_favorites: Option<bool>,
+    /// "Keep Show Friends Only after teleporting" switched (Controls).
+    pub friends_only_keep: Option<bool>,
     /// Open the Dev Toolbox (Network and cache › Logs and tools).
     pub open_dev_toolbox: bool,
     /// Back up the settings to a file the user chooses.
@@ -1592,6 +1607,10 @@ fn page_area(
     };
     let query = st.query.clone();
     let tab = st.tab;
+    // Reserve the full scrollbar strip before entering the scroll area.
+    // Its animated appearance otherwise changes the cells' width, invalidates
+    // their control measurements and can alternate short/tall rows forever.
+    let rows_width = (super::widgets::scrolled_width(&ui) - 6.0).max(0.0);
     egui::ScrollArea::vertical()
         .id_salt(scroll_id)
         .auto_shrink([false, false])
@@ -1599,7 +1618,7 @@ fn page_area(
         .min_scrolled_height(rows_h)
         .show(&mut ui, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
-            ui.set_width(ui.available_width() - 6.0);
+            ui.set_width(rows_width);
             ui.add_space(4.0);
             let mut cx = Cx::new(ui, *p, s, d, st, r, mode, &query);
             match mode {
