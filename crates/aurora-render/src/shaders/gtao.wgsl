@@ -106,7 +106,8 @@ struct GtaoParams {
     // world directions to this view space, for the mesh normals
     normal_view: mat3x3<f32>,
     // where the point moved on its own: the current frame's least weight,
-    // the clip's half width in standard deviations
+    // the clip's half width in standard deviations, the reach (pixels) of
+    // the surfaces its motion is compared with (0: the camera's alone)
     own: vec4<f32>,
     // a tile of a photo: its part of the photo (left, top, width, height),
     // and `context.x` 1 when the samples past it read `photo_context`
@@ -869,8 +870,40 @@ fn temporal(@builtin(global_invocation_id) id: vec3<u32>) {
             }
         }
         // the point moved on its own when its motion parts from the camera's
-        // by more than half a pixel
-        let own = length((prev_uv - cam_uv) * size) > 0.5;
+        // by more than half a pixel, and from that of the surfaces around it
+        // (within `g.own.z` pixels, and the effect radius in depth) by as
+        // much: a hem lifting off the still ground changes the ground's
+        // occlusion and its own, a torso that breathes or sways moves with
+        // itself and keeps the long history (else at half resolution its
+        // grain showed as mottling and squares)
+        let own_d = (prev_uv - cam_uv) * size;
+        var own = length(own_d) > 0.5;
+        if (own && g.own.z > 0.0 && g.misc.w > 0.5) {
+            let full = vec2<i32>(textureDimensions(normal_tex));
+            let scale = i32(g.misc.y);
+            var apart = 0.0;
+            // two rings of eight, at half and the whole reach
+            for (var k = 0; k < 16; k++) {
+                let a = f32(k % 8) * 0.7853982;
+                let r = select(0.5, 1.0, k >= 8) * g.own.z;
+                let q = clamp(px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * r)), vec2<i32>(0), isize - vec2<i32>(1));
+                let zq = depth0(q);
+                if (abs(zq - zc) > g.radius.x || zq >= FAR * 0.5) {
+                    continue;
+                }
+                let uvq = (vec2<f32>(q) + vec2<f32>(0.5)) / size;
+                let cq = g.reproj * vec4<f32>(view_position(uvq, zq), 1.0);
+                if (cq.w <= 1e-4) {
+                    continue;
+                }
+                let nq = cq.xy / cq.w;
+                let cam_q = vec2<f32>(nq.x * 0.5 + 0.5, 0.5 - nq.y * 0.5);
+                let src = min(q * scale, full - vec2<i32>(1));
+                let dq = (uvq - textureLoad(normal_tex, src, 0).zw - cam_q) * size;
+                apart = max(apart, length(own_d - dq));
+            }
+            own = apart > 0.5;
+        }
         own_w = select(0.0, g.own.x, own);
         let pp = prev_uv * size - vec2<f32>(0.5);
         let base = vec2<i32>(floor(pp));
