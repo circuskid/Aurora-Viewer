@@ -6176,8 +6176,33 @@ pub fn idle_animation() -> aurora_assets::Animation {
                     k(4.0, Quat::from_rotation_z(0.0)),
                 ],
             ),
-        ],
+        ]
+        .into_iter()
+        .chain(idle_sway().map(|a| {
+            // a stand animation's slow sway: the torso leans side to side
+            // over the four seconds, a sine in eight keys
+            let keys = (0..=8)
+                .map(|i| {
+                    let t = i as f32 * 0.5;
+                    k(t, Quat::from_rotation_x(a * (t * std::f32::consts::FRAC_PI_2).sin()))
+                })
+                .collect();
+            joint("mTorso", keys)
+        }))
+        .collect(),
     }
+}
+
+/// `AURORA_DEMO_SWAY=<radians>`: the idle pose sways its torso side to side
+/// by that much, a slow motion of a few tenths of a pixel a frame like a
+/// stand animation's (GTAO's history on animated avatars).
+fn idle_sway() -> Option<f32> {
+    std::env::var("AURORA_DEMO_SWAY")
+        .ok()?
+        .trim()
+        .parse::<f32>()
+        .ok()
+        .filter(|a| a.is_finite())
 }
 
 /// `AURORA_DEMO_TYPING=1`: we type in the nearby chat from our arrival on,

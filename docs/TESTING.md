@@ -2856,6 +2856,7 @@ To check with these scenarios:
 | `AURORA_DEMO_DEFORM=1`, `reset`, `reset-anim`, `self` or `self-reset` | An avatar deformed by a finished pose, and "Reset skeleton" |
 | `AURORA_DEMO_EMOTE=<expression>[,<hand pose>][,signal][,self]` | A facial expression and a hand pose from an animation (system body) |
 | `AURORA_DEMO_PHYSICS=1\|still\|off\|classic` | Avatar body physics: balls on the breasts, belly and butt bounce as the avatars hop |
+| `AURORA_DEMO_SWAY=<radians>` | The idle avatars sway their torso slowly, as a stand animation does (GTAO's history on animated avatars) |
 | `AURORA_DEMO_DERENDER=menu\|inspect\|avatar\|hat` | A resident's Inspect, Derender and the Asset blacklist window |
 | `AURORA_DEMO_SEAT_KILL=1` | A seat deleted under the resident sitting on it |
 | `AURORA_DEMO_DISPLAYNAME="<name>"` | Display name change (simulated) |
@@ -3544,6 +3545,17 @@ tests do not establish that this report uses an invalid joint or index.
   close-up; with `AURORA_DEMO_POS="133.6,127.9"`, `AURORA_DEMO_CAMERA=ml`
   and frame 660: the wolf from the front (a grey silhouette, it is over the
   complexity limit of the demo, but with its build).
+- **`AURORA_DEMO_SWAY=<radians>`**: the demo's idle pose leans its torso
+  from side to side by that angle over four seconds, a few tenths of a pixel
+  a frame on a close avatar, like a stand animation's sway. It shows GTAO's
+  history on an avatar that moves with itself: with
+  `AURORA_WINDOW_SIZE=2048,1152` (2560 x 1440 at 125 %, so the occlusion
+  is at half resolution), `AURORA_AO=gtao:3`, `AURORA_DEMO_DEBUG=ao`,
+  `AURORA_DEMO_CAM=3.1416,-0.35,2.0` (from the front), `AURORA_DEMO_SWAY=0.1`
+  and `AURORA_FPS_LIMIT=40`, the chest stays as smooth as when the avatar
+  stands still; it must not mottle into soft 2 x 2 squares. Cap the frame
+  rate below what the PC holds: the sway runs on the clock, so a dropped
+  frame moves it further in one frame.
 - **`AURORA_DEMO_PHYSICS=1`**: our avatar and the one in front of it wear a
   physics layer and a rigged mesh of four pink balls weighted to the
   LEFT_PEC, RIGHT_PEC, BELLY and BUTT collision volumes, as mesh bodies are.
