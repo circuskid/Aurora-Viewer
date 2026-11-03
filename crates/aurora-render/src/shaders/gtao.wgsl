@@ -866,8 +866,12 @@ fn temporal(@builtin(global_invocation_id) id: vec3<u32>) {
         }
         // the point moved on its own when its motion parts from the camera's
         // by more than half a pixel
-        let own = length((prev_uv - cam_uv) * size) > g.own.z;
-        own_w = select(0.0, g.own.x, own);
+        let apart_px = length((prev_uv - cam_uv) * size);
+        let own = apart_px > g.own.z;
+        // prototype ramp: the short history and tight clip fade in from
+        // g.own.z to g.own.w pixels (a step when w <= z)
+        let own_t = select(select(0.0, 1.0, own), smoothstep(g.own.z, g.own.w, apart_px), g.own.w > g.own.z);
+        own_w = g.own.x * own_t;
         let pp = prev_uv * size - vec2<f32>(0.5);
         let base = vec2<i32>(floor(pp));
         let f = pp - floor(pp);
@@ -915,7 +919,7 @@ fn temporal(@builtin(global_invocation_id) id: vec3<u32>) {
             count = m.y;
         }
         if (weight > 1e-3) {
-            let gamma = select(g.temporal.w, g.own.y, own);
+            let gamma = mix(g.temporal.w, g.own.y, own_t);
             hist = clamp(sum / weight, m1 - gamma * sigma, m1 + gamma * sigma);
         } else {
             count = 0.0;

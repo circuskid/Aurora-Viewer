@@ -86,7 +86,7 @@ const TEMPORAL_OWN_CLIP: f32 = 0.6;
 fn own_params() -> [f32; 4] {
     let mut v = [TEMPORAL_OWN_WEIGHT, TEMPORAL_OWN_CLIP, 0.5, 0.0];
     if let Ok(s) = std::env::var("AURORA_GTAO_OWN") {
-        for (i, p) in s.split(',').take(3).enumerate() {
+        for (i, p) in s.split(',').take(4).enumerate() {
             if let Ok(x) = p.trim().parse::<f32>() {
                 v[i] = x;
             }
