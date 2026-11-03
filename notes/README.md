@@ -23,5 +23,5 @@ Newest first.
 
 | Note | Date | What |
 |---|---|---|
-| [gtao-snow-on-skin-under-hair-is-blended-hair-casting-occlusion.md](gtao-snow-on-skin-under-hair-is-blended-hair-casting-occlusion.md) | 2026-11-02 | Two causes: #889 lets blended hair cast GTAO specks, and breathing trips #1702's own-motion path (squares). Both prototyped; hem check open. |
+| [gtao-snow-on-skin-under-hair-is-blended-hair-casting-occlusion.md](gtao-snow-on-skin-under-hair-is-blended-hair-casting-occlusion.md) | 2026-11-02 | Two causes: #889 lets blended hair cast GTAO specks, and breathing trips #1702's own-motion path (squares). Prototyped; the hem check rules out a speed threshold for the squares. |
 | [nixos-prebuilt-viewer-will-not-start-without-steam-run.md](nixos-prebuilt-viewer-will-not-start-without-steam-run.md) | 2026-11-01 | NixOS has no /lib or standard loader, so prebuilt viewers fail; `steam-run` fakes them. A user report, never tested here. |

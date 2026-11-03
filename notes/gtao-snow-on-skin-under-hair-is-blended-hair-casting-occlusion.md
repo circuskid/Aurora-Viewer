@@ -3,7 +3,7 @@
 2026-11-02. **Reproduced on the grid by G.W.** (RTX 5090, 3768 × 2055, Deluxe,
 GTAO Ultra), installed 0.8.5. Two causes, both prototyped on fork branch
 `fix/gtao-hair-cast-occlusion` and grid-tested by G.W. the same day; no PR
-yet (the hem check below is still open).
+yet. The hem check (below) rules out the second cause's 2 px fix.
 
 ## What broke
 
@@ -59,18 +59,41 @@ shows as 2 × 2 squares. Grid A/B with the prototype's
 `AURORA_GTAO_OWN=weight,clip,pixels`: `0,1.25` (own motion off) and
 `0.2,0.6,2` (counted only above 2 pixels) both remove the squares while
 standing; the fine grain left is the same in both, ordinary GTAO noise. The
-threshold is the fix, not looser weight or clip (those are what fixed #1702's
-hem).
+threshold looked like the fix, not looser weight or clip (those are what
+fixed #1702's hem), until the hem check below showed 2 px undoes the hem fix
+too.
 
-**Open: the hem check.** Our #1702 run used `AURORA_DEMO_PHYSICS=1`,
-`AURORA_DEMO_DEBUG=ao`, `AURORA_AO=gtao:2`, `AURORA_FPS_LIMIT=60`,
-`AURORA_DEMO_CAM=0,0.2,6` (camera pulled back), frames 1300–1540, about
-1683 × 900; the hem lags after a lift-off at frames 1380–1400 and 1500–1518
-(quiet window 1420–1440). On 2026-11-02 that setup rendered no avatars and no
-ground occlusion in a floating window here, so every variant measured the
-same, `0,1.25` included, which must trail: a check that cannot fail. Make the
-`0,1.25` run trail first, then compare 2 pixels (or a ramp from ½ to 2).
-Test viewers opened with `hl.exec_cmd(cmd, { workspace = "5 silent" })` are
+**The hem check rules out a speed threshold** (2026-11-02, second session).
+The earlier run could not fail for two reasons, neither the window: the
+demo's saved settings (`~/.config/auroraviewer/demo/settings.json`, changed
+11-01) had `ssao: 0`, so the occlusion view was blank white and the avatars
+white on white; and the demo's arrival counts as a teleport whose camera
+reset (`camera.reset_on_teleport`, on by default) drops
+`AURORA_DEMO_CAM`. Run each capture with `XDG_CONFIG_HOME` on a fresh folder
+whose `auroraviewer/demo/settings.json` holds only
+`{"camera":{"reset_on_teleport":false}}`. Then, with `AURORA_DEMO_PHYSICS=1`,
+`AURORA_DEMO_DEBUG=ao`, `AURORA_AO=gtao:2`, `AURORA_AUTO_EXPOSURE=0`,
+`AURORA_FPS_LIMIT=60`, `AURORA_DEMO_CAM=0,0.2,6`, 2104 × 1125, frames
+1290–1540, the avatar hops every 60 frames and the darkest 9 × 9 lag of the
+dress and ground against `AURORA_GTAO_TEMPORAL=0` reads:
+
+| own-motion | after a lift-off | quiet |
+|---|---|---|
+| ½ px step (main) | −18 … −20 (two runs) | −11.7 |
+| ramp ½ → 1 px | −23.9 | −11.5 |
+| ramp ½ → 1.5 px | −26.3 | −11.7 |
+| ramp ½ → 2 px | −27.7 | −11.6 |
+| 2 px step | −27.8 | −11.6 |
+| off (`0,1.25`) | −28.8 | −11.6 |
+
+So the check now fails where it must (off trails), and 2 px keeps almost
+none of #1702's hem fix: the dress moves at the same ½–1.5 px a frame as
+breathing does. Speed cannot tell them apart; the breathing squares need
+another discriminator (or a fix to the half-resolution grain itself). The
+ramp is prototype 0d5a1a33 (`AURORA_GTAO_OWN=weight,clip,from,to`). The
+demo's idle avatars never cross ½ px (close camera, half resolution: all
+variants identical), so the squares are not reproduced in demo yet.
+Test viewers opened with `hl.exec_cmd(cmd, { workspace = "4 silent" })` are
 tiled and ignore `AURORA_WINDOW_SIZE`; add `float = true, size = "W H"`.
 
 ## Hair fix (prototyped)
