@@ -554,6 +554,14 @@ fn face_mode(f: &FaceDraw, alpha: &[AlphaKind], channel: &[bool], object_auto_ma
     (pass, pool)
 }
 
+/// A blended face whose texture has see-through texels (hair, lashes,
+/// fringes, lace): where its texture is sparse it enters the occlusion depth
+/// strand by strand, so there it shades itself but casts on nothing else
+/// (`flags::CUTOUT_TEX`; object.wgsl's `solid_clip` decides per pixel).
+fn is_cutout(pass: Pass, alpha: &[AlphaKind], slot: u32) -> bool {
+    pass == Pass::Blend && alpha.get(slot as usize).is_some_and(|&a| a != AlphaKind::Opaque)
+}
+
 /// What the object tests of a frame need (CPU lists).
 struct CullCtx<'a> {
     view: &'a CullView,
@@ -2910,6 +2918,12 @@ impl Scene {
                         continue;
                     }
                     let (pass, pool) = face_mode(f, alpha, channel, object_auto_mask);
+                    let cutout = is_cutout(pass, alpha, f.base_slot);
+                    if let Some(mut r) = renderer.records.get(f.record).copied()
+                        && r.set_cutout(cutout)
+                    {
+                        renderer.records.set(f.record, r);
+                    }
                     if pass == f.pass && pool == f.glow_pool {
                         continue;
                     }
@@ -2966,10 +2980,12 @@ impl Scene {
             f.pass = pass;
             f.glow_pool = pool;
             let mode = f.record_flags();
-            if mode != 0
+            let cutout = is_cutout(pass, alpha, f.base_slot);
+            if (mode != 0 || cutout)
                 && let Some(mut r) = renderer.records.get(f.record).copied()
             {
                 r.flags[0] = (r.flags[0] & !(flags::ALPHA_BLEND | flags::ALPHA_MASK)) | mode;
+                r.set_cutout(cutout);
                 renderer.records.set(f.record, r);
             }
             renderer.records.set_face(f.record, cull_face(f, idx, fi == 0));
