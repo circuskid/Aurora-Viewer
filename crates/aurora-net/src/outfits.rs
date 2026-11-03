@@ -143,7 +143,12 @@ where
         };
         // the links go in the folder as the server named it
         refresh = vec![cat.parent, folder];
-        change.folder = folder;
+        let provisional = std::mem::replace(&mut change.folder, folder);
+        if let Some((_, links)) = &mut change.cof {
+            for l in links.iter_mut().filter(|l| l.folder && l.target == provisional) {
+                l.target = folder;
+            }
+        }
     }
     let mut slams = vec![(change.folder, &change.links)];
     if let Some((cof, links)) = &change.cof {
@@ -399,6 +404,61 @@ pub(crate) mod tests {
             panic!("only the link goes over the circuit: {edits:?}");
         };
         assert_eq!(*linked, assigned, "in the folder as the server named it");
+    }
+
+    #[tokio::test]
+    async fn the_current_outfit_links_a_new_folder_as_the_server_named_it() {
+        let (requested, parent, target) = (Uuid::from_u128(1), Uuid::from_u128(2), Uuid::from_u128(3));
+        let (assigned, cof) = (Uuid::from_u128(9), Uuid::from_u128(8));
+        let (url, task) = server(vec![
+            (200, llsd_map! { "folder_id" => assigned }),
+            (200, folder_reply(cof, &[], &[])),
+            (
+                200,
+                llsd_map! { "folders" => Llsd::Array(vec![
+                    folder_reply(parent, &[assigned], &[])["folders"].at(0).clone(),
+                    folder_reply(assigned, &[], &[target])["folders"].at(0).clone(),
+                    folder_reply(cof, &[], &[target, assigned])["folders"].at(0).clone(),
+                ]) },
+            ),
+        ])
+        .await;
+        let (edits, send) = recorder();
+        let mut change = new_outfit(requested, parent, target);
+        let folder_link = OutfitLink {
+            target: requested,
+            name: "Look".into(),
+            desc: String::new(),
+            folder: true,
+            inv_type: 8,
+        };
+        change.cof = Some((cof, vec![change.links[0].clone(), folder_link]));
+        let result = mutate_udp(
+            &reqwest::Client::new(),
+            Some(&format!("{url}/create")),
+            &format!("{url}/fetch"),
+            Uuid::nil(),
+            change,
+            send,
+            &|_| {},
+        )
+        .await;
+        task.abort();
+        assert!(result.is_ok(), "{result:?}");
+        let edits = edits.lock().expect("edits");
+        let linked: Vec<_> = edits
+            .iter()
+            .filter_map(|edit| match edit {
+                UdpEdit::Link {
+                    parent,
+                    target,
+                    folder: true,
+                    ..
+                } => Some((*parent, *target)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(linked, [(cof, assigned)]);
     }
 
     #[tokio::test]
