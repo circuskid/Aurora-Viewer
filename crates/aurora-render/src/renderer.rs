@@ -3800,8 +3800,14 @@ impl Backend {
         // both sides: a double-sided blended face casts either way, the
         // nearer one keeps the depth
         let pre_contact = std::array::from_fn(|side| pre("prepass contact", "vs_main", Some("fs_depth_contact"), blend_cull(side != 0)));
-        let pre_contact_solid =
-            std::array::from_fn(|side| pre("prepass contact solid", "vs_main", Some("fs_depth_contact_solid"), blend_cull(side != 0)));
+        let pre_contact_solid = std::array::from_fn(|side| {
+            pre(
+                "prepass contact solid",
+                "vs_main",
+                Some("fs_depth_contact_solid"),
+                blend_cull(side != 0),
+            )
+        });
         let pre_contact_solid_normal = std::array::from_fn(|side| {
             pre(
                 "prepass contact solid normals",
@@ -4240,8 +4246,17 @@ impl Backend {
             make_view(device, "occlusion depth", w, h, DEPTH_FORMAT, 1, sampled | copies)
         });
         let ao_depth_view = ao_depth.as_ref().map_or(&depth_ss, |(_, view)| view);
-        let ao_depth_solid = (s.ssao > 0 && gtao_ao)
-            .then(|| make_view(device, "occlusion depth solid", w, h, DEPTH_FORMAT, 1, sampled | wgpu::TextureUsages::COPY_DST));
+        let ao_depth_solid = (s.ssao > 0 && gtao_ao).then(|| {
+            make_view(
+                device,
+                "occlusion depth solid",
+                w,
+                h,
+                DEPTH_FORMAT,
+                1,
+                sampled | wgpu::TextureUsages::COPY_DST,
+            )
+        });
         let ao_depth_solid_view = ao_depth_solid.as_ref().map_or(ao_depth_view, |(_, view)| view);
         let ao = (s.ssao > 0 && legacy_ao).then(|| {
             let (hw, hh) = (w.div_ceil(2), h.div_ceil(2));
@@ -4269,7 +4284,15 @@ impl Backend {
         let indirect = crate::gtao::Indirect::from_env().needed(s.screen_indirect);
         let gtao = (s.ssao > 0 && gtao_ao).then(|| {
             let scene = indirect.then_some(&scene_copy);
-            gtao.targets(device, ao_depth_view, ao_depth_solid_view, scene, w, h, ao_override.level(s.ao_method))
+            gtao.targets(
+                device,
+                ao_depth_view,
+                ao_depth_solid_view,
+                scene,
+                w,
+                h,
+                ao_override.level(s.ao_method),
+            )
         });
         // the method shown first; `AURORA_AO=alt` switches it each second
         let gtao_shown = gtao.is_some() && !legacy_ao;
