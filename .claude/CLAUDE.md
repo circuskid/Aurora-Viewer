@@ -107,7 +107,9 @@ holds only our overrides and what the maintainer said outside the repo
      4 to 13-15 min).
 
   TASKS.md and the body never say "validated" for the maintainer's own
-  validation step; we state our own test and its date only.
+  validation step; we state our own test and its date only. A TASKS line
+  is 🟡 with a ⬜ grid-check sub-line until the grid test, even after our
+  demo test (#2149's ✅ was corrected by the maintainer, 2026-11-03).
 - **`check.ps1` runs on Linux**: `pwsh -NoProfile -File scripts/check.ps1` in
   the PR's worktree. Sum every `test result:` line (28) for the PR body.
 - 🔴 **Never tick a Tests box for a check that didn't run as written.** Tick
