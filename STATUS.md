@@ -107,6 +107,16 @@ reviewed + `notify-send`, 2 lookup failed); state in `~/.local/state/` same name
   a separate PR once testable on a server sending `ActivationToken` (winit
   0.30.13's Wayland `focus_window` is empty; quickshell 0.3.2 sends no token,
   measured with `dbus-monitor`).
+- **`stream_volume.rs` reconnect gap: not reproducible, no PR** (2026-11-02).
+  A refused reconnect is retried only on the next request (`run` blocks on
+  `recv()`; `StreamVolume::set` skips unchanged volumes), but a
+  `systemctl --user restart` of the socket-activated pipewire-pulse never
+  refuses it (measured: the worker reconnects in the same second), and CEF
+  never recreates its stream after any restart (pages stay silent until
+  their plugin restarts). Bites only without socket activation and with a
+  new plugin within 10 s. Method (a private pipewire-pulse on its own socket
+  via `systemd-run --user --socket-property=ListenStream=…`, so G.W.'s audio
+  is untouched) in `~/.config/Claude/side-session-notes/local_ef298c89-314c-4c84-a219-9b3402a7a9a5/stream-volume-retry.md`.
 
 ---
 
