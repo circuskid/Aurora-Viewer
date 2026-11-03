@@ -791,6 +791,8 @@ pub struct App {
     avatar_pic_sources: std::collections::HashMap<uuid::Uuid, uuid::Uuid>,
     /// The same textures by picture, for the residents who share one.
     avatar_pic_images: std::collections::HashMap<uuid::Uuid, egui::TextureHandle>,
+    /// AURORA_DEMO_UI_IMAGES: residents whose picture is awaited.
+    demo_ui_waiting: Vec<(uuid::Uuid, u64)>,
     /// Our login portrait (texture and saved file): agent, picture shown.
     login_portrait_source: Option<(uuid::Uuid, uuid::Uuid)>,
     /// Interface images (pictures included) first shown from the coarse
@@ -1551,6 +1553,7 @@ impl App {
             avatar_pics: Default::default(),
             avatar_pic_sources: Default::default(),
             avatar_pic_images: Default::default(),
+            demo_ui_waiting: Vec::new(),
             login_portrait_source: None,
             ui_coarse: Default::default(),
             ui_images: Default::default(),
@@ -7584,6 +7587,13 @@ impl App {
         wanted.extend(self.money_tracker_ui.wanted_pics.drain());
         wanted.extend(self.pay_ui.wanted_pics.drain());
         wanted.extend(self.inventory_ui.wanted_pics.drain());
+        if self.demo {
+            let sources = &self.avatar_pic_sources;
+            let extra = crate::demo::stream::ui_images(self.frame_count, &mut self.world, &mut self.demo_ui_waiting, |a| {
+                sources.contains_key(a)
+            });
+            wanted.extend(extra);
+        }
         self.refine_ui_copies();
         for agent in wanted {
             self.world.want_profile(agent);
@@ -11695,6 +11705,9 @@ impl App {
                 self.frame_count,
                 self.world.objects.len()
             );
+        }
+        if self.demo && self.frame_count.is_multiple_of(3600) {
+            log::info!("demo {}", self.scene.textures.churn_line());
         }
         // AURORA_DEMO_TEXTURES_CHURN=1: stress cubes removed at frame 300
         // (textures released, evicted after 2 s), back with new textures at 700

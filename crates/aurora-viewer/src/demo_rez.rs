@@ -354,6 +354,14 @@ impl RezDemo {
         if t == 0 && round > 0 {
             let local_ids = (0..COLD_OBJECTS).map(|i| id(round - 1, i)).collect();
             world.apply(NetEvent::ObjectsKilled { handle: HANDLE, local_ids });
+            // the scenario's own references go with the round's objects:
+            // their slots come back after the eviction delay, or at once
+            // with the table full (churn soak)
+            let last = (round - 1) * 10;
+            for i in 0..COLD_OBJECTS {
+                scene.textures.release(&Uuid::from_u128(TEXTURE_IDS | (last * ROUND_IDS + 200 + i) as u128));
+            }
+            log::info!("demo rez: round {round} released, {}", scene.textures.churn_line());
         }
         if frame == LOADING {
             // a wall across the field's left half (north of the camera's

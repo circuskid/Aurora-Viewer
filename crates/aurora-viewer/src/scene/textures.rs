@@ -1033,6 +1033,8 @@ pub struct TextureStreamer {
     /// Unused textures are evicted after this long (shortened by the
     /// AURORA_DEMO_TEXTURES_CHURN test).
     pub evict_after: Duration,
+    /// Textures evicted since the start (`churn_line`).
+    evicted_total: u64,
     /// Textures whose last reference went away, oldest first, with the
     /// time it did (an entry used again since has another `unused_since`).
     unused: VecDeque<(Instant, Uuid)>,
@@ -1310,6 +1312,7 @@ impl TextureStreamer {
             stats: TextureStats::default(),
             last_maintenance: Instant::now(),
             evict_after: UNUSED_EVICT,
+            evicted_total: 0,
             unused: VecDeque::new(),
             dirty: Vec::new(),
             forgotten: Vec::new(),
@@ -1726,6 +1729,7 @@ impl TextureStreamer {
     /// this thread.
     fn evict(&mut self, table: &mut impl SlotTable, ids: Vec<Uuid>) {
         self.evicted.reserve(ids.len());
+        self.evicted_total += ids.len() as u64;
         for id in ids {
             let Some(e) = self.entries.remove(&id) else {
                 continue;
@@ -2852,6 +2856,19 @@ impl TextureStreamer {
 
     /// AURORA_DEMO_STREAM: the downloaded data a texture loaded at full
     /// resolution holds (the demo textures arrive decoded, without any).
+    /// The churn soak's proof: textures forgotten and uploads so far.
+    pub fn churn_line(&self) -> String {
+        format!(
+            "churn: evicted={} uploads={} reduced={} slotless={} entries={} ui_pinned={}",
+            self.evicted_total,
+            self.stats.uploads_staged + self.stats.uploads_direct,
+            self.stats.reduced,
+            self.slotless,
+            self.entries.len(),
+            self.ui_permanent.len(),
+        )
+    }
+
     pub fn demo_attach_data(&mut self, id: &Uuid, data: Vec<u8>) {
         if let Some(e) = self.entries.get_mut(id)
             && e.decoded == Some(0)

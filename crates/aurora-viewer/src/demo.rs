@@ -6711,6 +6711,10 @@ pub fn texture_stress_events(n: u32) -> Vec<NetEvent> {
 /// its child (`kept` holds them from the departure): they wait with its
 /// objects (issue #1000). The events of `frame`, if any.
 pub fn away_teleport(frame: u64, world: &crate::world::World, kept: &mut Vec<(Uuid, Vec3)>) -> Option<Vec<NetEvent>> {
+    // AURORA_DEMO_TP_LOOP=<frames>: the same trip again and again (churn soak)
+    static EVERY: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
+    let every = *EVERY.get_or_init(|| std::env::var("AURORA_DEMO_TP_LOOP").ok()?.parse().ok());
+    let frame = every.filter(|_| frame >= 760).map_or(frame, |e| 760 + (frame - 760) % e.max(400));
     let handle = match frame {
         760 => HANDLE + ((100 * 256u64) << 32),
         800 => {

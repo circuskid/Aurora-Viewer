@@ -2878,7 +2878,10 @@ LUT_3D_SIZE {n}
             }
             return;
         }
-        if self.frame_count == demo.frame
+        // AURORA_DEMO_PHOTO_EVERY=<frames>: the save again and again (churn soak)
+        let every: Option<u64> = std::env::var("AURORA_DEMO_PHOTO_EVERY").ok().and_then(|v| v.parse().ok());
+        let again = every.is_some_and(|e| self.frame_count > demo.frame && (self.frame_count - demo.frame).is_multiple_of(e.max(1)));
+        if (self.frame_count == demo.frame || again)
             && let Some((size, format, folder)) = demo.save.clone()
         {
             let s = &mut self.settings.snapshot;

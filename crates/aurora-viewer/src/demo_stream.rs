@@ -38,6 +38,12 @@
 //! the textures showed their first pixels (`demo stream: … shown after`),
 //! then when nothing is left to download or decode.
 //!
+//! With `,leave,loop`, once the textures are evicted the whole arrival
+//! starts again (churn soak): one pass in two with the same ids (evicted
+//! textures read again from the disk cache or their file), the other with
+//! ids never seen. A pass stuck on a texture that never shows (a damaged
+//! file) goes on after `PASS_LIMIT`.
+//!
 //! With `,size=<m>`, the objects are that large instead of half a metre,
 //! spaced accordingly: their textures cover more of the screen and ask for
 //! finer levels, as the walls and floors of a region do.
@@ -87,6 +93,8 @@ const SIZES: [(u32, u32); 8] = [
 /// textures are evicted this long after that.
 const LEAVE_AFTER: Duration = Duration::from_secs(1);
 const EVICT_AFTER: Duration = Duration::from_secs(2);
+/// `,loop`: the longest wait for an arrival to settle.
+const PASS_LIMIT: Duration = Duration::from_secs(90);
 
 /// Object count, objects per wave and whether the region is left at the
 /// end, from the variable's value (2000 objects for a count that is not a
@@ -169,6 +177,48 @@ fn texture_index(id: &Uuid) -> Option<u32> {
     let n = id.as_u128();
     (n & !(u32::MAX as u128) == run_ids()).then_some(n as u32)
 }
+
+/// AURORA_DEMO_UI_IMAGES=<frames>: every `frames` frames one more resident
+/// with a picture never seen, through the path of the profile pictures
+/// (`want_ui_image`, pinned for the session), its texture a J2C file of the
+/// local asset server (`net=`). The agents still waiting for theirs are in
+/// `waiting`, with the frame they were first asked.
+pub fn ui_images(
+    frame: u64,
+    world: &mut crate::world::World,
+    waiting: &mut Vec<(Uuid, u64)>,
+    done: impl Fn(&Uuid) -> bool,
+) -> Vec<Uuid> {
+    static EVERY: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
+    static NEXT: AtomicU32 = AtomicU32::new(0);
+    let Some(every) = *EVERY.get_or_init(|| std::env::var("AURORA_DEMO_UI_IMAGES").ok()?.parse().ok()) else {
+        return Vec::new();
+    };
+    let mut ok = 0;
+    waiting.retain(|(agent, since)| {
+        let got = done(agent);
+        ok += got as u32;
+        !got && frame - since < 3600
+    });
+    SHOWN.fetch_add(ok, Ordering::Relaxed);
+    if frame >= 1200 && frame.is_multiple_of(every.max(1)) && waiting.len() < 64 {
+        let k = NEXT.fetch_add(1, Ordering::Relaxed);
+        let agent = Uuid::from_u128(0xDE57_4EA1_0000_0000_0000_0000_0000_0000 | k as u128);
+        world.profiles.insert(aurora_net::AvatarProfile {
+            id: agent,
+            sl_image: texture(1_000_000 + k),
+            ..Default::default()
+        });
+        waiting.push((agent, frame));
+        if k.is_multiple_of(100) {
+            log::info!("demo ui images: {k} asked, {} shown", SHOWN.load(Ordering::Relaxed));
+        }
+    }
+    waiting.iter().map(|w| w.0).collect()
+}
+
+/// Pictures delivered so far (`ui_images`).
+static SHOWN: AtomicU32 = AtomicU32::new(0);
 
 /// The scenario's textures for the streamer, when it wants one finer than
 /// it is: only under a forced memory budget (AURORA_TEXTURE_BUDGET_MB),
@@ -309,6 +359,8 @@ pub struct StreamDemo {
     size: f32,
     /// Nothing was under way at the previous look.
     idle_before: bool,
+    /// `,loop`: arrivals so far; 0 without it.
+    passes: Option<u32>,
 }
 
 /// Shares of the textures showing their first pixels the log tells, in
@@ -332,6 +384,7 @@ impl StreamDemo {
             shown_told: 0,
             size: object_size(&value),
             idle_before: false,
+            passes: value.split(',').any(|p| p.trim() == "loop").then_some(0),
             fed: vec![None; n as usize],
             n,
             wave,
@@ -357,6 +410,10 @@ impl StreamDemo {
             return;
         };
         let Some(left_at) = self.left_at else {
+            // (the files' own data stays)
+            if self.j2k.is_some() {
+                self.with_data = self.n;
+            }
             // what a downloaded texture keeps in memory, a few per frame
             // (so that the scenario's own work does not show as a hitch)
             for i in self.with_data..(self.with_data + 64).min(self.n) {
@@ -385,6 +442,25 @@ impl StreamDemo {
                 now.duration_since(left_at).as_secs_f32(),
                 self.n
             );
+            if let Some(passes) = self.passes.as_mut() {
+                *passes += 1;
+                let pass = *passes;
+                log::info!("demo stream: pass {pass} over, {}", textures.churn_line());
+                if pass.is_multiple_of(2) {
+                    RUN.fetch_add(1, Ordering::Relaxed);
+                }
+                self.next = 0;
+                self.started = None;
+                self.last_wave = None;
+                self.loaded_logged = false;
+                self.loaded_at = None;
+                self.with_data = 0;
+                self.left_at = None;
+                self.evicted_logged = false;
+                self.shown_told = 0;
+                self.idle_before = false;
+                self.fed.fill(None);
+            }
         }
     }
 
@@ -398,7 +474,8 @@ impl StreamDemo {
         geom_pending: usize,
     ) {
         let armed = *self.armed.get_or_insert_with(|| {
-            textures.demo_source = source();
+            // (with `j2k=`, the files: lowered textures read them again)
+            textures.demo_source = source().filter(|_| self.j2k.is_none());
             if let (Some(delay), Some(files)) = (self.net, &self.j2k) {
                 match super::asset_server::start(files.clone(), delay, texture_index) {
                     Ok(url) => {
@@ -502,7 +579,8 @@ impl StreamDemo {
                 // the request that follows it are a frame apart)
                 let idle = textures.stats.decoding == 0 && textures.stats.pending_upload == 0 && textures.stats.fetching == 0;
                 let settled = std::mem::replace(&mut self.idle_before, shown && idle);
-                if shown && idle && settled && geom_pending == 0 {
+                let late = self.passes.is_some() && now.duration_since(started) > PASS_LIMIT;
+                if (shown && idle && settled && geom_pending == 0) || late {
                     self.loaded_logged = true;
                     self.loaded_at = Some(now);
                     log::info!(
