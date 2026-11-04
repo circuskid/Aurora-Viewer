@@ -147,6 +147,49 @@ breathing torso moves with itself), not relative to the camera; or keep the
 long history and widen the depth test only, since the hem's fix needed both
 the weight and the clip.
 
+## Is it only this machine? (2026-11-04)
+
+A Windows user at 4K (a 5090 or a 4070, unclear which) called G.W.'s
+screenshot strikingly noisy and does not get that, and nobody in the Discord
+screenshots shows it. Their preset, their avatar and whether they judged a
+live view or viewer photos are not known. Photos are not a fair comparison:
+a frame without history samples four times the slices, and Photo quality
+draws at twice the size.
+
+No OS-specific code touches GTAO, and Windows and Linux both run Vulkan. So
+the 610M (RADV, Mesa's compiler) stood in for "another driver, same OS":
+
+- **A grid shot at 2 fps proves nothing.** Breathing moves about 60 times
+  further per frame than at 120 fps, so the own-motion path fires nearly
+  always, and the 610M would show grain with a correct driver.
+  `AURORA_GTAO_TEMPORAL=0` removes the frame rate from the test.
+- **Lossless demo pair**, fixed noise, 1226 × 2055, deluxe, `AURORA_AO=gtao:3`,
+  `AURORA_DEMO_DEBUG=ao`, installed 0.9.1, on the demo's stippled shadows:
+
+  | Patch | 5090 | 610M | ratio | pattern corr |
+  |---|---|---|---|---|
+  | ground shadow | 5.60 | 5.06 | 1.11 | 0.73 |
+  | pedestal shadow | 6.77 | 6.22 | 1.09 | 0.80 |
+  | pedestal side | 3.23 | 2.84 | 1.13 | 0.74 |
+
+  Same kind of grain, nothing like #1703's rows. The 5090's steady 10 % more
+  is not explained, and is far too small for "strikingly noisy".
+  `AURORA_DEMO_CAM`'s close distance did not take effect, so this is not skin
+  up close. At 2000 × 1125 a cruder demo check could not separate grain from
+  its absence: read only the half-resolution figure from that run.
+- **Grid pair on G.W.'s avatar**, fixed noise, Deluxe, same 1226 × 2055: 5090
+  grainier by 1.4–2.1× in the shadow, 1.03 on lit skin. Weak: `.webp` crops,
+  framing 4 % apart, patches differing in brightness, and the 610M has its own
+  texture budget.
+- **Half resolution is not needed.** The test viewers opened tiled at
+  1226 × 2055, under #1778's threshold, and the grain was there. They opened
+  tiled by default, so check `world resolution` in the log.
+
+Still open: Linux itself against G.W.'s avatar and camera. Only a Windows user
+beside him decides it: same body, camera distance, live view, 4K window. In
+Aurora, a very close view of smooth skin in soft shadow may simply show more
+of this grain than the Discord shots do; that is a guess, not a finding.
+
 ## What was ruled out
 
 - **#1702's weight and clip as the cause.** (Its own-motion *threshold* is
