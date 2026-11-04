@@ -75,6 +75,7 @@ mod gestures;
 mod give_demo;
 mod gpu_recovery;
 mod gpu_stall;
+pub(crate) use gpu_stall::withdraw_all as withdraw_gpu_notices;
 mod graphics_start;
 mod grid_status;
 mod group_titles;
@@ -750,6 +751,12 @@ pub struct App {
     crash_swapchain: crash_state::SwapchainRecent,
     /// The state kept for the report once the GPU is lost.
     crash_kept: crash_state::KeptState,
+    /// GPU frame times and uploads of the last seconds, and the time since
+    /// the login and the last region change, for the same state.
+    crash_recent: crash_state::Recent,
+    crash_timeline: crash_state::Timeline,
+    /// The window is hidden behind others (`WindowEvent::Occluded`).
+    occluded: bool,
     /// The graphics card stopped finishing frames (app/gpu_stall.rs).
     gpu_stall: gpu_stall::GpuStall,
     /// The other viewers on this PC (instances.rs).
@@ -979,6 +986,12 @@ fn login_shortcut(screen: &Screen, action: Option<Action>) -> bool {
     matches!(screen, Screen::Login) && matches!(action, Some(Action::Preferences | Action::Quit))
 }
 
+/// A press winit made up from the keyboard state when the window gained the
+/// focus. Its synthetic releases stay: they only ever clear a held key.
+fn synthetic_press(is_synthetic: bool, state: ElementState) -> bool {
+    is_synthetic && state == ElementState::Pressed
+}
+
 /// A Ctrl / Alt shortcut of the viewer still works while a text field has
 /// the focus, as the Legacy Viewer's menu accelerators go before the focused
 /// field (LLViewerWindow::handleKey). The field keeps the exact editing
@@ -1140,6 +1153,11 @@ fn apply_test_overrides(settings: &mut Settings) {
     }
     if let Ok(v) = std::env::var("AURORA_PROJECTOR_SHADOWS") {
         settings.projector_shadows = v != "0";
+    }
+    if let Ok(value) = std::env::var("AURORA_PROJECTOR_SHADOW_LIMIT")
+        && let Ok(limit) = value.parse::<u8>()
+    {
+        settings.projector_shadow_limit = limit.clamp(1, aurora_render::projector_shadows::MAX_PROJECTOR_SHADOWS as u8);
     }
     if let Ok(v) = std::env::var("AURORA_HDR") {
         settings.hdr_emissive = v != "0";
@@ -1547,6 +1565,9 @@ impl App {
             crash_state_at: None,
             crash_swapchain: Default::default(),
             crash_kept: Default::default(),
+            crash_recent: Default::default(),
+            crash_timeline: Default::default(),
+            occluded: false,
             gpu_stall: Default::default(),
             instances: crate::instances::Instances::new(),
             crouch_toggle: Default::default(),
@@ -8231,6 +8252,11 @@ impl App {
         if self.demo {
             self.demo_uri_restore();
         }
+        if self.demo && crate::demo::projector_bench_done() {
+            log::info!("projector benchmark end");
+            self.shutdown(event_loop);
+            return;
+        }
         if self.demo && self.frame_count == 650 && std::env::var_os("AURORA_DEMO_EXIT").is_some() {
             self.request_exit();
         }
@@ -8791,6 +8817,13 @@ impl App {
                 late_camera_frame = Some(frame);
             } else {
                 self.camera.update(&mut self.world, &self.settings.camera, &frame);
+            }
+            if self.demo
+                && let Some((eye, target)) = crate::demo::projector_camera(self.frame_count)
+            {
+                self.camera.position = eye;
+                self.camera.target = target;
+                self.interface.set_hidden(&self.egui_ctx, true);
             }
             let at = self.camera.forward();
             let step_back = self.settings.walk_backwards_without_turning;
@@ -9665,7 +9698,7 @@ impl App {
             // offline demo teleport: the real steps, landing where we were
             let e = t0.elapsed().as_secs_f32();
             let w = &mut self.world;
-            if e >= 3.2 {
+            if e >= 3.2 && !crate::demo::tp_no_arrival() {
                 self.demo_tp_start = None;
                 w.tp_progress = 0.6;
                 w.tp_status = aurora_i18n::tr!("common-loading-region").into();
@@ -9718,6 +9751,22 @@ impl App {
                 self.tp_dest = None;
             }
         }
+        // no answer from the region: stop waiting, without ending the session
+        if self.world.arrival_overdue(Instant::now(), self.scene.own_attachment_count()) {
+            let kind = if self.world.teleporting {
+                aurora_net::transition::Kind::Teleport
+            } else {
+                aurora_net::transition::Kind::Crossing
+            };
+            aurora_net::transition::end(
+                Some(kind),
+                "failed (the region did not confirm the arrival in time)",
+                &self.net.stats,
+            );
+            self.demo_tp_start = None;
+            self.world.give_up_arrival();
+            self.net.send(NetCommand::ArrivalGivenUp);
+        }
         let tp = self.world.teleporting && self.world.tp_show_progress && matches!(self.screen, Screen::World);
         if tp && !self.was_teleporting {
             // keep the view we are leaving for the teleport screen
@@ -9758,15 +9807,6 @@ impl App {
                         teleport_screen::Mode::Quick => "arrived (teleport screen hidden)",
                         teleport_screen::Mode::Old => "arrived (teleport screen hidden, old screen)",
                     },
-                    &self.net.stats,
-                );
-            }
-            // no answer from the simulator: give up the screen
-            if o.arrived.is_none() && o.start.elapsed() > Duration::from_secs(90) && o.end.is_none() {
-                o.end = Some(Instant::now());
-                aurora_net::transition::end(
-                    Some(aurora_net::transition::Kind::Teleport),
-                    "failed (no arrival 90 s after the teleport screen was shown)",
                     &self.net.stats,
                 );
             }
@@ -9892,10 +9932,15 @@ impl App {
                 range: self.settings.draw_distance,
                 dt,
                 projector_shadows: self.settings.projector_shadows && self.settings.shadow_quality > 0,
+                projector_shadow_limit: aurora_render::projector_shadows::effective_limit(
+                    self.settings.shadow_params().0,
+                    self.settings.projector_shadow_limit,
+                    gfx.renderer.max_texture_dimension(),
+                ),
             };
             self.scene.local_lights(&self.world, &mut gfx.renderer, &view)
         } else {
-            (Vec::new(), [None; 2])
+            (Vec::new(), [None; aurora_render::projector_shadows::MAX_PROJECTOR_SHADOWS])
         };
         t_part = self.scene.parts.lap(Part::ParamsLights, t_part);
         let probes = if in_world {
@@ -11368,6 +11413,8 @@ impl App {
             .frame(paced.as_secs_f32().min(0.1) * 1000.0, net, &self.last_render, &self.scene.stats);
         self.frame_profile.lap(Lap::Tail);
         self.end_profile_frame(w, h);
+        // before the deep profile, which takes the frame's upload bytes
+        self.crash_frame();
         self.end_deep_profile(&gfx.renderer);
         self.monitor_frame(&gfx.renderer);
         self.crash_state(&gfx.renderer, &gfx.window);
@@ -12504,6 +12551,7 @@ impl App {
             anchored: if in_world { st.anchored } else { 0 },
             flexies: if in_world { st.flexies } else { 0 },
             flexies_held: if in_world { st.flexies_held } else { 0 },
+            movers: if in_world { st.movers } else { 0 },
         };
         let mut parts = std::mem::take(&mut self.scene.parts);
         parts.merge(&std::mem::take(&mut self.ui_parts));
@@ -12525,9 +12573,19 @@ impl App {
             if let Some(old) = crate::scene::flexible::alternate(self.sync_alt) {
                 self.frame_profile.set_mark(if old { " | xmode=old" } else { " | xmode=new" });
             }
+            // AURORA_MOVING_ANCHORS=alt: what moves by itself placed by the
+            // sync one second in three
+            if let Some(old) = crate::scene::anchors::alternate_movers(self.sync_alt) {
+                self.frame_profile.set_mark(if old { " | xmode=old" } else { " | xmode=new" });
+            }
             // AURORA_IMPOSTOR_POSES=alt: impostors posed at every frame in the
             // same seconds
             if let Some(old) = crate::scene::impostors::alternate_poses(self.sync_alt) {
+                self.frame_profile.set_mark(if old { " | xmode=old" } else { " | xmode=new" });
+            }
+            // AURORA_WRITE_STAGING=alt: the journal's buffer writes through
+            // the queue one second in three
+            if let Some(old) = aurora_render::write_staging::alternate(self.sync_alt) {
                 self.frame_profile.set_mark(if old { " | xmode=old" } else { " | xmode=new" });
             }
             // AURORA_PROBE_WALK=alt: the whole probe list walked one second in three
@@ -19548,6 +19606,17 @@ impl ApplicationHandler for App {
         if self.retired_window.as_ref().is_some_and(|w| w.id() == id) && !matches!(event, WindowEvent::CloseRequested) {
             return;
         }
+        // The system's view of the keys when the focus comes back is no key
+        // press: a key it wrongly reports as down (#2287) would stay held
+        // here, with no release to come. Like egui-winit, and like
+        // LLKeyboard::handleTranslatedKeyDown, fed by real key-down messages.
+        if let WindowEvent::KeyboardInput {
+            event: ke, is_synthetic, ..
+        } = &event
+            && synthetic_press(*is_synthetic, ke.state)
+        {
+            return;
+        }
         // VR exit owns Escape before egui, pickers, chat or camera shortcuts.
         if self.gfx.as_ref().is_some_and(|g| g.renderer.vr_engaged())
             && let WindowEvent::KeyboardInput { event: key, .. } = &event
@@ -19667,6 +19736,9 @@ impl ApplicationHandler for App {
                 if !self.ctrl || self.alt {
                     self.build.reset_selection_wheel();
                 }
+            }
+            WindowEvent::Occluded(hidden) => {
+                self.occluded = *hidden;
             }
             WindowEvent::Focused(true) => {
                 self.focused = true;
@@ -20181,6 +20253,17 @@ mod tests {
     use super::{RightGesture, UiActions, capture_files, frame_cap};
     use crate::settings::Settings;
     use std::path::{Path, PathBuf};
+
+    /// #2287: only the made-up press is dropped; real keys and every release
+    /// still go through, so a held key can always be let go.
+    #[test]
+    fn only_a_synthetic_press_is_ignored() {
+        use winit::event::ElementState::{Pressed, Released};
+        assert!(super::synthetic_press(true, Pressed));
+        assert!(!super::synthetic_press(true, Released));
+        assert!(!super::synthetic_press(false, Pressed));
+        assert!(!super::synthetic_press(false, Released));
+    }
 
     #[test]
     fn automatic_flight_hold_restarts_after_release_or_disabling_the_preference() {
