@@ -41,13 +41,14 @@ holds only our overrides and what the maintainer said outside the repo
 - No `scripts/new-task.ps1`, no `../work/` worktrees: sessions use our
   `.claude/worktrees` like any other repo.
 - 🔴 **A viewer you start to test or capture goes on a workspace from 4 to
-  9**, never G.W.'s 1–3, and not §4's bare `cargo run` (it put capture
-  loops on G.W.'s workspace 1, 2026-11-01). Any of 4–9 will do, so
-  parallel sessions need not share one: `hyprctl eval 'hl.exec_cmd("cd
-  $PWD && <cmd>", { workspace = "<4-9> silent" })'`, then wait on the
-  capture file, not the process. Only a viewer G.W. will use himself opens
-  where he is (no workspace). `--title` is for demo and capture runs; a
-  grid test viewer runs without it (STATUS).
+  9**, never G.W.'s 1–3, and not §4's bare `cargo run`: `hyprctl eval
+  "hl.exec_cmd(\"cd $PWD && <cmd>\", { workspace = \"<4-9> silent\" })"`
+  (double quotes, or `$PWD` is Hyprland's), then wait on the capture file,
+  not the process. An automated run's title ends `[AUTOMATION - DO NOT
+  TOUCH]`; skip §4's Windows border script. Only a viewer you have just
+  asked G.W. to test opens where he is: no workspace, and end the command
+  `# user-test`. `claude-aurora-viewer-guard` refuses the rest. `--title`
+  is for demo and capture runs; a grid test viewer runs without it (STATUS).
 - 🔴 **We never merge, review-approve, label, triage or move board items
   upstream** (§5, §8 steps 8–10, §11's posting, §15's board), and we never touch
   TASKS.md for them except inside our own PR's diff. An `on-hold` label on our
