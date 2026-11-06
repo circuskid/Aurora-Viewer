@@ -614,6 +614,7 @@ impl Inventory {
                 }
             }
         }
+        log::info!("[DIAG-login] inventory cache save: {} folders, {} items", folders.len(), items.len());
         if folders.is_empty() {
             return;
         }
@@ -626,8 +627,9 @@ impl Inventory {
             let _ = std::fs::create_dir_all(dir);
         }
         let tmp = path.with_extension("tmp");
-        if crate::cache::write(&tmp, &aurora_llsd::to_binary(&doc)).is_ok() {
-            let _ = std::fs::rename(&tmp, path);
+        match crate::cache::write(&tmp, &aurora_llsd::to_binary(&doc)) {
+            Ok(()) => log::info!("[DIAG-login] inventory cache saved: rename {:?}", std::fs::rename(&tmp, path)),
+            Err(e) => log::warn!("[DIAG-login] inventory cache not saved: {e}"),
         }
     }
 
@@ -721,8 +723,40 @@ pub struct CachedInventory {
 /// the file, its LLSD document, the items and their order in each folder,
 /// as `sort_children` gives it.
 pub fn read_cache(path: &std::path::Path) -> Option<CachedInventory> {
-    let bytes = crate::cache::read_touch(path).ok()?;
-    let (doc, _) = aurora_llsd::from_binary_local(&bytes).ok()?;
+    // [DIAG-login] one-shot: the marker makes this login fetch the whole inventory.
+    if let Some(marker) = std::env::var_os("HOME")
+        .map(|home| std::path::Path::new(&home).join(".cache/auroraviewer/diag-cold-inventory"))
+        .filter(|marker| marker.exists())
+    {
+        let removed = std::fs::remove_file(&marker);
+        log::warn!("[DIAG-login] cold login: cached inventory ignored once (marker removed: {removed:?})");
+        return None;
+    }
+    let stat = std::fs::metadata(path).map(|m| (m.len(), m.modified().ok()));
+    log::info!("[DIAG-login] inventory cache file {}: {stat:?}", path.display());
+    let bytes = match crate::cache::read_touch(path) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            let others: Vec<(String, u64)> = path
+                .parent()
+                .and_then(|dir| std::fs::read_dir(dir).ok())
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|f| (f.file_name().to_string_lossy().into_owned(), f.metadata().map_or(0, |m| m.len())))
+                .collect();
+            log::warn!("[DIAG-login] inventory cache unreadable: {e} ({e:?}); folder holds {others:?}");
+            return None;
+        }
+    };
+    let (doc, _) = match aurora_llsd::from_binary_local(&bytes) {
+        Ok(parsed) => parsed,
+        Err(e) => {
+            log::warn!("[DIAG-login] inventory cache of {} bytes does not parse: {e:?}", bytes.len());
+            return None;
+        }
+    };
+    log::info!("[DIAG-login] inventory cache format {}", doc["version"].as_i32());
     // Older files were populated by legacy reads that could discard other
     // favorites. Reload those folders through AIS once, even at equal versions.
     if doc["version"].as_i32() != 3 {

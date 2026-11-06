@@ -1357,6 +1357,7 @@ impl World {
     pub fn save_inventory_cache(&self) {
         // not applied yet: the file holds more than the inventory in memory
         if self.inventory_cache.is_some() {
+            log::warn!("[DIAG-login] inventory cache save skipped: the read has not finished");
             return;
         }
         if let Some(path) = self.inventory_cache_path() {
