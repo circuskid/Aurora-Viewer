@@ -505,6 +505,7 @@ impl Inventory {
             *attempts += 1;
             if *attempts >= ITEM_FETCH_ATTEMPTS {
                 log::warn!("inventory item {id} still unreadable after {attempts} attempts: treated as a broken link");
+                log::warn!("[DIAG-login] broken by failed reads: {id}, in cache {}", self.items.contains_key(id));
                 self.item_retries.remove(id);
                 self.missing_items.insert(*id);
             } else {

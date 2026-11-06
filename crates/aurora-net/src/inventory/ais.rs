@@ -282,7 +282,15 @@ pub async fn read_items(http: &reqwest::Client, cap: &str, owner: Uuid, ids: &[U
             match read {
                 Ok(Some(item)) => reads.items.push(item),
                 Err(crate::caps::CapsError::Status(404 | 410)) => reads.missing.push(id),
-                Ok(None) | Err(_) => reads.failed.push(id),
+                Ok(None) => {
+                    log::warn!("[DIAG-login] item {id}: unusable reply");
+                    reads.failed.push(id);
+                }
+                Err(e) => {
+                    let fds = std::fs::read_dir("/proc/self/fd").map_or(0, Iterator::count);
+                    log::warn!("[DIAG-login] item {id}: {e}, open files {fds}");
+                    reads.failed.push(id);
+                }
             }
         }
         // a panicked read task answers nothing: failed, asked again

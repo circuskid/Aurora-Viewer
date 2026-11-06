@@ -54,6 +54,12 @@ pub async fn mutate(
     owner: Uuid,
     mut change: OutfitMutation,
 ) -> Result<Vec<FolderContents>, String> {
+    log::info!(
+        "[DIAG-login] outfit write to {}: {} links {:?}",
+        change.folder,
+        change.links.len(),
+        change.links.iter().map(|l| l.name.as_str()).collect::<Vec<_>>()
+    );
     let cap = cap.trim_end_matches('/');
     let mut refresh = vec![change.folder];
     if let Some(cat) = &mut change.create {
