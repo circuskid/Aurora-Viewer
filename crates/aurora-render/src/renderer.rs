@@ -5878,7 +5878,14 @@ impl Backend {
                     }
                     None
                 }
-                _ => None,
+                _ => {
+                    static SKIPPED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+                    let n = SKIPPED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    if n < 5 || n % 60 == 0 {
+                        log::warn!("[DIAG-login] no surface image (timeout or occluded), {} so far", n + 1);
+                    }
+                    None
+                }
             }
         };
         let Some(surface_tex) = surface_tex else {

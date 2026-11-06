@@ -362,6 +362,7 @@ where
     F: FnMut(InventoryMove) -> Fut,
     Fut: std::future::Future<Output = Result<(), String>>,
 {
+    log::info!("[DIAG-login] inventory mutation: {} operations, removed {:?}", change.operations.len(), change.removed);
     mutate_with_progress(http, cap, fetch_cap, owner, change, &mut send_move, |_| {}).await
 }
 

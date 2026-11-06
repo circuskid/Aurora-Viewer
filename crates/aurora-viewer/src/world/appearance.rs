@@ -449,6 +449,11 @@ fn wear_link(
 
 /// Produces one acknowledged AIS operation. No optimistic inventory mutation.
 pub fn plan(inv: &Inventory, action: Action, worn: &HashMap<Uuid, u8>) -> Result<(OutfitMutation, bool), String> {
+    log::info!(
+        "[DIAG-login] outfit plan {action:?}, {} worn\n{}",
+        worn.len(),
+        std::backtrace::Backtrace::force_capture()
+    );
     // DeleteFromOutfit removes the saved links, never the originals or the worn items.
     if let Action::DeleteFromOutfit { folder, items } = action {
         if !inv
@@ -1051,6 +1056,11 @@ pub fn unlink_attachment(inv: &mut Inventory, item: Uuid) -> Option<aurora_net::
     if removed.is_empty() {
         return None;
     }
+    log::warn!(
+        "[DIAG-login] unlink attachment {item}: {} links\n{}",
+        removed.len(),
+        std::backtrace::Backtrace::force_capture()
+    );
     // Update the local model before the next inventory action can plan a COF
     // replacement. The original and saved outfits remain in the inventory.
     for id in &removed {
