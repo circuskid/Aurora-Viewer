@@ -87,11 +87,13 @@ switch back and delete the branch. **`.claude/CLAUDE.md` is capped at 9,000 char
 ### WATCHING — the third-party AUR package `aurora-viewer-git`
 
 Uploaded 2026-10-30 by `jesusokay` (no project tie; their `lostorm-git` is
-ban-evasion HWID spoofing on `git.allthefallen.moe`). First PKGBUILD clean.
+ban-evasion HWID spoofing on `git.allthefallen.moe`). Audited 2026-11-06: not
+malicious, packaging gaps only; no full build (auto mode refused the PKGBUILD).
 G.W., 2026-10-31: watch only; any upstream post is drafted for G.W. first.
-Scheduled task `aur-aurora-viewer-watch` (Mon ~09:40, while the app is open)
-runs `~/.local/share/aur-aurora-viewer-watch/check.sh` (0 no change, 1 diff →
-reviewed + `notify-send`, 2 lookup failed); state in `~/.local/state/` same name.
+Weekly and on every stable upstream release, not betas (G.W., 2026-11-06):
+task `aur-aurora-viewer-watch` fires daily ~09:40 while the app is open and runs
+`~/.local/share/aur-aurora-viewer-watch/check.sh`, which acts only when due (0
+nothing, 1 change or `FINDING` → `notify-send`, 2 lookup failed); state in `~/.local/state/`.
 
 ### DECIDED — do not reopen
 
