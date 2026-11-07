@@ -1198,6 +1198,9 @@ pub struct Settings {
     pub projector_shadows: bool,
     /// Maximum simultaneous projector shadows, independent of local-light count.
     pub projector_shadow_limit: u8,
+    /// Point lights with shadows (0: none, and they light through walls, as
+    /// in the Legacy Viewer). The worn lights never cast any.
+    pub point_shadow_limit: u8,
     /// Screen-space contact shadows of the sun or the moon, beyond the
     /// Legacy Viewer (contact_shadows.rs): what the shadow map is too coarse
     /// to show, where things touch. Off by default; only with the shadows.
@@ -2059,6 +2062,7 @@ impl Default for Settings {
             shadow_quality: 3,
             projector_shadows: true,
             projector_shadow_limit: 2,
+            point_shadow_limit: 0,
             contact_shadows: false,
             antialiasing: 6,
             fsr_quality: 1,
@@ -2763,6 +2767,9 @@ impl Settings {
         self.projector_shadow_limit = self
             .projector_shadow_limit
             .clamp(1, aurora_render::projector_shadows::MAX_PROJECTOR_SHADOWS as u8);
+        self.point_shadow_limit = self
+            .point_shadow_limit
+            .min(aurora_render::projector_shadows::MAX_POINT_SHADOWS as u8);
         self.antialiasing = self.antialiasing.min(7);
         self.fsr_quality = self.fsr_quality.min(4);
         self.fsr_sharpness = self.fsr_sharpness.min(100);
@@ -2970,6 +2977,7 @@ impl Settings {
             hdr: self.hdr_emissive,
             shadow_resolution: self.shadow_params().0,
             projector_shadow_limit: if self.projector_shadows { self.projector_shadow_limit } else { 0 },
+            point_shadow_limit: self.point_shadow_limit,
             ssao: self.ssao,
             ao_method: if self.ao_method == 1 {
                 AoMethod::Gtao {

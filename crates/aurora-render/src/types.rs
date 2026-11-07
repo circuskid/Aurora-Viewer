@@ -1040,6 +1040,9 @@ pub struct RenderSettings {
     pub shadow_resolution: u32,
     /// Maximum simultaneous projector shadow maps (0 disables them).
     pub projector_shadow_limit: u8,
+    /// Point lights with a shadow map (0 disables them; they then light
+    /// through walls, as in the Legacy Viewer).
+    pub point_shadow_limit: u8,
     /// Screen-space ambient occlusion: 0 off, 1 low, 2 high.
     pub ssao: u8,
     /// How the occlusion `ssao` turns on is computed.
@@ -1084,6 +1087,7 @@ impl Default for RenderSettings {
             hdr: true,
             shadow_resolution: 2048,
             projector_shadow_limit: 2,
+            point_shadow_limit: 0,
             ssao: 1,
             ao_method: AoMethod::Legacy,
             screen_indirect: false,
@@ -1365,6 +1369,9 @@ pub struct FrameParams {
     pub lights: Vec<PointLight>,
     /// The projectors of `lights` that cast shadows (drawn with `shadows`).
     pub spot_shadows: [Option<SpotShadow>; crate::projector_shadows::MAX_PROJECTOR_SHADOWS],
+    /// The point lights of `lights` that cast shadows: maps after the
+    /// projectors' (projector_shadows.rs).
+    pub point_shadows: [Option<SpotShadow>; crate::projector_shadows::MAX_POINT_SHADOWS],
     pub clear_color: Vec4,
     pub sky: SkyParams,
     pub water: WaterParams,

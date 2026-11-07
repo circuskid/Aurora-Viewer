@@ -1646,7 +1646,7 @@ fn shade_pbr(base: vec3<f32>, metallic: f32, roughness_in: f32, mat_ao: f32, n: 
                 let f = f_schlick(f0, vh);
                 let spec = d_ggx(nh, a) * v_smith(nv, lnl, a) * f;
                 let kd = (vec3<f32>(1.0) - f) * diffuse_color / PI;
-                col += (kd + spec) * lt.color_falloff.rgb * lnl * atten;
+                col += (kd + spec) * lt.color_falloff.rgb * lnl * atten * point_shadow(i, world_pos, n);
             }
         }
     }
@@ -1976,14 +1976,8 @@ fn projector_shadow(i: i32, world_pos: vec3<f32>, n: vec3<f32>) -> f32 {
     // a map is a quarter of the atlas wide: its texel in map coordinates
     let texel = 4.0 / f32(textureDimensions(shadow_map).x);
     let dims = vec2<f32>(textureDimensions(shadow_map));
-    let size = dims.x * 0.5;
-    let half = size * 0.5;
-    var origin: vec2<f32>;
-    if (k < 4u) {
-        origin = vec2<f32>(size + f32(k % 2u) * half, size + f32(k / 2u) * half);
-    } else {
-        origin = vec2<f32>(f32((k - 4u) % 4u) * half, 2.0 * size + f32((k - 4u) / 4u) * half);
-    }
+    let half = dims.x * 0.25;
+    let origin = spot_map_origin(k);
     var sum = 0.0;
     // pcfSpotShadow's five taps
     let taps = array<vec2<f32>, 5>(
@@ -1996,6 +1990,90 @@ fn projector_shadow(i: i32, world_pos: vec3<f32>, n: vec3<f32>) -> f32 {
     // the map fades in and out as its projector takes or loses it
     s = clamp(s + frame.spot_fade[k / 4u][k % 4u], 0.0, 1.0);
     return mix(1.0, s, clamp((far - depth) / (far * 0.1), 0.0, 1.0));
+}
+
+// Where shadow map `k` of the projectors and point lights lies in the atlas,
+// in texels (projector_shadows.rs map_origin).
+fn spot_map_origin(k: u32) -> vec2<f32> {
+    let size = f32(textureDimensions(shadow_map).x) * 0.5;
+    let half = size * 0.5;
+    if (k < 4u) {
+        return vec2<f32>(size + f32(k % 2u) * half, size + f32(k / 2u) * half);
+    }
+    return vec2<f32>(f32((k - 4u) % 4u) * half, 2.0 * size + f32((k - 4u) / 4u) * half);
+}
+
+// Mirrors of projector_shadows.rs.
+const POINT_GUARD: f32 = 1.04;
+const POINT_NEAR: f32 = 0.25;
+
+// Light left by the shadow map of point light `i` (1: lit, or no map). An
+// Aurora addition, off by default: multiPointLightF has no shadow term, the
+// Legacy Viewer's point lights cross walls. `tex.y` of the projector table
+// holds the map of a point light too (that entry is otherwise unused: the
+// light's bit in `light_projectors` stays off). The map is six faces of a
+// cube around the light; projector_shadows.rs point_face_matrix is this same
+// projection, and its tests compare the two.
+fn point_shadow(i: i32, world_pos: vec3<f32>, n: vec3<f32>) -> f32 {
+    let slot = frame.projectors[i].tex.y;
+    if (slot == 0u || frame.params.z < 0.5) {
+        return 1.0;
+    }
+    let k = slot - 1u;
+    let far = frame.cascade_splits.z;
+    let depth = distance(world_pos, frame.camera_pos.xyz);
+    if (depth >= far) {
+        return 1.0;
+    }
+    let lt = frame.lights[i];
+    let radius = lt.pos_radius.w;
+    let v = world_pos + n * 0.04 - lt.pos_radius.xyz;
+    let a = abs(v);
+    var s: f32;
+    var across: vec2<f32>;
+    var axis: u32;
+    if (a.x >= a.y && a.x >= a.z) {
+        axis = 0u;
+        s = v.x;
+        across = v.yz;
+    } else if (a.y >= a.z) {
+        axis = 1u;
+        s = v.y;
+        across = v.zx;
+    } else {
+        axis = 2u;
+        s = v.z;
+        across = v.xy;
+    }
+    if (s > 0.0) {
+        across.y = -across.y;
+    }
+    let d = abs(s);
+    let near = min(POINT_NEAR, radius * 0.25);
+    if (d <= near) {
+        return 1.0;
+    }
+    let face = axis * 2u + select(0u, 1u, s < 0.0);
+    let ndc = across / (d * POINT_GUARD);
+    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    // 2 cm towards the light, as the distance: depth is not linear here
+    let compare = radius / (radius - near) * (1.0 - near / max(d - 0.02, near));
+    let dims = vec2<f32>(textureDimensions(shadow_map));
+    let side = floor(dims.x * 0.25 / 3.0);
+    let corner = spot_map_origin(k) + vec2<f32>(f32(face % 3u), f32(face / 3u)) * side;
+    let texel = 1.0 / side;
+    var sum = 0.0;
+    // pcfSpotShadow's five taps, as on a projector's map
+    let taps = array<vec2<f32>, 5>(
+        vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.75), vec2<f32>(0.5, -0.75), vec2<f32>(-0.5, 0.75), vec2<f32>(-1.0, -0.75));
+    for (var t = 0; t < 5; t++) {
+        let at = clamp(uv + taps[t] * texel, vec2<f32>(0.5 * texel), vec2<f32>(1.0 - 0.5 * texel));
+        sum += textureSampleCompareLevel(shadow_map, shadow_sampler, (corner + at * side) / dims, compare);
+    }
+    var shadow = sum * 0.2;
+    // the map fades in and out as its light takes or loses it
+    shadow = clamp(shadow + frame.spot_fade[k / 4u][k % 4u], 0.0, 1.0);
+    return mix(1.0, shadow, clamp((far - depth) / (far * 0.1), 0.0, 1.0));
 }
 
 // What a local light sends to a point.
@@ -2319,7 +2397,7 @@ fn ll_local_diffuse(base: vec3<f32>, n: vec3<f32>, world_pos: vec3<f32>, frag: v
         if (dist < radius) {
             let nl = dot(n, to_l / max(dist, 1e-4));
             if (nl > 0.0) {
-                local += lt.color_falloff.rgb / 3.25 * nl * ll_light_atten(dist / radius, lt.color_falloff.w) * base;
+                local += point_shadow(i, world_pos, n) * lt.color_falloff.rgb / 3.25 * nl * ll_light_atten(dist / radius, lt.color_falloff.w) * base;
             }
         }
     }
@@ -2412,7 +2490,7 @@ fn ll_classic_pbr_local(base: vec3<f32>, metallic: f32, roughness_in: f32, n: ve
                 let f = f_schlick(f0, max(dot(v, h), 0.0));
                 let spec = d_ggx(max(dot(n, h), 0.0), ra) * v_smith(nv, lnl, ra) * f;
                 let diff = (vec3<f32>(1.0) - f) * diffuse_color / PI;
-                let intensity = ll_light_atten(dist / radius, lt.color_falloff.w) * lt.color_falloff.rgb;
+                let intensity = ll_light_atten(dist / radius, lt.color_falloff.w) * lt.color_falloff.rgb * point_shadow(i, world_pos, n);
                 col += intensity * clamp(lnl * (diff + spec), vec3<f32>(0.0), vec3<f32>(10.0));
             }
         }

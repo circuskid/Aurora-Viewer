@@ -1294,6 +1294,9 @@ fn apply_test_overrides(settings: &mut Settings) {
     {
         settings.projector_shadow_limit = limit.clamp(1, aurora_render::projector_shadows::MAX_PROJECTOR_SHADOWS as u8);
     }
+    if let Some(limit) = std::env::var("AURORA_POINT_SHADOWS").ok().and_then(|v| v.parse::<u8>().ok()) {
+        settings.point_shadow_limit = limit.min(aurora_render::projector_shadows::MAX_POINT_SHADOWS as u8);
+    }
     if let Ok(v) = std::env::var("AURORA_HDR") {
         settings.hdr_emissive = v != "0";
     }
@@ -10368,7 +10371,14 @@ impl App {
             }
             t_part = Instant::now();
         }
-        let (lights, spot_shadows) = if in_world {
+        let (lights, spot_shadows, point_shadows) = if in_world {
+            let render = self.settings.render_settings();
+            let (projector_maps, point_maps) = aurora_render::projector_shadows::budget_split(
+                self.settings.shadow_params().0,
+                render.projector_shadow_limit,
+                render.point_shadow_limit,
+                gfx.renderer.max_texture_dimension(),
+            );
             let view = crate::scene::lights::LightView {
                 eye: self.camera.position,
                 forward: self.camera.forward(),
@@ -10377,15 +10387,16 @@ impl App {
                 range: self.settings.draw_distance,
                 dt,
                 projector_shadows: self.settings.projector_shadows && self.settings.shadow_quality > 0,
-                projector_shadow_limit: aurora_render::projector_shadows::effective_limit(
-                    self.settings.shadow_params().0,
-                    self.settings.projector_shadow_limit,
-                    gfx.renderer.max_texture_dimension(),
-                ),
+                projector_shadow_limit: projector_maps,
+                point_shadow_limit: if self.settings.shadow_quality > 0 { point_maps } else { 0 },
             };
             self.scene.local_lights(&self.world, &mut gfx.renderer, &view)
         } else {
-            (Vec::new(), [None; aurora_render::projector_shadows::MAX_PROJECTOR_SHADOWS])
+            (
+                Vec::new(),
+                [None; aurora_render::projector_shadows::MAX_PROJECTOR_SHADOWS],
+                [None; aurora_render::projector_shadows::MAX_POINT_SHADOWS],
+            )
         };
         t_part = self.scene.parts.lap(Part::ParamsLights, t_part);
         let probes = if in_world {
@@ -10496,6 +10507,7 @@ impl App {
             shadow_distance: self.settings.shadow_params().1,
             lights,
             spot_shadows,
+            point_shadows,
             clear_color: Vec4::new(env.fog_color.x, env.fog_color.y, env.fog_color.z, 1.0),
             sky: env.sky,
             water: env.water,

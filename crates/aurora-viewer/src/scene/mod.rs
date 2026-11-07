@@ -913,6 +913,7 @@ pub struct Scene {
     light_scratch: lights::Scratch,
     /// The projectors that cast shadows (`lights.rs`).
     spot_shadows: lights::SpotShadowSlots,
+    point_shadows: lights::SpotShadowSlots,
     /// Objects flagged as mirrors by their last sync, for `find_mirror`: as
     /// for the lights, it may hold removed indices and readers check `mirror`.
     mirror_objects: std::collections::BTreeSet<usize>,
@@ -1520,6 +1521,7 @@ impl Scene {
             light_textures: HashMap::new(),
             light_scratch: Default::default(),
             spot_shadows: Default::default(),
+            point_shadows: Default::default(),
             mirror_objects: Default::default(),
             selection_wire: Default::default(),
             inspected_mesh: None,
