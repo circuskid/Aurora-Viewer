@@ -271,6 +271,7 @@ pub(super) fn effects(settings: &crate::settings::Settings, vr: bool) -> String 
     word(shadows, format_args!("shadows{}", settings.shadow_quality));
     word(shadows && settings.projector_shadows, format_args!("projector-shadows"));
     word(shadows && settings.contact_shadows, format_args!("contact-shadows"));
+    word(shadows && settings.sun_glow_shadows, format_args!("sun-glow-shadows"));
     word(ao && settings.ao_method == 0, format_args!("ao-legacy{}", settings.ssao));
     word(ao && settings.ao_method == 1, format_args!("ao-gtao{}", settings.gtao_quality));
     word(settings.ssr, format_args!("ssr"));

@@ -4918,6 +4918,8 @@ ui-options-projector-shadow-limit = 影付きプロジェクター数
 ui-options-projector-shadow-limit-help = 同時に影を描画するプロジェクターの上限（1～16）。増やすほどGPU処理時間とビデオメモリ使用量が増えます。
 ui-options-contact-shadows = 接触影
 ui-options-contact-shadows-help = 物が接する部分（地面の足、表面に置かれた物、折り目）に、シャドウマップでは粗すぎて表せない鋭い太陽の影を付けます。グラフィックカードの負荷が少し増えます
+ui-options-sun-glow-shadows = 太陽のグローを壁で遮る
+ui-options-sun-glow-shadows-help = 壁や屋根が太陽を遮る場所では、もやの中の太陽のグローを除き、室内で壁越しに見えなくなります。Legacy Viewer では常に加算されます。太陽の方を向いている間、グラフィックカードの負荷が少し増えます
 ui-options-when-i-am-away = 一時退席中：
 ui-options-when-the-window-is-not-in-the-foreground-the = ウィンドウが前面にないとき、ビューアは速度を落としてシステムリソースを解放します。デフォルトで有効
 ui-options-glow-amount-instead-of-the-image-red-glow-10 = 画像の代わりにグローの量（赤 = グロー × 10、緑 = × 2）

@@ -1202,6 +1202,10 @@ pub struct Settings {
     /// Legacy Viewer (contact_shadows.rs): what the shadow map is too coarse
     /// to show, where things touch. Off by default; only with the shadows.
     pub contact_shadows: bool,
+    /// The sun's glow in the haze stops at what the sun does not reach,
+    /// beyond the Legacy Viewer, which adds it over walls and roofs. Off by
+    /// default; only with the shadows.
+    pub sun_glow_shadows: bool,
     /// 0 none, 1 FXAA, 2 MSAA 2x, 3 MSAA 4x, 4 MSAA 8x, 5 TAA, 6 SMAA (the
     /// default, RenderFSAAType 2 of Firestorm's High to Ultra levels in
     /// featuretable.txt), 7 AMD FSR 3.1 (beyond the Legacy Viewer)
@@ -2064,6 +2068,7 @@ impl Default for Settings {
             projector_shadows: true,
             projector_shadow_limit: 2,
             contact_shadows: false,
+            sun_glow_shadows: false,
             antialiasing: 6,
             fsr_quality: 1,
             fsr_sharpness: 80,
@@ -2991,6 +2996,11 @@ impl Settings {
             screen_indirect: self.ao_method == 1 && self.screen_indirect_light,
             screen_indirect_intensity: self.screen_indirect_intensity,
             contact_shadows: self.contact_shadows,
+            sun_glow_shadows: match std::env::var("AURORA_SUN_GLOW_SHADOWS").ok().as_deref() {
+                Some("0" | "off") => false,
+                Some("1" | "on") => true,
+                _ => self.sun_glow_shadows,
+            },
             specular_aa: self.specular_aa,
             water_reflection_scale: Self::reflection_scale(self.water_reflections),
             mirror_scale: Self::reflection_scale(self.mirrors),

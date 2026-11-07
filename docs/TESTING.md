@@ -3890,6 +3890,8 @@ both open states and the selection count. Capture at frame 620.
 | `AURORA_DEMO_SKY=<gamma>[,<haze>[,<ambient>[,<probe ambiance>]]]\|midday` | EEP sky with this gamma, classic unless it has a probe ambiance; or the library Midday |
 | `AURORA_DEMO_WATER_EEP=<fresnel offset>,<fresnel scale>,<blur>,<normal scale>[,<fog r,g,b>]` | Water of the `AURORA_DEMO_SKY` day with these values, out-of-range ones included |
 | `AURORA_DEMO_SKY_FLAGS=<flags>\|none` | Settings flags of the `AURORA_DEMO_SKY` day (rights of the sky and water snapshots) |
+| `AURORA_DEMO_SKY_GLOW=<glow x>,<glow z>,<haze density>,<haze horizon>,<density multiplier>[,<azimuth>,<elevation>]` | Sun glow and haze of the `AURORA_DEMO_SKY` day, to show the glow on near faces |
+| `AURORA_SUN_GLOW_SHADOWS=0\|1` | Forces Preferences › Graphics › Sun glow stops at walls off or on |
 | `AURORA_DEMO_SKY_OPTICS=rainbow\|halo\|clear` | Rainbow or 22° halo in the sky |
 | `AURORA_DEMO_NIGHT_SKY=real\|legacy[:<azimuth>,<elevation>]` | The night sky's stars at midnight, the camera looking at the sky |
 | `AURORA_DEMO_NIGHT_SKY_PLACE=<latitude>[,<gain>]` | Where the real sky is seen from, and its stars' brightness |
@@ -4128,6 +4130,13 @@ both open states and the selection count. Capture at frame 620.
   takes the Legacy haze and reflection: the distant water is darker than
   before and meets the sky on a sharper line. Compare the Legacy Viewer
   with the same values in Personal Lighting.
+- **`AURORA_DEMO_SKY_GLOW`** (with `AURORA_SUN_GLOW_SHADOWS`): the closed
+  room of `AURORA_DEMO_PROBE_ROOM=0,box`, seen from `AURORA_DEMO_POS=100,100`
+  with `AURORA_DEMO_SKY=1,30,0.1,1` and
+  `AURORA_DEMO_SKY_GLOW=0.5,-1.5,2,0.5,0.0001,0,18`: the sun stands behind
+  the east wall, the wall the camera faces. With `AURORA_SUN_GLOW_SHADOWS=0`
+  its glow lies on the wall, as in the Legacy Viewer; with `1` the wall is
+  dark. Outside the room (`AURORA_DEMO_POS=70,110`) both give the same image.
 - **`AURORA_DEMO_SKY=<gamma>[,<haze>[,<ambient>]]`**: classic EEP sky (without
   reflection probe ambiance) with this sky gamma and a sun colour
   above 1: legacy gamma and object light normalised like

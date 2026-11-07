@@ -79,6 +79,7 @@ const BEFORE: &[&str] = &[
     "projector_shadows",
     "projector_shadow_limit",
     "contact_shadows",
+    "sun_glow_shadows",
     "ssao",
     "ao_method",
     "gtao_quality",

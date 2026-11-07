@@ -4921,6 +4921,8 @@ ui-options-projector-shadow-limit = Projectors with shadows
 ui-options-projector-shadow-limit-help = Maximum simultaneous projector shadows (1–16). More projectors increase GPU time and video memory use.
 ui-options-contact-shadows = Contact shadows
 ui-options-contact-shadows-help = Sharp sun shadows where things touch (feet on the ground, objects resting on a surface, folds), which the shadow map is too coarse to show. Costs a little on the graphics card
+ui-options-sun-glow-shadows = Sun glow stops at walls
+ui-options-sun-glow-shadows-help = The sun's glow in the haze is left out where walls and roofs block the sun, so it no longer shows through them indoors. The Legacy Viewer always adds it. Costs a little on the graphics card while you face the sun
 ui-options-when-i-am-away = When I am away:
 ui-options-when-the-window-is-not-in-the-foreground-the = When the window is not in the foreground, the viewer slows down to free system resources. Enabled by default
 ui-options-glow-amount-instead-of-the-image-red-glow-10 = Glow amount instead of the image (red = glow × 10, green = × 2)

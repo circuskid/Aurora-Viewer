@@ -5539,6 +5539,10 @@ impl Backend {
         u.sky_star_pass = [0.0; 4];
         // (common.wgsl FEATURE_NO_EMISSIVE)
         u.features[0] = if self.settings.hdr { 0 } else { 1 };
+        // (common.wgsl FEATURE_SUN_GLOW_SHADOWS)
+        if self.settings.sun_glow_shadows {
+            u.features[0] |= 2;
+        }
         for (i, m) in cascades.iter().enumerate() {
             u.cascade_vp[i] = m.to_cols_array_2d();
         }

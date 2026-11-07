@@ -4924,6 +4924,8 @@ ui-options-projector-shadow-limit = Projecteurs avec ombres
 ui-options-projector-shadow-limit-help = Nombre maximal d’ombres de projecteurs simultanées (1–16). Une limite plus élevée augmente le temps GPU et la mémoire vidéo utilisée.
 ui-options-contact-shadows = Ombres de contact
 ui-options-contact-shadows-help = Des ombres du soleil nettes là où les choses se touchent (pieds au sol, objets posés, plis), trop fines pour la carte d’ombre. Coûte un peu à la carte graphique
+ui-options-sun-glow-shadows = Halo du soleil arrêté par les murs
+ui-options-sun-glow-shadows-help = Le halo du soleil dans la brume disparaît là où les murs et les toits bloquent le soleil : il ne traverse plus les murs en intérieur. Le Legacy Viewer l'ajoute toujours. Coûte un peu à la carte graphique face au soleil
 ui-options-when-i-am-away = Quand je suis absent :
 ui-options-when-the-window-is-not-in-the-foreground-the = Quand la fenêtre n'est pas au premier plan, le viewer ralentit pour libérer la machine. Activé par défaut
 ui-options-glow-amount-instead-of-the-image-red-glow-10 = Quantité de glow à la place de l'image (rouge = glow × 10, vert = × 2)

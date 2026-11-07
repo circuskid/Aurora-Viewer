@@ -121,6 +121,9 @@ struct Frame {
 // faces it draws deferred (opaque, alpha-masked, terrain) lose their
 // emissive; blended and HUD faces keep it (pbralphaF, pbropaqueF IS_HUD)
 const FEATURE_NO_EMISSIVE: u32 = 1u;
+// "Sun glow behind walls": the hotspot of the haze only counts the air the
+// sun reaches (haze_ray_lit); the Legacy Viewer adds it whatever is in the way
+const FEATURE_SUN_GLOW_SHADOWS: u32 = 2u;
 
 fn deferred_emissive_off() -> bool {
     return (frame.features.x & FEATURE_NO_EMISSIVE) != 0u;
@@ -1303,6 +1306,57 @@ fn cascade_shadow(world_pos: vec3<f32>, n: vec3<f32>, cascade: u32) -> f32 {
     return sum / f32(taps * taps);
 }
 
+// One bilinear tap of a cascade at a point of the air (1 lit, 0 shadowed), -1
+// outside its tile: no filter and no bias, nothing to keep clear of a surface.
+fn cascade_air_tap(p: vec3<f32>, cascade: u32) -> f32 {
+    let lp = frame.cascade_vp[cascade] * vec4<f32>(p, 1.0);
+    let ndc = lp.xyz / lp.w;
+    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || ndc.z < 0.0 || ndc.z > 1.0) {
+        return -1.0;
+    }
+    let texel = 2.0 / f32(textureDimensions(shadow_map).x);
+    let t = clamp(uv, vec2<f32>(0.5 * texel), vec2<f32>(1.0 - 0.5 * texel));
+    let tile = vec2<f32>(f32(cascade % 2u), f32(cascade / 2u));
+    let atlas = vec2<f32>(textureDimensions(shadow_map));
+    let tile_scale = vec2<f32>(0.5, atlas.x / (2.0 * atlas.y));
+    return textureSampleCompareLevel(shadow_map, shadow_sampler, (t + tile) * tile_scale, ndc.z);
+}
+
+const HAZE_RAY_STEPS: u32 = 8u;
+
+// The share of the air between the camera and the point `rel` from it that
+// the sun reaches, which the haze's hotspot scatters. Marched through the
+// shadow map, up to the shadow distance; the air beyond counts as lit. The
+// steps start at a noise of the pixel (Jimenez's interleaved gradient noise),
+// which hides their spacing along the edge of a shaft of light.
+fn haze_ray_lit(rel: vec3<f32>) -> f32 {
+    let len = length(rel);
+    let splits = frame.cascade_splits;
+    let reach = min(len, splits.z);
+    if (frame.params.z < 0.5 || in_reflection_pass() || reach < 0.01) {
+        return 1.0;
+    }
+    let clip = frame.view_proj * vec4<f32>(frame.camera_pos.xyz + rel, 1.0);
+    let px = floor((clip.xy / clip.w * 0.5 + 0.5) * frame.screen.xy);
+    let noise = fract(52.9829189 * fract(dot(px, vec2<f32>(0.06711056, 0.00583715))));
+    let dir = rel / len;
+    var lit = 0.0;
+    for (var i = 0u; i < HAZE_RAY_STEPS; i++) {
+        let t = reach * (f32(i) + noise) / f32(HAZE_RAY_STEPS);
+        var cascade = 0u;
+        if (t > splits.x) { cascade = 1u; }
+        if (t > splits.y) { cascade = 2u; }
+        // a tile that does not see the point leaves it to the next, then lit
+        var s = cascade_air_tap(frame.camera_pos.xyz + dir * t, cascade);
+        if (s < 0.0 && cascade < 2u) {
+            s = cascade_air_tap(frame.camera_pos.xyz + dir * t, cascade + 1u);
+        }
+        lit += select(s, 1.0, s < 0.0);
+    }
+    return (lit / f32(HAZE_RAY_STEPS) * reach + len - reach) / len;
+}
+
 // The motion of a pixel on the screen from its clip positions, this frame's
 // and the last frame's: in uv units (y down), what to take from its uv to
 // find where the last frame drew it. None for a point that was behind the
@@ -2179,7 +2233,7 @@ struct LLAtmos {
 
 // calcAtmosphericVars: `rel` = point minus camera (world, z up).
 fn ll_atmos(rel_in: vec3<f32>) -> LLAtmos {
-    return ll_atmos_core(rel_in, vec3<f32>(0.0, 0.0, 1.0), frame.sky_light.xyz, frame.sun_dir.xyz);
+    return ll_atmos_core(rel_in, rel_in, vec3<f32>(0.0, 0.0, 1.0), frame.sky_light.xyz, frame.sun_dir.xyz);
 }
 
 // calcAtmosphericVars as hazeF.glsl runs it over a surface: the point in
@@ -2195,6 +2249,7 @@ fn ll_atmos_eye(rel_world: vec3<f32>) -> LLAtmos {
     let right = cross(forward, up);
     let ln = frame.sky_light.xyz;
     return ll_atmos_core(
+        rel_world,
         ll_eye_axes(rel_world, right, up, forward),
         vec3<f32>(0.0, 1.0, 0.0),
         vec3<f32>(ln.y, ln.z, ln.x),
@@ -2209,8 +2264,9 @@ fn ll_eye_axes(v: vec3<f32>, right: vec3<f32>, up: vec3<f32>, forward: vec3<f32>
 
 // The body of calcAtmosphericVars: `rel_in` the point in the frame of
 // `up_axis` (the altitude limit and the direction's nudge), `glow_norm` and
-// `glow_light` the two vectors of the haze glow.
-fn ll_atmos_core(rel_in: vec3<f32>, up_axis: vec3<f32>, glow_norm: vec3<f32>, glow_light: vec3<f32>) -> LLAtmos {
+// `glow_light` the two vectors of the haze glow, `rel_world` the point minus
+// the camera in world axes.
+fn ll_atmos_core(rel_world: vec3<f32>, rel_in: vec3<f32>, up_axis: vec3<f32>, glow_norm: vec3<f32>, glow_light: vec3<f32>) -> LLAtmos {
     var rel_pos = rel_in;
     let max_y = frame.sky_glow.w;
     let rel_up = dot(rel_pos, up_axis);
@@ -2237,8 +2293,8 @@ fn ll_atmos_core(rel_in: vec3<f32>, up_axis: vec3<f32>, glow_norm: vec3<f32>, gl
     var haze_glow = dot(rel_pos_norm, glow_norm);
     haze_glow *= max(0.0, dot(glow_light, rel_pos_norm));
     haze_glow = max(1.0 - haze_glow, 0.001) * frame.sky_glow.x;
-    haze_glow = clamp(pow(haze_glow, frame.sky_glow.z), -100000.0, 100000.0) + 0.25;
-    haze_glow *= frame.sky_light.w;
+    let hotspot = clamp(pow(haze_glow, frame.sky_glow.z), -100000.0, 100000.0);
+    haze_glow = (hotspot + 0.25) * frame.sky_light.w;
     let amb = frame.sky_ambient.rgb;
     let tmp_ambient = amb + (vec3<f32>(1.0) - amb) * cloud_shadow * 0.5;
     let cs = sunlight * (1.0 - cloud_shadow);
@@ -2250,7 +2306,16 @@ fn ll_atmos_core(rel_in: vec3<f32>, up_axis: vec3<f32>, glow_norm: vec3<f32>, gl
     if (colored_sky_ambient()) {
         o.amblit = max(tmp_ambient, vec3<f32>(0.0)) * 0.7;
     }
-    o.additive = min(additive * (vec3<f32>(1.0) - atten), vec3<f32>(10.0));
+    var scattered = additive * (vec3<f32>(1.0) - atten);
+    if ((frame.features.x & FEATURE_SUN_GLOW_SHADOWS) != 0u) {
+        // only the hotspot: the rest of the haze is the air's own veil, and
+        // most faces are near enough to have none of it to lose
+        let spot = frame.sky_blue_horizon.w * haze_weight * cs * hotspot * frame.sky_light.w * (vec3<f32>(1.0) - atten);
+        if (max(spot.r, max(spot.g, spot.b)) > 0.004) {
+            scattered -= spot * (1.0 - haze_ray_lit(rel_world));
+        }
+    }
+    o.additive = min(scattered, vec3<f32>(10.0));
     o.atten = atten;
     return o;
 }

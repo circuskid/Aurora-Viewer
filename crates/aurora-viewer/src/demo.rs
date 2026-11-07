@@ -9017,6 +9017,30 @@ fn demo_sky(sun: Vec3, gamma: f64, haze_distance: Option<f64>, ambient: Option<[
     if let (Some(a), Llsd::Map(m)) = (probe_ambiance, &mut sky) {
         m.insert("reflection_probe_ambiance".into(), Llsd::Real(a));
     }
+    // AURORA_DEMO_SKY_GLOW=<glow x>,<glow z>,<haze density>,<haze horizon>,
+    // <density multiplier>[,<azimuth>,<elevation>]: a sky whose sun glow
+    // shows in the haze of near faces, as a hot "big sun" preset does, with
+    // its sun where AURORA_DEMO_SUN would put it (`0,15`: before the camera)
+    let glow: Option<Vec<f64>> = std::env::var("AURORA_DEMO_SKY_GLOW")
+        .ok()
+        .and_then(|v| v.split(',').map(|x| x.trim().parse().ok()).collect());
+    if let (Some([x, z, density, horizon, multiplier, sun @ ..]), Llsd::Map(m)) = (glow.as_deref(), &mut sky) {
+        m.insert("glow".into(), arr(&[*x, 0.001, *z]));
+        if let [azimuth, elevation] = *sun {
+            let (azimuth, elevation) = ((azimuth as f32).to_radians(), (elevation as f32).to_radians());
+            let to = Vec3::new(elevation.cos() * azimuth.cos(), elevation.cos() * azimuth.sin(), elevation.sin());
+            let q = Quat::from_rotation_arc(Vec3::X, to);
+            m.insert("sun_rotation".into(), arr(&[q.x as f64, q.y as f64, q.z as f64, q.w as f64]));
+        }
+        let mut haze = match m.remove("legacy_haze") {
+            Some(Llsd::Map(h)) => h,
+            _ => aurora_llsd::Map::new(),
+        };
+        haze.insert("haze_density".into(), Llsd::Real(*density));
+        haze.insert("haze_horizon".into(), Llsd::Real(*horizon));
+        haze.insert("density_multiplier".into(), Llsd::Real(*multiplier));
+        m.insert("legacy_haze".into(), Llsd::Map(haze));
+    }
     demo_day(sky)
 }
 

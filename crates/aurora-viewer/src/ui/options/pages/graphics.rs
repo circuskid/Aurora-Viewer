@@ -571,6 +571,11 @@ fn light(cx: &mut Cx) {
                 tr!("ui-options-contact-shadows-help"),
                 &field!(contact_shadows),
             );
+            cx.toggle(
+                tr!("ui-options-sun-glow-shadows"),
+                tr!("ui-options-sun-glow-shadows-help"),
+                &field!(sun_glow_shadows),
+            );
         });
     });
     cx.group(tr!("ui-options-ambient-occlusion"), |cx| {

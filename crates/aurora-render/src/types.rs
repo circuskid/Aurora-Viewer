@@ -1052,6 +1052,9 @@ pub struct RenderSettings {
     /// Screen-space contact shadows of the sun or the moon (contact_shadows.rs),
     /// with the sun shadows only.
     pub contact_shadows: bool,
+    /// The hotspot of the haze only counts the air the sun reaches
+    /// (common.wgsl `haze_ray_lit`), with the sun shadows only.
+    pub sun_glow_shadows: bool,
     /// Geometric specular anti-aliasing of the objects' highlights
     /// (common.wgsl `specular_aa_roughness`, AURORA_SPECULAR_AA).
     pub specular_aa: bool,
@@ -1089,6 +1092,7 @@ impl Default for RenderSettings {
             screen_indirect: false,
             screen_indirect_intensity: 1.0,
             contact_shadows: false,
+            sun_glow_shadows: false,
             specular_aa: true,
             water_reflection_scale: 0.25,
             mirror_scale: 0.25,
