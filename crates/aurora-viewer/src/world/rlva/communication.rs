@@ -353,6 +353,36 @@ mod tests {
         assert_eq!(world.teleport_invites.list.last().unwrap().message, "Private payload");
     }
 
+    /// #2734: the region comes from the map after the offer, and goes into
+    /// the notification. Under @showloc the name stays out of it.
+    #[test]
+    fn rlva_showloc_keeps_the_region_of_a_teleport_offer_out_of_the_notification() {
+        for (showloc, shown) in [(false, true), (true, false)] {
+            let mut world = world();
+            if showloc {
+                restrict(&mut world, "@showloc=n");
+            }
+            let mut offer = im(&world, 22);
+            offer.binary_bucket = b"256000|256256|128|64|22|0|1|0|M".to_vec();
+            world.apply(NetEvent::InstantMessage(offer));
+            world.map.sims.insert(
+                (1000, 1001),
+                crate::world::worldmap::SimInfo {
+                    name: "Ahern".into(),
+                    access: 21,
+                    flags: 0,
+                    image: Uuid::nil(),
+                    size_x: 256,
+                    size_y: 256,
+                },
+            );
+            world.refresh_teleport_places();
+            let body = &world.notifications.list.last().expect("the offer's notification").body;
+            assert_eq!(body.contains("Ahern"), shown, "{body}");
+            assert_eq!(body.contains(aurora_i18n::tr!("rlva-hidden-generic")), showloc, "{body}");
+        }
+    }
+
     #[test]
     fn rlva_startim_checks_all_conference_members_and_group_ids_before_changing_an_existing_call() {
         let mut world = world();

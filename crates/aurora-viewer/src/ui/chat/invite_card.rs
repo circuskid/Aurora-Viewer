@@ -25,6 +25,21 @@ const BUTTON: Vec2 = Vec2::new(88.0, 24.0);
 /// The icon of teleport offers, the same as in the notification centre.
 const ICON: &str = "plane-departure-filled";
 
+/// The place of an offer, once its region is known. @showloc hides it, as
+/// teleport_region_info_cb does POS_SLURL (llimprocessing.cpp, originally
+/// LGPL 2.1), and it is checked each time a card is drawn: a restriction
+/// that arrives after the offer hides it too (stricter than the Legacy
+/// Viewer, which decides once).
+fn place_text(hidden: bool, place: Option<&Place>) -> Option<String> {
+    let place = place?;
+    let region = place.region.as_deref()?;
+    Some(if hidden {
+        aurora_i18n::tr!("rlva-hidden-generic").to_string()
+    } else {
+        crate::slurl::make(region, place.pos)
+    })
+}
+
 /// What a card says, from its invitation.
 struct Texts {
     title: String,
@@ -43,7 +58,7 @@ fn texts(env: &LineEnv, line: &ChatLine, v: &Invite) -> Texts {
     match &v.kind {
         InviteKind::Offer { place, .. } => Texts {
             title: aurora_i18n::tr!("world-mod-offers-you-a-teleport", from = name),
-            place: place.as_ref().and_then(|p| Some(crate::slurl::make(p.region.as_deref()?, p.pos))),
+            place: place_text(env.world.rlva.has("showloc"), place.as_ref()),
             message: without_own_place(&v.message, place.as_ref()).to_owned(),
             question: rating_note(v.rating),
             buttons: (
@@ -354,6 +369,17 @@ mod tests {
         ] {
             assert_eq!(without_own_place(other, Some(&destination)), other);
         }
+    }
+
+    #[test]
+    fn showloc_hides_the_place_of_an_offer() {
+        let ahern = place(Some("Ahern"));
+        assert!(place_text(false, Some(&ahern)).unwrap().contains("Ahern"));
+        let hidden = place_text(true, Some(&ahern)).unwrap();
+        assert!(!hidden.contains("Ahern"));
+        assert_eq!(hidden, aurora_i18n::tr!("rlva-hidden-generic"));
+        assert_eq!(place_text(true, Some(&place(None))), None, "no region yet, nothing to show");
+        assert_eq!(place_text(false, None), None);
     }
 
     #[test]

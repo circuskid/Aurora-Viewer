@@ -446,7 +446,13 @@ impl World {
                 continue;
             };
             place.region = Some(region);
-            let label = place.label().unwrap_or_default();
+            // teleport_region_info_cb (llimprocessing.cpp, originally LGPL
+            // 2.1): @showloc hides POS_SLURL
+            let label = if self.rlva.has("showloc") {
+                aurora_i18n::tr!("rlva-hidden-generic").to_string()
+            } else {
+                place.label().unwrap_or_default()
+            };
             let mut body = aurora_i18n::tr!("world-teleport-invites-place", place = label).to_string();
             if !v.message.is_empty() {
                 body = format!("{body}\n{}", v.message);
