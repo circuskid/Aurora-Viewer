@@ -98,7 +98,7 @@ nothing, 1 change or `FINDING` → `notify-send`, 2 lookup failed); state in `~/
 ### DECIDED — do not reopen
 
 - **DLSS: no** (user, 2026-10-28; upstream #209 chose FSR): the RTX SDK licence
-  is GPLv3-incompatible. **Frame generation: dropped** (no Vulkan/Linux path).
+  is GPLv3-incompatible. **Frame generation: dropped** (no Vulkan/Linux path). **Windows test VM on parnassus (4070 Ti): not for Aurora** (G.W., 2026-11-06: tests on dahab; `delphi-homelab` told to stand down, nothing built for us); reopen only for a Windows-only bug on our PR that upstream can't reproduce, and then it needs guest builds (PR branches have no Windows artifact), an interactive desktop, a display on the NVIDIA output, open outbound UDP, no credentials in the guest.
 
 ### NOT QUEUED
 
