@@ -696,7 +696,7 @@ fn kalt(code: KeyCode, ctrl: bool, shift: bool) -> Option<Binding> {
 
 impl Default for KeyBindings {
     fn default() -> Self {
-        Self::for_layout(layout::current())
+        Self::for_layout(&layout::current())
     }
 }
 
@@ -1302,7 +1302,7 @@ impl KeyBindings {
     /// the active layout (`for_layout`). A slot the user changed or cleared
     /// stays, and so does a default whose new key another action already uses.
     pub fn follow_layout_letters(&mut self) {
-        self.follow_letters_of(layout::current());
+        self.follow_letters_of(&layout::current());
     }
 
     fn follow_letters_of(&mut self, layout: &layout::KeyboardLayout) {
@@ -1314,7 +1314,7 @@ impl KeyBindings {
     /// letter shortcuts still on those defaults move to the active layout's,
     /// with the rules of `follow_layout_letters`.
     pub fn follow_layout_change(&mut self, change: &LayoutChange) {
-        self.move_defaults(&Self::for_layout(change.before), &Self::for_layout(change.after));
+        self.move_defaults(&Self::for_layout(&change.before), &Self::for_layout(&change.after));
     }
 
     fn move_defaults(&mut self, before: &Self, after: &Self) {
@@ -2360,10 +2360,11 @@ mod tests {
     #[test]
     fn defaults_placed_for_a_stand_in_layout_move_to_the_reported_one() {
         use KeyCode as K;
-        let (us, fr) = (layout::KeyboardLayout::wasd(), layout::KeyboardLayout::zqsd());
-        let change = |before, after| LayoutChange {
-            before,
-            after,
+        use std::sync::Arc;
+        let (us, fr) = (Arc::new(layout::KeyboardLayout::wasd()), Arc::new(layout::KeyboardLayout::zqsd()));
+        let change = |before: &Arc<_>, after: &Arc<_>| LayoutChange {
+            before: Arc::clone(before),
+            after: Arc::clone(after),
             guessed: true,
         };
         let mut kb = KeyBindings::for_layout(&us);
