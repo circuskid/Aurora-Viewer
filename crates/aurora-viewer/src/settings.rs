@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 pub mod area_search;
 pub mod backup;
 mod hover_height;
+pub mod registry;
 mod saver;
 pub mod stream_list;
 
@@ -452,6 +453,11 @@ pub struct Settings {
     /// Debug overlays (not saved).
     #[serde(skip)]
     pub debug: DebugView,
+    /// DebugSettingsHideDefault: the Debug Settings window lists the changed
+    /// settings only.
+    pub debug_settings_changed_only: bool,
+    /// The "ignore" of the DebugSettingsWarning notification.
+    pub debug_settings_warning_ignored: bool,
     /// The Dev Toolbox's arrangement (Customize); None: the default one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dev_toolbox: Option<crate::dev_toolbox::tools::Layout>,
@@ -566,6 +572,11 @@ pub struct Settings {
     /// the new default.
     pub occlusion_culling: bool,
     pub lod_factor: f32,
+    /// RenderTreeLODFactor: the detail of Linden trees at a distance; 0 draws
+    /// no tree nor grass (scene/tree_detail.rs). Preferences › Graphics
+    /// "Trees", 0 to 1 (the Legacy slider starts at 0.125); the levels set
+    /// 0 (Potato), 0.5 or 1 (Deluxe), as its featuretable.
+    pub tree_lod_factor: f32,
     /// Texture memory sized from the detected video memory (else `texture_budget_mb`).
     pub texture_budget_auto: bool,
     pub texture_budget_mb: u32,
@@ -1096,6 +1107,9 @@ pub struct Settings {
     /// presets) or the viewfinder (`camera::presets`); kept apart from
     /// `camera`, which "Reset" sets back.
     pub camera_shots: Vec<crate::camera::CameraShot>,
+    /// The user's own Rear, Front, Side and Shoulder views (`camera::SavedViews`,
+    /// issue #2755), kept by "Reset" like `camera_shots`.
+    pub camera_views: crate::camera::SavedViews,
     /// The lines of the Conversations window (`ui/chat/bubbles.rs` or the
     /// legacy lines).
     pub chat_style: ChatStyle,
@@ -1155,6 +1169,9 @@ pub struct Settings {
     /// Legacy Viewer's `FSDisableTurningAroundWhenWalkingBackwards`, off by
     /// default.
     pub walk_backwards_without_turning: bool,
+    /// FSAvatarTurnSpeed: how much faster avatars turn while walking or
+    /// standing, 0 (the default lag) to 100 % (world/body.rs).
+    pub avatar_turn_speed: f32,
     /// Hold Up to start flying (agent_jump, indra/newview/llviewerinput.cpp).
     /// Aurora splits AutomaticFly into independent takeoff/landing choices;
     /// both default to on.
@@ -1284,8 +1301,12 @@ pub struct Settings {
     /// Reflection probes (RenderReflectionProbeLevel): 0 none (sky only),
     /// 1 manual, 2 manual + terrain, 3 full scene.
     pub reflection_probes: u8,
-    /// Reflection probe cube slots (RenderReflectionProbeCount; 8..=64).
+    /// Reflection probe cube slots (RenderReflectionProbeCount; 8..=256).
     pub probe_count: u32,
+    /// How far automatic reflection probes are placed around the camera
+    /// (m, 32..=512), within the draw distance. The Legacy Viewer has no
+    /// such limit (the draw distance); 512 keeps its reach.
+    pub probe_range: f32,
     /// RenderAvatarMaxComplexity: avatars above it show as grey silhouettes
     /// (0 = no limit; Firestorm's Ultra preset is 350 000).
     pub max_complexity: u32,
@@ -1392,7 +1413,7 @@ pub struct Settings {
     pub new_profile: bool,
     /// The keyboard's defaults were placed for a layout that may only stand
     /// in for the active one (a new profile, or a file older than version
-    /// 34): the first report of `keybinds::LayoutWatch` moves them.
+    /// 35): the first report of `keybinds::LayoutWatch` moves them.
     #[serde(skip)]
     pub defaults_follow_reported_layout: bool,
     /// Version 33 turned the camera's limits back on in this file: the login
@@ -1452,7 +1473,7 @@ pub(crate) fn max_texture_resolution_choice(v: u32) -> u32 {
         .unwrap_or(MAX_TEXTURE_RESOLUTIONS[0])
 }
 
-const SETTINGS_VERSION: u32 = 34;
+const SETTINGS_VERSION: u32 = 35;
 
 /// `settings.json` from a newer build: the document, what this build loaded
 /// from it, and the top-level keys to leave as they were unless changed here
@@ -1798,6 +1819,8 @@ impl Default for Settings {
             username: String::new(),
             remember_username: true,
             remember_password: false,
+            debug_settings_changed_only: false,
+            debug_settings_warning_ignored: false,
             grid: GridChoice::SecondLife,
             custom_login_uri: "http://127.0.0.1:9000/".into(),
             grids: Vec::new(),
@@ -1824,6 +1847,7 @@ impl Default for Settings {
             bloom_strength: BLOOM_STRENGTH,
             occlusion_culling: true,
             lod_factor: 2.0,
+            tree_lod_factor: 0.5,
             texture_budget_auto: true,
             texture_budget_mb: 1536,
             max_texture_resolution: MAX_TEXTURE_RESOLUTION,
@@ -2022,6 +2046,7 @@ impl Default for Settings {
             interface_colors: Default::default(),
             classic_controls: false,
             camera_shots: Vec::new(),
+            camera_views: Default::default(),
             plates_friends_only_full: false,
             plates_friend_tint: true,
             plates_hover_expand: true,
@@ -2049,6 +2074,7 @@ impl Default for Settings {
             arrow_keys_always_move: false,
             letter_keys_move: true,
             walk_backwards_without_turning: false,
+            avatar_turn_speed: 0.0,
             automatic_fly: true,
             automatic_land: true,
             fly_after_teleport: false,
@@ -2092,7 +2118,8 @@ impl Default for Settings {
             screen_indirect_intensity: SCREEN_INDIRECT_INTENSITY,
             water_reflections: 1,
             reflection_probes: 3,
-            probe_count: 32,
+            probe_count: 256,
+            probe_range: 512.0,
             max_complexity: 350_000,
             max_attachment_area: 1000.0,
             loading_avatars: 0,
@@ -2505,6 +2532,7 @@ impl Settings {
         self.ground_feet_max_avatars = self.ground_feet_max_avatars.min(MAX_GROUND_FEET_AVATARS);
         self.camera = std::mem::take(&mut self.camera).sanitized();
         crate::camera::presets::sanitize(&mut self.camera_shots);
+        self.camera_views.sanitize();
         if self.settings_version < 5 {
             // new defaults: no vsync, no frame cap (the old "0 = screen rate,
             // 1 = unlimited" setting becomes a switch + value)
@@ -2678,6 +2706,12 @@ impl Settings {
             camera.ignore_sim_constraints = false;
         }
         if self.settings_version < 34 {
+            // the levels now set the trees' detail: a profile still exactly
+            // on Potato or Deluxe takes theirs (0 and 1, the Legacy Viewer's
+            // Low and Ultra), any other keeps 0.5
+            crate::graphics_presets::upgrade_tree_detail(&mut self);
+        }
+        if self.settings_version < 35 {
             // the letter shortcuts of version 12 (or older defaults moved
             // then) were placed for the first layout of a Wayland keymap,
             // which only stood in for the active one: they follow the layout
@@ -2759,6 +2793,30 @@ impl Settings {
             BLOOM_STRENGTH
         };
         self.lod_factor = self.lod_factor.clamp(0.5, 4.0);
+        self.avatar_turn_speed = if self.avatar_turn_speed.is_finite() {
+            self.avatar_turn_speed.clamp(0.0, 100.0)
+        } else {
+            0.0
+        };
+        // the ranges of the Legacy Viewer's Build preferences
+        let b = &mut self.build;
+        b.new_prim_transparency = if b.new_prim_transparency.is_finite() {
+            b.new_prim_transparency.clamp(0.0, 100.0)
+        } else {
+            0.0
+        };
+        b.new_prim_glow = if b.new_prim_glow.is_finite() {
+            b.new_prim_glow.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        b.new_prim_shiny = b.new_prim_shiny.min(3);
+        // unclamped in the Legacy Viewer, whose Phototools go to 8
+        self.tree_lod_factor = if self.tree_lod_factor.is_finite() {
+            self.tree_lod_factor.clamp(0.0, 8.0)
+        } else {
+            0.5
+        };
         self.ui_scale = self.ui_scale.clamp(0.75, 2.0);
         self.mouse_sensitivity = self.mouse_sensitivity.clamp(0.1, 5.0);
         self.texture_budget_mb = self.texture_budget_mb.clamp(256, 32768);
@@ -2782,7 +2840,12 @@ impl Settings {
         self.fsr_sharpness = self.fsr_sharpness.min(100);
         self.render_scale_percent = self.render_scale_percent.clamp(50, 100);
         self.reflection_probes = self.reflection_probes.min(3);
-        self.probe_count = self.probe_count.clamp(8, 64);
+        self.probe_count = self.probe_count.clamp(8, 256);
+        self.probe_range = if self.probe_range.is_finite() {
+            self.probe_range.clamp(32.0, 512.0)
+        } else {
+            512.0
+        };
         self.tonemapper = self.tonemapper.min(1);
         self.tonemap_mix = if self.tonemap_mix.is_finite() {
             self.tonemap_mix.clamp(0.0, 1.0)
@@ -2998,7 +3061,7 @@ impl Settings {
             specular_aa: self.specular_aa,
             water_reflection_scale: Self::reflection_scale(self.water_reflections),
             mirror_scale: Self::reflection_scale(self.mirrors),
-            probe_slots: self.probe_count.clamp(8, 64),
+            probe_slots: self.probe_count.clamp(8, 256),
             ssr: self.ssr,
             anisotropy: self.anisotropy,
             occlusion: self.occlusion_culling,
@@ -4121,12 +4184,12 @@ mod tests {
         assert_eq!(saved.sanitized().keybinds, existing.keybinds);
     }
 
-    /// A file older than version 34 had its letters placed for the first
+    /// A file older than version 35 had its letters placed for the first
     /// layout of a Wayland keymap: they follow the first reported layout,
     /// once (`KeyBindings::follow_layout_change`); a newer file waits for none.
     #[test]
     fn older_files_follow_the_reported_keyboard_layout_once() {
-        for (version, follows) in [(12, true), (31, true), (33, true), (SETTINGS_VERSION, false)] {
+        for (version, follows) in [(12, true), (31, true), (33, true), (34, true), (SETTINGS_VERSION, false)] {
             let file = Settings {
                 settings_version: version,
                 ..Settings::default()
