@@ -1602,6 +1602,24 @@ fn wanted_disable_glass(settings: &Settings) -> bool {
     settings.disable_glass
 }
 
+/// The sun's shadows for a launch: `AURORA_SHADOWS=<quality>`, then the
+/// soft shadows scenario, which shows them on at least at High, at the
+/// Preferences' softness. The switch follows the quality, as Preferences
+/// and the graphics presets keep it (`shadows = shadow_quality > 0`):
+/// `build_lists` lists no shadow caster with the switch off, so a quality
+/// alone, over a settings file with Shadows off, drew no shadow.
+fn shadow_overrides(settings: &mut Settings, quality: Option<&str>, soft_scenario: bool) {
+    if let Some(v) = quality.and_then(|v| v.parse::<u8>().ok()) {
+        settings.shadow_quality = v;
+        settings.shadows = v > 0;
+    }
+    if soft_scenario {
+        settings.soft_shadows = true;
+        settings.shadow_quality = settings.shadow_quality.max(3);
+        settings.shadows = true;
+    }
+}
+
 /// The interface colours: the preferences', or in demo mode
 /// `AURORA_DEMO_COLORS` (a capture's, never saved).
 fn wanted_interface_colors(settings: &Settings) -> crate::interface_colors::InterfaceColors {
@@ -1707,9 +1725,11 @@ fn apply_test_overrides(settings: &mut Settings) {
     if let Some(v) = std::env::var("AURORA_LOCAL_LIGHTS").ok().and_then(|v| v.parse::<u32>().ok()) {
         settings.local_light_count = v.min(crate::scene::lights::MAX_LIGHTS as u32);
     }
-    if let Some(v) = std::env::var("AURORA_SHADOWS").ok().and_then(|v| v.parse().ok()) {
-        settings.shadow_quality = v;
-    }
+    shadow_overrides(
+        settings,
+        std::env::var("AURORA_SHADOWS").ok().as_deref(),
+        crate::demo::soft_shadows::enabled(),
+    );
     if let Some(v) = std::env::var("AURORA_SHADOW_SOFTNESS")
         .ok()
         .and_then(|v| v.trim().parse::<f32>().ok())
@@ -1723,11 +1743,6 @@ fn apply_test_overrides(settings: &mut Settings) {
         .filter(|v| v.is_finite())
     {
         settings.shadow_intensity = v.clamp(0.0, 1.0);
-    }
-    // the soft shadows scenario shows them on, at the Preferences' softness
-    if crate::demo::soft_shadows::enabled() {
-        settings.soft_shadows = true;
-        settings.shadow_quality = settings.shadow_quality.max(3);
     }
     if let Some(v) = std::env::var("AURORA_BLEND_ORDER").ok().and_then(|v| v.parse::<u8>().ok()) {
         settings.blend_order = v.min(crate::graphics_presets::BLEND_ORDER_STOCHASTIC);
@@ -27232,6 +27247,44 @@ mod tests {
         assert!(clouds_choice(Some("aurora"), false, false));
         assert!(!clouds_choice(Some("legacy"), true, true), "before / after on the same sky");
         assert!(clouds_choice(Some("other"), true, false), "an unknown value changes nothing");
+    }
+
+    #[test]
+    fn the_shadow_overrides_turn_the_shadows_on_with_their_quality() {
+        use super::shadow_overrides;
+        let off = Settings {
+            shadows: false,
+            shadow_quality: 0,
+            soft_shadows: false,
+            ..Settings::default()
+        };
+        let on = Settings {
+            shadows: true,
+            shadow_quality: 3,
+            ..Settings::default()
+        };
+        let mut s = off.clone();
+        shadow_overrides(&mut s, Some("2"), false);
+        assert_eq!((s.shadows, s.shadow_quality), (true, 2), "a quality over Shadows off turns them on");
+        let mut s = on.clone();
+        shadow_overrides(&mut s, Some("0"), false);
+        assert_eq!((s.shadows, s.shadow_quality), (false, 0), "quality 0 turns them off");
+        let mut s = on.clone();
+        shadow_overrides(&mut s, Some("high"), false);
+        assert_eq!((s.shadows, s.shadow_quality), (true, 3), "an unknown value changes nothing");
+        let mut s = off.clone();
+        shadow_overrides(&mut s, None, false);
+        assert_eq!((s.shadows, s.shadow_quality), (false, 0), "without the variable the settings stand");
+        let mut s = off.clone();
+        shadow_overrides(&mut s, None, true);
+        assert_eq!(
+            (s.shadows, s.shadow_quality, s.soft_shadows),
+            (true, 3, true),
+            "the soft shadows scenario shows them over Shadows off"
+        );
+        let mut s = off.clone();
+        shadow_overrides(&mut s, Some("4"), true);
+        assert_eq!((s.shadows, s.shadow_quality), (true, 4), "the scenario keeps a higher quality");
     }
 
     #[test]
