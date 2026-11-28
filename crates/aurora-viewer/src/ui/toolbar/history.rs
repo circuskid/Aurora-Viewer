@@ -831,4 +831,49 @@ mod tests {
             assert_eq!(json(&settings), json(&was), "{to:?} over {from:?}");
         }
     }
+
+    /// Ctrl+Z belongs to the window with a history of its own in front of
+    /// the editor: Build › Land alone (Aurora style) in front keeps terrain
+    /// undo; the editor in front takes it.
+    #[test]
+    fn ctrl_z_is_the_land_tool_s_while_it_is_in_front_of_the_editor() {
+        let land = crate::build::ui::TOOL_WINDOWS[3];
+        let editor = super::super::editor::WINDOW;
+        for (front, expected) in [(land, None), (editor, Some(EditHistory::Undo))] {
+            let ctx = egui::Context::default();
+            let toolbar = ToolbarUi::default();
+            let mut seen = None;
+            for frame in 0..3 {
+                let events = if frame == 2 {
+                    vec![egui::Event::Key {
+                        key: egui::Key::Z,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers::COMMAND,
+                    }]
+                } else {
+                    Vec::new()
+                };
+                let input = egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0))),
+                    events,
+                    ..Default::default()
+                };
+                let _ = ctx.run_ui(input, |ui| {
+                    for (window, x) in [(editor, 10.0), (land, 300.0)] {
+                        egui::Area::new(egui::Id::unique(window))
+                            .fixed_pos(egui::pos2(x, 10.0))
+                            .show(ui.ctx(), |ui| ui.label(window));
+                    }
+                    ui.ctx()
+                        .move_to_top(egui::LayerId::new(egui::Order::Middle, egui::Id::unique(front)));
+                    if frame == 2 {
+                        seen = toolbar.history_key(ui.ctx()).map(|(request, _)| request);
+                    }
+                });
+            }
+            assert_eq!(seen, expected, "{front} in front");
+        }
+    }
 }
