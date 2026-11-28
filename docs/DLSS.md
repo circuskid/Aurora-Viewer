@@ -227,12 +227,13 @@ acquired at the frame's start, then the drawn one in a second. It has no
 Reflex. It runs until the setting is next turned off, except while the
 second camera holds the window: the presenter starts once it closes.
 
-**Under the switch**, while it runs, Preferences says what shows the frames
-(the presenter, or the fallback and why), whether Reflex is on, and the
-mode with the frames shown per second against the frames drawn: the
-viewer's own frame rate counts only the drawn ones. The shown frames are
-the ones presented: the viewer does not turn on present timing, so they
-are not the ones the screen showed.
+**Under the switch**, while it runs, a line in Preferences says what shows
+the frames (the presenter, or the fallback and why), and Reflex when it is
+not running. The top bar counts the frames shown, marked FG, with both
+rates in its hover; the Resource monitor counts the frames drawn, with the
+frames shown beside them. The shown frames are the ones presented: the
+viewer does not turn on present timing, so they are not the ones the
+screen showed.
 
 sl-ngx's presenter runs on Wayland; on X11 frame generation presents the
 fallback way, and Preferences says why.
