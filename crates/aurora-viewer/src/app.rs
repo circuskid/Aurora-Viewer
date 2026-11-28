@@ -1607,9 +1607,10 @@ fn wanted_disable_glass(settings: &Settings) -> bool {
 /// Preferences' softness. The switch follows the quality, as Preferences
 /// and the graphics presets keep it (`shadows = shadow_quality > 0`):
 /// `build_lists` lists no shadow caster with the switch off, so a quality
-/// alone, over a settings file with Shadows off, drew no shadow.
+/// alone, over a settings file with Shadows off, drew no shadow. The quality
+/// is held to Ultra (4), as the settings file is (`Settings::sanitized`).
 fn shadow_overrides(settings: &mut Settings, quality: Option<&str>, soft_scenario: bool) {
-    if let Some(v) = quality.and_then(|v| v.parse::<u8>().ok()) {
+    if let Some(v) = quality.and_then(|v| v.parse::<u8>().ok()).map(|v| v.min(4)) {
         settings.shadow_quality = v;
         settings.shadows = v > 0;
     }
@@ -27285,6 +27286,15 @@ mod tests {
         let mut s = off.clone();
         shadow_overrides(&mut s, Some("4"), true);
         assert_eq!((s.shadows, s.shadow_quality), (true, 4), "the scenario keeps a higher quality");
+        let mut s = off.clone();
+        shadow_overrides(&mut s, Some("2"), true);
+        assert_eq!((s.shadows, s.shadow_quality), (true, 3), "the scenario raises a lower quality");
+        let mut s = on.clone();
+        shadow_overrides(&mut s, Some("0"), true);
+        assert_eq!((s.shadows, s.shadow_quality), (true, 3), "the scenario wins over quality 0");
+        let mut s = off.clone();
+        shadow_overrides(&mut s, Some("5"), false);
+        assert_eq!((s.shadows, s.shadow_quality), (true, 4), "a quality above Ultra is held to Ultra");
     }
 
     #[test]

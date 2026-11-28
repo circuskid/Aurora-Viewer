@@ -188,7 +188,7 @@ Actual grid login and teleporting are performed by the human.
 | `AURORA_LOG_NAME=<name>` | Name of the log file |
 | `AURORA_EMOJI_FONT=<path>` | Uses another emoji font than the built-in one (PNG bitmaps: CBDT or sbix) |
 | `AURORA_MAX_AVATARS`, `AURORA_MAX_COMPLEXITY`, `AURORA_AA`, `AURORA_PROJECTOR_SHADOWS` | Override these settings |
-| `AURORA_SHADOWS=0..4` | Overrides the shadow quality (0 off, 1 low to 4 ultra); the Shadows switch follows it, as in Preferences |
+| `AURORA_SHADOWS=0..4` | Overrides the shadow quality (0 off, 1 low to 4 ultra, a higher value held to 4); the Shadows switch follows it, as in Preferences |
 | `AURORA_BLEND_ORDER=<0..5>` | Override the order of transparent surfaces: 0 sorted (Standard), 1 to 4 exact, from fast to full, 5 stochastic |
 | `AURORA_LOCAL_LIGHTS=0..64` | Overrides "Maximum nearby lights" (Graphics › Light) |
 | `AURORA_PROJECTOR_SHADOW_LIMIT=1..16` | Override the projector shadow budget (default 2) |
