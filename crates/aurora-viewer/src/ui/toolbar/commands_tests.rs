@@ -2098,6 +2098,10 @@ struct Bench {
     location_hidden: bool,
     net_stats: bool,
     save_to_contents: bool,
+    /// Each frame starts with the app's: the bars composed, the chat and
+    /// import controls added, the gaps made one (`App::ui` before the
+    /// toolbar).
+    compose: bool,
 }
 
 impl Default for Bench {
@@ -2131,6 +2135,7 @@ impl Default for Bench {
             location_hidden: false,
             net_stats: false,
             save_to_contents: false,
+            compose: false,
         }
     }
 }
@@ -2194,6 +2199,12 @@ impl Bench {
         status.conversation_thumbnails = self.conversation_count;
         status.net_stats = self.net_stats;
         status.save_to_contents = self.save_to_contents;
+        if self.compose {
+            self.settings.compose_top();
+            self.settings.compose_chat(&layout);
+            self.settings.ensure_import_bar(&layout);
+            self.settings.single_gaps();
+        }
         let mut output = ctx.run_ui(
             egui::RawInput {
                 screen_rect: Some(Rect::from_min_size(Pos2::ZERO, self.screen)),
@@ -5644,8 +5655,10 @@ fn a_blocks_window_edits_its_shortcut_and_greys_hiding_without_one() {
 }
 
 /// The interface editor's Undo and Redo, through the frame as the app runs
-/// it: Restore defaults and Clear all, each one step, undone and redone
-/// with the title buttons or Ctrl+Z / Ctrl+Y (human request, 2026-11-28).
+/// it, its start composing the bars: Restore defaults and Clear all, each
+/// one step with what the next frame completes, undone and redone by the
+/// request the title buttons make or by Ctrl+Z / Ctrl+Y, and the restored
+/// layout settled (human request, 2026-11-28).
 #[test]
 fn restore_defaults_and_clear_all_each_undo_and_redo_in_one_step() {
     let ctrl = |key| egui::Event::Key {
@@ -5660,6 +5673,7 @@ fn restore_defaults_and_clear_all_each_undo_and_redo_in_one_step() {
         for keys in [false, true] {
             let mut bench = Bench {
                 screen: Vec2::new(1600.0, 1000.0),
+                compose: true,
                 ..Default::default()
             };
             bench.state.open = true;
@@ -5667,6 +5681,7 @@ fn restore_defaults_and_clear_all_each_undo_and_redo_in_one_step() {
                 bench.frame(Vec::new());
             }
             let start = bench.settings.clone();
+            assert!(start.composed && start.chat_composed, "the bars composed");
             bench.state.pending = Some(Edit::Insert(Bar::Left, bars::top::button("inventory", "folder-filled"), 0));
             for _ in 0..4 {
                 bench.frame(Vec::new());
@@ -5695,27 +5710,33 @@ fn restore_defaults_and_clear_all_each_undo_and_redo_in_one_step() {
                     bench.frame(Vec::new());
                 }
             };
+            assert_eq!(bench.state.history.depth(), (2, 0), "the insert and {edit}, one step each");
             step(&mut bench, crate::keybinds::EditHistory::Undo);
             assert_eq!(bench.settings, before, "{edit} undone (keys {keys})");
+            assert_eq!(bench.state.history.depth(), (1, 1));
             assert!(bench.state.open, "the editor stays open");
             step(&mut bench, crate::keybinds::EditHistory::Redo);
             assert_eq!(bench.settings, after, "{edit} redone (keys {keys})");
+            assert_eq!(bench.state.history.depth(), (2, 0));
             step(&mut bench, crate::keybinds::EditHistory::Undo);
             step(&mut bench, crate::keybinds::EditHistory::Undo);
             assert_eq!(bench.settings, start, "the insert undone too");
             step(&mut bench, crate::keybinds::EditHistory::Undo);
             assert_eq!(bench.settings, start, "nothing further back");
+            assert_eq!(bench.state.history.depth(), (0, 2));
         }
     }
 }
 
 /// The lock, set while the editor is open, is no step and stays as it is
-/// when a layout comes back; an interface loaded while editing (a preset,
-/// a saved interface) is one step.
+/// when a layout comes back; bars replaced while editing, as an interface
+/// loaded replaces them, are one step with what the next frame composes
+/// (the preferences a load writes besides: `history`'s tests).
 #[test]
-fn undo_keeps_the_lock_and_takes_back_an_interface_loaded_while_editing() {
+fn undo_keeps_the_lock_and_takes_back_bars_replaced_while_editing() {
     let mut bench = Bench {
         screen: Vec2::new(1600.0, 1000.0),
+        compose: true,
         ..Default::default()
     };
     bench.state.open = true;

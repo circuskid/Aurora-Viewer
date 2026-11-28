@@ -20267,6 +20267,13 @@ impl App {
                 }
                 ui::layout::set_window_edges(ui.ctx(), edges);
                 ui::layout::frame(ui.ctx(), &p, self.settings.snap_windows);
+                // A press the animation timeline acted on is its alone:
+                // egui holds the same event, and the interface editor's
+                // history, the poser or the build tools would undo an edit
+                // or delete the selected object with it.
+                for (key, modifiers) in self.ik_editor.take_timeline_keys() {
+                    ctx.input_mut(|input| input.consume_key(modifiers, key));
+                }
                 self.toolbar_ui
                     .show(ui.ctx(), &p, bar_layout, toolbar_settings, self.settings.toolbar_selection.as_ref());
                 let conversation_slot =
@@ -20395,12 +20402,6 @@ impl App {
                         ctrl: self.ctrl,
                         alt: self.alt,
                     };
-                    // A press the animation timeline acted on is its alone:
-                    // egui holds the same event, and the build tools would
-                    // delete the selected object or undo an edit with it.
-                    for (key, modifiers) in self.ik_editor.take_timeline_keys() {
-                        ctx.input_mut(|input| input.consume_key(modifiers, key));
-                    }
                     // Focused web/media pages already received the native
                     // keys; their history must not also change world objects.
                     if self.media.focus.is_none() && !self.web_has_focus() {
@@ -22538,13 +22539,23 @@ impl App {
         a.exit = self.exit_prompt.show(&ctx, &p, self.in_world());
         if let Some(preset) = self.toolbar_ui.preset_request.take() {
             let layout = self.dock_layout.of(&self.skin.layout, self.settings.chat_bar.hides()).clone();
+            let was = self.settings.clone();
             if preset.apply(&mut self.settings, &layout) {
+                self.toolbar_ui.interface_loaded(&was, &self.settings);
                 self.toolbar_ui.notecards.selection_changed();
                 self.toolbar_ui.selected = None;
                 egui::Popup::close_all(&ctx);
                 self.settings.save();
                 a.settings_changed = true;
             }
+        }
+        // an interface loaded while editing, undone or redone: what it wrote
+        // besides the bars, as a load does
+        if let Some(load) = self.toolbar_ui.take_load_back() {
+            load.take_back(&mut self.settings);
+            self.toolbar_ui.notecards.selection_changed();
+            self.settings.save();
+            a.settings_changed = true;
         }
         if let Some(preset) = self.toolbar_ui.inferred_preset.take()
             && self.settings.toolbar_selection.is_none()

@@ -903,9 +903,11 @@ pub struct ToolbarUi {
     /// is open), for its warnings.
     pub keybinds: Option<crate::keybinds::KeyBindings>,
     /// Undo and redo while the interface is edited (`history`), and the
-    /// one asked for by the editor's title buttons this frame.
+    /// one asked for by the editor's title buttons this frame, and the
+    /// preferences of an interface loaded that an undo or redo takes back.
     history: history::History,
     history_request: Option<crate::keybinds::EditHistory>,
+    load_back: Option<history::Load>,
 }
 
 impl ToolbarUi {

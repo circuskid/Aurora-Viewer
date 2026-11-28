@@ -60,6 +60,7 @@ impl App {
             result,
         );
         if let Some(profile) = profile {
+            let was = self.settings.clone();
             ui::toolbar::profile::apply(profile, &mut self.settings);
             if let Some(mut selection) = self.toolbar_ui.notecards.take_selection() {
                 let layout = self.dock_layout.of(&self.skin.layout, self.settings.chat_bar.hides());
@@ -70,6 +71,7 @@ impl App {
                 );
                 self.settings.toolbar_selection = Some(selection);
             }
+            self.toolbar_ui.interface_loaded(&was, &self.settings);
             self.toolbar_ui.profile_applied(&self.egui_ctx);
             self.settings.save();
         }

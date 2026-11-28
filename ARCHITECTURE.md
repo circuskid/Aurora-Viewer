@@ -139,10 +139,19 @@ orientation and hiding live in `block_profiles` until it becomes a drawer).
 drawers and blocks: the keys refused at capture, the target of a press, and the
 click it gives the drawn button (or the menu's way when it is not drawn).
 `ui/toolbar/history.rs` is the interface editor's Undo and Redo: a snapshot of
-the toolbar settings and the floating blocks' places once each change settles,
-100 steps each way, kept while the viewer runs and dropped when the interface
-changed with the editor closed. The lock, the migration flags and the shown
-blocks change outside editing too, so a restored step keeps their current values.
+the toolbar settings and the floating blocks' places, 100 steps each way, kept
+while the viewer runs and dropped when the interface changed with the editor
+closed (a floating block dragged then included). A change becomes a step on the
+first settled frame that changes nothing, so the next frame's composition
+(top bar, chat and import controls) belongs to it. A floating block that moves
+is a step only while a pointer is down; one moved by the window (a resize, a
+clamp) is followed, not recorded. An interface loaded while editing
+(`ToolbarUi::interface_loaded`) also records the preferences it wrote (`Load`):
+its undo puts back each of them that still has the loaded value, and the
+selected interface. The lock, the migration flags and the shown blocks change
+outside editing too, so a restored step keeps their current values. Ctrl+Z is
+left to a window with its own history (Build and its tool windows, the poser,
+Director) in front of the editor or focused in its own native window.
 One-level drawer contents persist in the toolbar settings, reuse the same native
 handlers and drag payload, and can move between drawers and all four bars.
 `ui/toolbar/surface_drop.rs` freezes idle button-face geometry throughout a drag,

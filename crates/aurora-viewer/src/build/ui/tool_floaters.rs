@@ -11,12 +11,15 @@ use crate::ui::widgets::{self, Floater};
 use crate::world::World;
 use egui::Vec2;
 
+/// The tool windows but Edit's (the inspector): Camera, Move, Create, Land.
+pub(crate) const TOOL_WINDOWS: [&str; 4] = ["build_tool_camera", "build_tool_move", "build_tool_create", "build_tool_land"];
+
 pub(super) fn floater_id(which: Tool) -> &'static str {
     match which {
-        Tool::Focus => "build_tool_camera",
-        Tool::Grab => "build_tool_move",
-        Tool::Create => "build_tool_create",
-        Tool::Land => "build_tool_land",
+        Tool::Focus => TOOL_WINDOWS[0],
+        Tool::Grab => TOOL_WINDOWS[1],
+        Tool::Create => TOOL_WINDOWS[2],
+        Tool::Land => TOOL_WINDOWS[3],
         Tool::Edit => INSPECTOR_ID,
     }
 }

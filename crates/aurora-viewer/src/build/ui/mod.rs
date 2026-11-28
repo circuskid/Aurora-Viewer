@@ -35,6 +35,7 @@ mod shape_preview;
 pub(in crate::build) mod texture;
 mod texture_preview;
 mod tool_floaters;
+pub(crate) use tool_floaters::TOOL_WINDOWS;
 mod tools;
 mod workspace;
 
