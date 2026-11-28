@@ -19658,6 +19658,12 @@ impl App {
                     maturity,
                     position: self.world.agent.position,
                     fps: self.perf.fps,
+                    fg_rates: {
+                        use aurora_render::DlssFgShown as S;
+                        let fg = aurora_render::dlss_fg_status();
+                        (matches!(fg.shown, S::Presenter | S::TwoPresents(_) | S::Streamline(None)) && fg.shown_fps > 0.0)
+                            .then_some((fg.shown_fps, fg.drawn_fps))
+                    },
                     flying: self.world.agent.flying,
                     seated: self.world.agent.is_sitting(),
                     clouds_paused: self.photo_clouds_paused() && !self.panels.snapshot,

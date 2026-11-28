@@ -301,6 +301,10 @@ pub struct StatusInfo<'a> {
     pub maturity: &'a str,
     pub position: glam::Vec3,
     pub fps: f32,
+    /// While DLSS frame generation shows frames: the frames shown and the
+    /// frames drawn a second (aurora_render::dlss_fg_status). The bars then
+    /// show the frames shown, marked FG, and their hover both.
+    pub fg_rates: Option<(f32, f32)>,
     pub flying: bool,
     pub seated: bool,
     /// The clouds are paused (Pause clouds) while the photo window is
@@ -2784,15 +2788,16 @@ pub fn top_bars(
                             action = BarAction::SetStatus(super::notifications::bell_dnd_toggled(st.status));
                         }
                     }
-                    let fps_col = if st.fps >= 50.0 {
+                    let shown_fps = islands::shown_fps(st);
+                    let fps_col = if shown_fps >= 50.0 {
                         p.teal
-                    } else if st.fps >= 25.0 {
+                    } else if shown_fps >= 25.0 {
                         p.amber
                     } else {
                         p.danger
                     };
                     // a click opens (or closes) the performance window
-                    let fps = steady_label(ui, "fps", islands::fps_text(st.fps), fps_col, egui::Sense::click())
+                    let fps = steady_label(ui, "fps", islands::fps_readout(st), fps_col, egui::Sense::click())
                         .on_hover_cursor(egui::CursorIcon::PointingHand);
                     graphics::hover(&fps, p, st, &mut action);
                     if fps.clicked() {

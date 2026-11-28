@@ -97,6 +97,11 @@ pub(super) fn hover(response: &egui::Response, p: &Palette, st: &StatusInfo, act
             crate::ui::widgets::overlay(ui, p, egui::Margin::same(4), |ui| {
                 ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
                 ui.set_width(260.0);
+                // the frames shown and drawn, while frame generation shows
+                // frames (the readout counts the shown ones)
+                if let Some(rates) = super::islands::fg_rates_text(st) {
+                    crate::ui::menu::section(ui, p, &tr!("ui-bars-fps-fg", rates = rates.as_str()));
+                }
                 choices(ui, p, st, &mut picked);
             });
         });

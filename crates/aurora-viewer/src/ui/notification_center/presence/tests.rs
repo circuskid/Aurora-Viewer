@@ -165,6 +165,7 @@ fn status(classic: bool) -> StatusInfo<'static> {
         maturity: "",
         position: glam::Vec3::new(132.0, 126.0, 33.0),
         fps: 60.0,
+        fg_rates: None,
         flying: false,
         seated: false,
         clouds_paused: false,

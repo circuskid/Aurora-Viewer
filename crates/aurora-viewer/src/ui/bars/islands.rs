@@ -185,6 +185,34 @@ pub(super) fn fps_text(fps: f32) -> String {
     aurora_i18n::number(f64::from(fps), 0)
 }
 
+/// The frame rate the bars show: the frames shown while DLSS frame
+/// generation shows frames (twice the drawn ones at 2×), else the frames
+/// drawn. The Resource monitor keeps counting the frames drawn.
+pub(super) fn shown_fps(st: &StatusInfo) -> f32 {
+    st.fg_rates.map_or(st.fps, |(shown, _)| shown)
+}
+
+/// The frame rate's readout: the frames shown with frame generation's
+/// mark while it shows frames, so that turning it on shows in the bars.
+pub(super) fn fps_readout(st: &StatusInfo) -> String {
+    match st.fg_rates {
+        Some((shown, _)) => {
+            let fps = fps_text(shown);
+            aurora_i18n::tr!("status-fps-fg", fps = fps.as_str())
+        }
+        None => fps_text(st.fps),
+    }
+}
+
+/// The frames shown and drawn a second, for the hovers, while frame
+/// generation shows frames.
+pub(super) fn fg_rates_text(st: &StatusInfo) -> Option<String> {
+    st.fg_rates.map(|(shown, drawn)| {
+        let (shown, drawn) = (fps_text(shown), fps_text(drawn));
+        aurora_i18n::tr!("ui-bars-tip-fps-fg", shown = shown.as_str(), drawn = drawn.as_str())
+    })
+}
+
 /// A readout of the system island: icon then text, `width` wide.
 #[allow(clippy::too_many_arguments)]
 fn readout(
@@ -613,7 +641,7 @@ fn readouts(st: &StatusInfo) -> Readouts {
     Readouts {
         clock: clock::text(s),
         ping: ping_text(st.ping_ms),
-        fps: fps_text(st.fps),
+        fps: fps_readout(st),
     }
 }
 
@@ -804,7 +832,7 @@ pub(super) fn system_parts(
                 );
             }
             Item::Fps => {
-                let color = fps_color(p, st.fps);
+                let color = fps_color(p, shown_fps(st));
                 let fps = readout(
                     ui,
                     p,
@@ -1195,8 +1223,8 @@ fn tip_body(
         icons,
         "gauge-filled",
         aurora_i18n::tr!("ui-bars-tip-fps"),
-        &fps,
-        fps_color(p, st.fps),
+        &fg_rates_text(st).unwrap_or(fps),
+        fps_color(p, shown_fps(st)),
     );
 
     // the network: its row and the Performance window's curve, one button
@@ -1347,6 +1375,7 @@ pub(crate) mod tests {
             maturity: "",
             position: glam::Vec3::new(132.0, 126.0, 33.0),
             fps: 60.0,
+            fg_rates: None,
             flying: false,
             seated: false,
             clouds_paused: false,
