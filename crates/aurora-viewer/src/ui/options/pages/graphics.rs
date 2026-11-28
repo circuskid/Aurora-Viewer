@@ -1430,9 +1430,16 @@ fn image(cx: &mut Cx) {
                 tr!("ui-options-dlss-fg-help")
             };
             cx.experimental().row(tr!("ui-options-dlss-fg"), help, &field!(dlss_fg), |ui, s| {
-                let r = ui.add_enabled_ui(greyed.is_none(), |ui| toggle(ui, &p, &mut s.dlss_fg));
+                // (the switch shows what runs under `AURORA_DLSS_FG`, as
+                // the anti-aliasing list does under `AURORA_DLSS`; a click
+                // saves the setting, which the variable still overrides)
+                let mut shown = aurora_render::dlss_fg_wanted(s.dlss_fg);
+                let r = ui.add_enabled_ui(greyed.is_none(), |ui| toggle(ui, &p, &mut shown));
                 if let Some(why) = &greyed {
                     r.response.on_disabled_hover_text(why.as_str());
+                }
+                if r.inner {
+                    s.dlss_fg = shown;
                 }
                 r.inner
             });
