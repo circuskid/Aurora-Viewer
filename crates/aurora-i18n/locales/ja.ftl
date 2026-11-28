@@ -10000,6 +10000,7 @@ monitor-unit-pct-aurora =％ Aurora
 monitor-tile-cpu-sub = メディア{ $media }・マシン{ $machine }
 monitor-fps = { $fps }ＦＰＳ
 monitor-shown-fg = 表示{ $shown }（ＦＧ）
+monitor-fps-fg = { $fps }ＦＰＳ／{ $shown }（ＦＧ）
 monitor-unit-ms-frame = ㎳/フレーム
 monitor-tile-gpu-sub = 影{ $shadows }・オブジェクト{ $objects }
 monitor-peak = ピーク{ $value }

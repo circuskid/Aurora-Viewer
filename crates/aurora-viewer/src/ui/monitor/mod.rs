@@ -388,7 +388,7 @@ fn rail_ui(ui: &mut egui::Ui, p: &Palette, m: &mut Monitor, out: &mut Vec<Action
                     if let Some(s) = &last {
                         draw::text(ui, fmt::ms(f64::from(s.frame_ms)), draw::SMALL, p.muted);
                         if let Some(shown) = s.fg_shown_fps {
-                            draw::text(ui, crate::ui::perf::fg_shown_text(shown), draw::SMALL, p.muted);
+                            draw::text(ui, crate::ui::perf::fg_shown_short(shown), draw::SMALL, p.muted);
                         }
                     }
                 });
@@ -472,12 +472,16 @@ fn rail_sub(tab: Tab, m: &Monitor, s: &Snapshot) -> String {
 }
 
 /// The frames drawn a second, and the frames shown beside them while
-/// frame generation shows frames.
+/// frame generation shows frames, short enough for a narrow tile
+/// (`30 FPS/60(FG)`).
 fn fps_text(s: &Snapshot) -> String {
-    let fps = aurora_i18n::tr!("monitor-fps", fps = aurora_i18n::number(f64::from(s.fps), 0));
+    let fps = aurora_i18n::number(f64::from(s.fps), 0);
     match s.fg_shown_fps {
-        Some(shown) => format!("{fps} · {}", crate::ui::perf::fg_shown_text(shown)),
-        None => fps,
+        Some(shown) => {
+            let shown = aurora_i18n::number(f64::from(shown), 0);
+            aurora_i18n::tr!("monitor-fps-fg", fps = fps.as_str(), shown = shown.as_str())
+        }
+        None => aurora_i18n::tr!("monitor-fps", fps = fps.as_str()),
     }
 }
 

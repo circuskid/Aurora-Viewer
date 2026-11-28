@@ -10110,6 +10110,7 @@ monitor-unit-pct-aurora = % Aurora
 monitor-tile-cpu-sub = Media { $media } · machine { $machine }
 monitor-fps = { $fps } FPS
 monitor-shown-fg = { $shown } shown (FG)
+monitor-fps-fg = { $fps } FPS/{ $shown }(FG)
 monitor-unit-ms-frame = ms per frame
 monitor-tile-gpu-sub = Shadows { $shadows } · objects { $objects }
 monitor-peak = peak { $value }

@@ -94,6 +94,13 @@ pub(crate) fn fg_shown_text(shown: f32) -> String {
     aurora_i18n::tr!("monitor-shown-fg", shown = shown.as_str())
 }
 
+/// The same, short, as the top bar shows it (`60(FG)`), where a line has
+/// no room for the word.
+pub(crate) fn fg_shown_short(shown: f32) -> String {
+    let shown = aurora_i18n::number(f64::from(shown), 0);
+    aurora_i18n::tr!("status-fps-fg", fps = shown.as_str())
+}
+
 /// Top of the graph scale (images/s) for these frames: above the fast
 /// ones, ignoring the 2 % fastest (a lone very short frame after a long
 /// one would squash the whole graph).
