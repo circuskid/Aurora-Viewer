@@ -1606,9 +1606,10 @@ fn wanted_disable_glass(settings: &Settings) -> bool {
 /// soft shadows scenario, which shows them on at least at High, at the
 /// Preferences' softness. The switch follows the quality, as Preferences
 /// and the graphics presets keep it (`shadows = shadow_quality > 0`):
-/// `build_lists` lists no shadow caster with the switch off, so a quality
-/// alone, over a settings file with Shadows off, drew no shadow. The quality
-/// is held to Ultra (4), as the settings file is (`Settings::sanitized`).
+/// `build_lists` lists no object or avatar shadow caster with the switch off
+/// (only the terrain, for the rain's shelter map), so a quality alone, over a
+/// settings file with Shadows off, drew no shadow. The quality is held to
+/// Ultra (4), as the settings file is (`Settings::sanitized`).
 fn shadow_overrides(settings: &mut Settings, quality: Option<&str>, soft_scenario: bool) {
     if let Some(v) = quality.and_then(|v| v.parse::<u8>().ok()).map(|v| v.min(4)) {
         settings.shadow_quality = v;

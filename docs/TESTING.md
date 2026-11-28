@@ -188,7 +188,7 @@ Actual grid login and teleporting are performed by the human.
 | `AURORA_LOG_NAME=<name>` | Name of the log file |
 | `AURORA_EMOJI_FONT=<path>` | Uses another emoji font than the built-in one (PNG bitmaps: CBDT or sbix) |
 | `AURORA_MAX_AVATARS`, `AURORA_MAX_COMPLEXITY`, `AURORA_AA`, `AURORA_PROJECTOR_SHADOWS` | Override these settings |
-| `AURORA_SHADOWS=0..4` | Overrides the shadow quality (0 off, 1 low to 4 ultra, a higher value held to 4); the Shadows switch follows it, as in Preferences |
+| `AURORA_SHADOWS=0..4` | Override the shadow quality, the Shadows switch with it (details below) |
 | `AURORA_BLEND_ORDER=<0..5>` | Override the order of transparent surfaces: 0 sorted (Standard), 1 to 4 exact, from fast to full, 5 stochastic |
 | `AURORA_LOCAL_LIGHTS=0..64` | Overrides "Maximum nearby lights" (Graphics › Light) |
 | `AURORA_PROJECTOR_SHADOW_LIMIT=1..16` | Override the projector shadow budget (default 2) |
@@ -391,6 +391,17 @@ to the vertex shaders or to the passes is therefore checked with both,
 `AURORA_AA=3` and `AURORA_AA=6`: it is with the second that the terrain let
 the sky show through in patches
 (`AURORA_DEMO_POS="60,128"`, `AURORA_DEMO_ALTITUDE=86`).
+
+`AURORA_SHADOWS`: the shadow quality of Preferences › Graphics, 0 off, 1
+low to 4 ultra (a higher value is held to 4, as in the settings file). The
+Shadows switch follows it, as in Preferences: 0 turns it off, 1 to 4 on;
+with the switch off no object or avatar casts a shadow, whatever the
+quality. `AURORA_DEMO_SOFT_SHADOWS` comes after it: the scenario turns the
+switch on and raises a lower quality to High (3), over `AURORA_SHADOWS=0`
+too. Like the other overrides of settings, the values are saved with the
+profile of the run: the next run without the variable keeps them. On a grid
+launch that profile is the tester's own: set Shadows back in Preferences
+after the test.
 
 `AURORA_BLEND_ORDER`: the setting Preferences › Graphics › Image ›
 Transparency, "Order of transparent surfaces" (a list of Standard, Exact
