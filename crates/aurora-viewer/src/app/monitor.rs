@@ -327,6 +327,7 @@ impl App {
             cpu,
             probes,
             fps: frame.as_ref().map_or(self.perf.fps, |f| f.fps),
+            fg_shown_fps: crate::ui::perf::fg_rates().map(|(shown, _)| shown),
             frame_ms: frame.as_ref().map_or(self.perf.frames.avg, |f| f.frame_ms),
             parts: FrameParts {
                 cpu: cpu_parts,

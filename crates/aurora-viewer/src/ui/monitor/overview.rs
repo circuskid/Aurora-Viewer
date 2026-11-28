@@ -166,7 +166,7 @@ fn tiles(p: &Palette, m: &Monitor, s: &Snapshot) -> Vec<Tile> {
     out.push(Tile {
         icon: "device-desktop-analytics",
         label: tr!("monitor-tile-gpu"),
-        right: tr!("monitor-fps", fps = aurora_i18n::number(f64::from(s.fps), 0)),
+        right: super::fps_text(s),
         value: gpu.map_or("–".into(), |v| aurora_i18n::number(f64::from(v), 1)),
         unit: tr!("monitor-unit-ms-frame").to_owned(),
         sub: if gpu.is_some() {
@@ -384,10 +384,7 @@ fn frame_card(ui: &mut egui::Ui, p: &Palette, s: &Snapshot) {
             ui,
             p,
             tr!("monitor-frame-time"),
-            &format!(
-                "{} · {limit}{thread}",
-                tr!("monitor-fps", fps = aurora_i18n::number(f64::from(s.fps), 0))
-            ),
+            &format!("{} · {limit}{thread}", super::fps_text(s)),
         );
         let names = crate::ui::perf::cpu_part_names();
         bar_block(

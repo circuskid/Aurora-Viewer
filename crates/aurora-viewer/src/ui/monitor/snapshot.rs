@@ -258,6 +258,9 @@ pub struct Snapshot {
     pub cpu: Option<CpuSnapshot>,
     pub probes: Option<ProbeTotals>,
     pub fps: f32,
+    /// The frames shown a second while DLSS frame generation shows frames;
+    /// `fps` stays the frames drawn.
+    pub fg_shown_fps: Option<f32>,
     pub frame_ms: f32,
     pub parts: FrameParts,
     pub memory: Option<ProcessMemory>,
@@ -360,6 +363,7 @@ mod tests {
             cpu: None,
             probes: None,
             fps,
+            fg_shown_fps: None,
             frame_ms: 1000.0 / fps,
             parts: FrameParts::default(),
             memory: None,

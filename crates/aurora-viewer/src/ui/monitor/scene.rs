@@ -499,6 +499,7 @@ mod tests {
             cpu: None,
             probes: None,
             fps: 60.0,
+            fg_shown_fps: None,
             frame_ms: 16.7,
             parts: FrameParts::default(),
             memory: None,

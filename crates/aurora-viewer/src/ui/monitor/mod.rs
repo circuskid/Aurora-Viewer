@@ -387,6 +387,9 @@ fn rail_ui(ui: &mut egui::Ui, p: &Palette, m: &mut Monitor, out: &mut Vec<Action
                     draw::text(ui, aurora_i18n::number(f64::from(fps), 0), 22.0, fps_color(p, fps));
                     if let Some(s) = &last {
                         draw::text(ui, fmt::ms(f64::from(s.frame_ms)), draw::SMALL, p.muted);
+                        if let Some(shown) = s.fg_shown_fps {
+                            draw::text(ui, crate::ui::perf::fg_shown_text(shown), draw::SMALL, p.muted);
+                        }
                     }
                 });
                 let fps_series = m.history.series(|pt| Some(f64::from(pt.fps)));
@@ -465,6 +468,16 @@ fn rail_sub(tab: Tab, m: &Monitor, s: &Snapshot) -> String {
             Some(d) => tr!("monitor-rail-region", dilation = aurora_i18n::number(f64::from(d), 2)),
             None => tr!("monitor-no-region-stats").to_owned(),
         },
+    }
+}
+
+/// The frames drawn a second, and the frames shown beside them while
+/// frame generation shows frames.
+fn fps_text(s: &Snapshot) -> String {
+    let fps = aurora_i18n::tr!("monitor-fps", fps = aurora_i18n::number(f64::from(s.fps), 0));
+    match s.fg_shown_fps {
+        Some(shown) => format!("{fps} · {}", crate::ui::perf::fg_shown_text(shown)),
+        None => fps,
     }
 }
 

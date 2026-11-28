@@ -77,6 +77,23 @@ fn fps_of(ms: f32) -> f32 {
     1000.0 / ms.max(0.1)
 }
 
+/// The frames shown and drawn a second while DLSS frame generation shows
+/// frames (shown, drawn), else None: the top bar counts the shown ones,
+/// the Resource monitor the drawn ones beside the shown.
+pub(crate) fn fg_rates() -> Option<(f32, f32)> {
+    use aurora_render::DlssFgShown as S;
+    let fg = aurora_render::dlss_fg_status();
+    (matches!(fg.shown, S::Presenter | S::TwoPresents(_) | S::Streamline(None)) && fg.shown_fps > 0.0)
+        .then_some((fg.shown_fps, fg.drawn_fps))
+}
+
+/// The frames shown a second under frame generation, beside a rate of
+/// frames drawn.
+pub(crate) fn fg_shown_text(shown: f32) -> String {
+    let shown = aurora_i18n::number(f64::from(shown), 0);
+    aurora_i18n::tr!("monitor-shown-fg", shown = shown.as_str())
+}
+
 /// Top of the graph scale (images/s) for these frames: above the fast
 /// ones, ignoring the 2 % fastest (a lone very short frame after a long
 /// one would squash the whole graph).
@@ -546,8 +563,15 @@ fn headline(ui: &mut egui::Ui, p: &Palette, d: &PerfData) {
                 .color(fps_color(p, d.fps)),
         );
         ui.vertical(|ui| {
-            ui.add_space(12.0);
+            // (frame generation's shown frames under it: the big number
+            // stays the frames drawn, which the times on the right make)
+            let fg = fg_rates();
+            ui.spacing_mut().item_spacing.y = 0.0;
+            ui.add_space(if fg.is_some() { 4.0 } else { 12.0 });
             ui.label(RichText::new("images/s").size(11.0).color(p.muted));
+            if let Some((shown, _)) = fg {
+                ui.label(RichText::new(fg_shown_text(shown)).size(11.0).color(p.muted));
+            }
         });
         ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
@@ -835,6 +859,7 @@ mod tests {
                             cpu: None,
                             probes: None,
                             fps,
+                            fg_shown_fps: None,
                             frame_ms: 1000.0 / fps,
                             parts: FrameParts::default(),
                             memory: None,
