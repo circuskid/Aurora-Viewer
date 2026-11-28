@@ -176,7 +176,11 @@ impl ToolbarUi {
         .action("arrow-back-up", aurora_i18n::tr!("toolbar-undo"), &mut undo)
         .steady_size();
         window.min_size = Vec2::new(560.0, 360.0);
+        let mut outside_key = None;
         window.show(ctx, p, &mut open, |ui| {
+            if crate::outside::native(ui.ctx(), egui::Id::unique(WINDOW)) {
+                outside_key = self.outside_key(ui.ctx());
+            }
             ui.spacing_mut().item_spacing.y = 8.0;
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
             ui.horizontal(|ui| {
@@ -518,6 +522,8 @@ impl ToolbarUi {
             } else {
                 crate::keybinds::EditHistory::Redo
             });
+        } else if outside_key.is_some() {
+            self.history_request = outside_key;
         }
         self.show_appearance(ctx, p, settings, layout);
         self.show_menu_row_context(ctx, p, settings);

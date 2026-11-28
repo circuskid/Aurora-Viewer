@@ -16,12 +16,14 @@
 //! What also changes outside editing is no step and stays as it is on undo:
 //! the lock, the floating blocks shown or hidden, the fixed blocks their
 //! shortcut hid, the one-time migrations, and a floating block moved without
-//! a hand on it (the viewer's window resized, a block kept on the screen).
+//! a hand on it (the viewer's window resized, a block kept on the screen):
+//! the older steps that had it at its old place take its new one.
 //! An interface loaded also writes the bars' look and the other Aurora or
 //! Legacy styles, and which interface is chosen (`Load`): those go back and
 //! forth with its step, each preference only while it keeps what the load
-//! gave it. The history lasts while the viewer runs; a layout changed while
-//! the editor was closed (an interface loaded from its block, a floating
+//! gave it, and a redo writes again only what the undo put back. The history
+//! lasts while the viewer runs; a layout changed while the editor was closed
+//! (an interface loaded from its block, even onto the same bars, a floating
 //! block dragged) starts it again.
 
 use super::{ToolbarSettings, ToolbarUi, floating};
@@ -69,9 +71,20 @@ macro_rules! loaded_fields {
             }
 
             /// The preferences back as they were, each one only while it
-            /// keeps what the load gave it.
-            pub(crate) fn take_back(&self, settings: &mut Settings) {
-                $(back(&mut settings.$($field).+, &self.was.$($field).+, &self.made.$($field).+);)*
+            /// keeps what the load gave it. Returns the way back: the
+            /// preferences taken back, and only those, made again (a
+            /// preference changed since the load stays as it is both ways).
+            pub(crate) fn take_back(&self, settings: &mut Settings) -> Self {
+                let mut again = Self {
+                    was: Box::new(settings.clone()),
+                    made: Box::new(settings.clone()),
+                };
+                $(if settings.$($field).+ == self.made.$($field).+ {
+                    again.was.$($field).+ = self.made.$($field).+.clone();
+                    again.made.$($field).+ = self.was.$($field).+.clone();
+                    settings.$($field).+ = self.was.$($field).+.clone();
+                })*
+                again
             }
         }
     };
@@ -113,12 +126,6 @@ loaded_fields!(
     chat_thumbnails,
 );
 
-fn back<T: PartialEq + Clone>(now: &mut T, was: &T, made: &T) {
-    if now == made {
-        *now = was.clone();
-    }
-}
-
 impl Load {
     pub(crate) fn new(was: &Settings, made: &Settings) -> Self {
         Self {
@@ -127,7 +134,8 @@ impl Load {
         }
     }
 
-    /// The other way: what the undo took back, made again by the redo.
+    /// The other way: what the undo takes back, made again by the redo
+    /// (narrowed by `History::taken_back` to what it did take back).
     fn reversed(&self) -> Self {
         Self {
             was: self.made.clone(),
@@ -164,8 +172,12 @@ pub(crate) struct History {
     load: Option<Load>,
     /// The editor was open on the last frame seen.
     editing: bool,
-    /// A floating block was dragged while the editor was closed.
-    moved_outside: bool,
+    /// The layout changed while the editor was closed: a floating block
+    /// dragged, an interface loaded.
+    changed_outside: bool,
+    /// The way the last step went when it took a load back: the other
+    /// stack's top waits for `taken_back`.
+    reversed: Option<EditHistory>,
 }
 
 impl History {
@@ -175,15 +187,15 @@ impl History {
     /// on the first settled frame that changes nothing.
     pub(super) fn observe(&mut self, settings: &ToolbarSettings, places: &Places, settled: bool, by_hand: bool) {
         let resumed = !std::mem::replace(&mut self.editing, true);
-        let moved_outside = std::mem::take(&mut self.moved_outside);
+        let changed_outside = std::mem::take(&mut self.changed_outside);
         let key = layout_only(settings);
         match self.seen.as_mut() {
-            Some((seen, seen_key)) if *seen_key == key && !(by_hand && moved(&seen.places, places)) && !(resumed && moved_outside) => {
+            Some((seen, seen_key)) if *seen_key == key && !(by_hand && moved(&seen.places, places)) && !(resumed && changed_outside) => {
                 // nothing edited: what changes outside editing, and the
                 // blocks drawn for the first time or moved by the window,
                 // follow
                 seen.settings.clone_from(settings);
-                follow(&mut seen.places, places);
+                self.follow(places);
                 if settled {
                     self.settle();
                 }
@@ -211,13 +223,41 @@ impl History {
         if std::mem::replace(&mut self.editing, false) {
             self.settle();
         }
-        if let Some((seen, _)) = self.seen.as_mut()
-            && moved(&seen.places, places)
-        {
+        if self.seen.as_ref().is_some_and(|(seen, _)| moved(&seen.places, places)) {
             if by_hand {
-                self.moved_outside = true;
+                self.changed_outside = true;
             } else {
-                follow(&mut seen.places, places);
+                self.follow(places);
+            }
+        }
+    }
+
+    /// The blocks drawn for the first time, or moved past anchoring's
+    /// rounding by something other than a hand (the viewer's window
+    /// resized, a block kept on the screen), taken where they are now; a
+    /// step that had a block where it stood moves it along, so that undoing
+    /// another change leaves it where the window put it.
+    fn follow(&mut self, now: &Places) {
+        let Self {
+            seen, undo, redo, before, ..
+        } = self;
+        let Some((seen, _)) = seen.as_mut() else { return };
+        for (id, pos) in now {
+            let Some(was) = seen.places.get(id).copied() else {
+                seen.places.insert(id.clone(), *pos);
+                continue;
+            };
+            if (was - *pos).length() <= MOVE_TOLERANCE {
+                continue;
+            }
+            seen.places.insert(id.clone(), *pos);
+            let steps = undo.iter_mut().chain(redo.iter_mut()).map(|step| &mut step.snapshot);
+            for snapshot in steps.chain(before.as_mut()) {
+                if let Some(at) = snapshot.places.get_mut(id)
+                    && (*at - was).length() <= MOVE_TOLERANCE
+                {
+                    *at = *pos;
+                }
             }
         }
     }
@@ -226,6 +266,9 @@ impl History {
     /// goes with the change it makes, a step even when the bars stay.
     pub(super) fn loaded(&mut self, load: Load) {
         if !self.editing {
+            // its bars may be the same: what it wrote besides still makes
+            // the steps before it wrong
+            self.changed_outside |= load.changes();
             return;
         }
         if self.before.is_none() {
@@ -246,6 +289,7 @@ impl History {
             EditHistory::Redo => (&mut self.redo, &mut self.undo),
         };
         let target = from.pop()?;
+        self.reversed = target.load.is_some().then_some(history);
         if let Some((current, _)) = self.seen.take() {
             push(
                 to,
@@ -257,6 +301,21 @@ impl History {
         }
         self.seen = Some((target.snapshot.clone(), layout_only(&target.snapshot.settings)));
         Some((target.snapshot, target.load))
+    }
+
+    /// What the load of the last step took back (`Load::take_back`): only
+    /// that is made again the other way.
+    pub(super) fn taken_back(&mut self, again: Load) {
+        let stack = match self.reversed.take() {
+            Some(EditHistory::Undo) => &mut self.redo,
+            Some(EditHistory::Redo) => &mut self.undo,
+            None => return,
+        };
+        if let Some(step) = stack.last_mut()
+            && step.load.is_some()
+        {
+            step.load = Some(again);
+        }
     }
 
     #[cfg(test)]
@@ -295,12 +354,16 @@ const OWN_HISTORY: [&str; 8] = [
 impl ToolbarUi {
     /// After the frame's edits (`commit_with_menus`, the shortcuts'
     /// fallback): the layout noted, and an undo or redo asked for, by the
-    /// editor's title buttons or Ctrl+Z / Ctrl+Y, applied. Returns whether
-    /// the settings changed, to be saved; the preferences of an interface
-    /// loaded are the app's to take back (`take_load_back`).
-    pub fn track_history(&mut self, ctx: &egui::Context, settings: &mut ToolbarSettings) -> bool {
+    /// editor's title buttons or Ctrl+Z / Ctrl+Y, applied. `keys`: no web
+    /// page, media face or the Director has the keyboard, whose native keys
+    /// egui also holds. Returns whether the settings changed, to be saved;
+    /// the preferences of an interface loaded are the app's to take back
+    /// (`take_load_back`, then `load_taken_back`).
+    pub fn track_history(&mut self, ctx: &egui::Context, settings: &mut ToolbarSettings, keys: bool) -> bool {
         let now = places(ctx, settings);
-        let by_hand = ctx.input(|i| i.pointer.any_down());
+        // the release counts: a block dragged lands on the frame after the
+        // pointer moved (`move_floater`)
+        let by_hand = ctx.input(|i| i.pointer.any_down() || i.pointer.any_released());
         if !self.open {
             self.history.closed(&now, by_hand);
             self.history_request = None;
@@ -310,7 +373,8 @@ impl ToolbarUi {
         self.history.observe(settings, &now, settled, by_hand);
         let asked = match self.history_request.take() {
             Some(request) => Some((request, None)),
-            None => self.history_key(ctx).map(|(request, key)| (request, Some(key))),
+            None if keys => self.history_key(ctx).map(|(request, key)| (request, Some(key))),
+            None => None,
         };
         let Some((request, key)) = asked else {
             return false;
@@ -346,6 +410,29 @@ impl ToolbarUi {
         self.load_back.take()
     }
 
+    /// An undo or redo of this frame takes an interface loaded back: the
+    /// conversations' thumbnails are the load's, not the bars'.
+    pub(crate) fn load_pending(&self) -> bool {
+        self.load_back.is_some()
+    }
+
+    /// What `Load::take_back` did take back, for the other way.
+    pub(crate) fn load_taken_back(&mut self, again: Load) {
+        self.history.taken_back(again);
+    }
+
+    /// Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z in the editor popped out in its own
+    /// window, whose keys the viewer's window never gets: from inside it
+    /// (`ctx` is its own), on the same terms as `history_key`.
+    pub(super) fn outside_key(&self, ctx: &egui::Context) -> Option<EditHistory> {
+        if self.shortcut_editing() || Self::dragging(ctx) || ctx.egui_wants_keyboard_input() || egui::Popup::is_any_open(ctx) {
+            return None;
+        }
+        let (history, (key, modifiers)) = pressed_history(ctx)?;
+        ctx.input_mut(|i| i.consume_key(modifiers, key));
+        Some(history)
+    }
+
     /// Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z, as the poser takes them
     /// (`ik_edit::poser::ui`), not consumed yet: none while a field keeps
     /// its own history, a menu or a dialog is open, a button is dragged, a
@@ -365,25 +452,30 @@ impl ToolbarUi {
         {
             return None;
         }
-        ctx.input(|i| {
-            i.events.iter().find_map(|e| match *e {
-                egui::Event::Key {
-                    key,
-                    pressed: true,
-                    modifiers: m,
-                    ..
-                } => {
-                    let mods = crate::keybinds::Mods {
-                        ctrl: m.command || m.ctrl,
-                        shift: m.shift,
-                        alt: m.alt,
-                    };
-                    EditHistory::from_key(key, mods).map(|h| (h, (key, m)))
-                }
-                _ => None,
-            })
-        })
+        pressed_history(ctx)
     }
+}
+
+/// The frame's first press of an undo or redo key, not consumed.
+fn pressed_history(ctx: &egui::Context) -> Option<(EditHistory, (egui::Key, egui::Modifiers))> {
+    ctx.input(|i| {
+        i.events.iter().find_map(|e| match *e {
+            egui::Event::Key {
+                key,
+                pressed: true,
+                modifiers: m,
+                ..
+            } => {
+                let mods = crate::keybinds::Mods {
+                    ctrl: m.command || m.ctrl,
+                    shift: m.shift,
+                    alt: m.alt,
+                };
+                EditHistory::from_key(key, mods).map(|h| (h, (key, m)))
+            }
+            _ => None,
+        })
+    })
 }
 
 fn snapshot(settings: &ToolbarSettings, places: &Places) -> Snapshot {
@@ -401,16 +493,6 @@ fn push(steps: &mut Vec<Step>, step: Step) {
 }
 
 /// A block standing in both that is not where it was.
-/// The blocks drawn for the first time, or moved past anchoring's
-/// rounding by something other than a hand, taken where they are now.
-fn follow(seen: &mut Places, now: &Places) {
-    for (id, pos) in now {
-        if seen.get(id).is_none_or(|was| (*was - *pos).length() > MOVE_TOLERANCE) {
-            seen.insert(id.clone(), *pos);
-        }
-    }
-}
-
 fn moved(before: &Places, now: &Places) -> bool {
     before
         .iter()
@@ -686,6 +768,24 @@ mod tests {
         history.closed(&at(30.0), false);
         edit(&mut history, &forward.settings, &at(30.0));
         assert_eq!(history.depth(), (1, 0));
+        // undoing the other change leaves the block where the window put it
+        let (back, _) = history.step(EditHistory::Undo).expect("a step");
+        assert!(commands(&back.settings).is_empty());
+        assert_eq!(back.places, at(30.0));
+    }
+
+    #[test]
+    fn a_block_moved_by_hand_and_then_by_the_window_goes_back_by_hand_only() {
+        let mut history = History::default();
+        let at = |x: f32| Places::from([("drawer_1".to_owned(), egui::pos2(x, 40.0))]);
+        edit(&mut history, &layout(&["a"]), &at(100.0));
+        // dragged to 200, then the window moves it to 180
+        history.observe(&layout(&["a"]), &at(200.0), false, true);
+        edit(&mut history, &layout(&["a"]), &at(200.0));
+        edit(&mut history, &layout(&["a"]), &at(180.0));
+        assert_eq!(history.depth(), (1, 0));
+        let (back, _) = history.step(EditHistory::Undo).expect("a step");
+        assert_eq!(back.places, at(100.0), "where the hand took it from");
     }
 
     #[test]
@@ -739,13 +839,15 @@ mod tests {
         assert_eq!(oldest.expect("steps").settings.top.len(), names.len() - DEPTH);
     }
 
-    /// Applies an undo or redo as `track_history` and the app do.
-    fn apply(settings: &mut Settings, (target, load): (Snapshot, Option<Load>)) {
+    /// Takes an undo or redo as `track_history` and the app do.
+    fn apply(history: &mut History, settings: &mut Settings, way: EditHistory) {
+        let (target, load) = history.step(way).expect("a step");
         let mut restored = target.settings;
         carry_live(&mut restored, settings.toolbar.as_ref().expect("bars"));
         settings.toolbar = Some(restored);
         if let Some(load) = load {
-            load.take_back(settings);
+            let again = load.take_back(settings);
+            history.taken_back(again);
         }
     }
 
@@ -764,10 +866,10 @@ mod tests {
         assert_eq!(history.depth(), (1, 0));
         let legacy = settings.clone();
         assert!(legacy.classic_bars && !aurora.classic_bars);
-        apply(&mut settings, history.step(EditHistory::Undo).expect("a step"));
+        apply(&mut history, &mut settings, EditHistory::Undo);
         assert_eq!(json(&settings), json(&aurora), "the bars, the look and the chosen interface back");
         edit(&mut history, settings.toolbar.as_ref().expect("bars"), &none);
-        apply(&mut settings, history.step(EditHistory::Redo).expect("a step"));
+        apply(&mut history, &mut settings, EditHistory::Redo);
         assert_eq!(json(&settings), json(&legacy));
     }
 
@@ -786,8 +888,56 @@ mod tests {
         history.loaded(Load::new(&was, &settings));
         edit(&mut history, settings.toolbar.as_ref().expect("bars"), &none);
         assert_eq!(history.depth(), (1, 0));
-        apply(&mut settings, history.step(EditHistory::Undo).expect("a step"));
+        apply(&mut history, &mut settings, EditHistory::Undo);
         assert_eq!(settings.classic_bars, was.classic_bars);
+    }
+
+    #[test]
+    fn a_preference_the_undo_left_is_left_by_the_redo_too() {
+        let skin = Layout::default();
+        let none = Places::new();
+        let mut settings = Settings::default();
+        Preset::Light.apply(&mut settings, &skin);
+        let mut history = History::default();
+        edit(&mut history, settings.toolbar.as_ref().expect("bars"), &none);
+        let aurora = settings.clone();
+        Preset::Legacy.apply(&mut settings, &skin);
+        assert_ne!(settings.classic_search, aurora.classic_search, "the load changes the search");
+        history.loaded(Load::new(&aurora, &settings));
+        edit(&mut history, settings.toolbar.as_ref().expect("bars"), &none);
+        // Preferences: the search put back as it was before the load
+        settings.classic_search = aurora.classic_search;
+        apply(&mut history, &mut settings, EditHistory::Undo);
+        assert_eq!(settings.classic_bars, aurora.classic_bars, "the load undone");
+        assert_eq!(settings.classic_search, aurora.classic_search);
+        edit(&mut history, settings.toolbar.as_ref().expect("bars"), &none);
+        apply(&mut history, &mut settings, EditHistory::Redo);
+        assert!(settings.classic_bars, "the load redone");
+        assert_eq!(settings.classic_search, aurora.classic_search, "the search the undo left stays");
+    }
+
+    #[test]
+    fn an_interface_loaded_with_the_editor_closed_starts_the_history_again() {
+        let none = Places::new();
+        let mut settings = Settings {
+            toolbar: Some(layout(&["a"])),
+            ..Default::default()
+        };
+        let mut history = History::default();
+        edit(&mut history, &layout(&[]), &none);
+        edit(&mut history, settings.toolbar.as_ref().expect("bars"), &none);
+        history.closed(&none, false);
+        // the same interface loaded again: nothing changes, the history stays
+        history.loaded(Load::new(&settings, &settings));
+        edit(&mut history, settings.toolbar.as_ref().expect("bars"), &none);
+        assert_eq!(history.depth(), (1, 0));
+        history.closed(&none, false);
+        // a personal interface of the same buttons on the other base
+        let was = settings.clone();
+        settings.classic_bars = !settings.classic_bars;
+        history.loaded(Load::new(&was, &settings));
+        edit(&mut history, settings.toolbar.as_ref().expect("bars"), &none);
+        assert_eq!(history.depth(), (0, 0));
     }
 
     #[test]

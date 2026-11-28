@@ -19949,6 +19949,9 @@ impl App {
                     demo_toolbar = Some(t);
                 }
                 let synthetic_toolbar = demo_toolbar.is_some();
+                // a web page, a media face or the Director with the keyboard
+                // got the native keys: their history, not the interface's
+                let history_keys = self.media.focus.is_none() && !self.web_has_focus() && !self.director_has_keys();
                 let toolbar_settings = match demo_toolbar.as_mut() {
                     Some(t) => t,
                     None => self.settings.toolbar.get_or_insert_default(),
@@ -20294,8 +20297,10 @@ impl App {
                     }
                 }
                 // after every edit of the frame, before what follows one
-                toolbar_changed |= self.toolbar_ui.track_history(ui.ctx(), toolbar_settings);
-                if toolbar_changed && previous_conversations != conversation_slot(toolbar_settings) {
+                toolbar_changed |= self.toolbar_ui.track_history(ui.ctx(), toolbar_settings, history_keys);
+                // an interface loaded, undone or redone, takes its own
+                // thumbnails back (`take_load_back`)
+                if toolbar_changed && !self.toolbar_ui.load_pending() && previous_conversations != conversation_slot(toolbar_settings) {
                     self.settings.chat_thumbnails = if conversation_slot(toolbar_settings).is_some() {
                         crate::settings::ChatThumbnails::TopRight
                     } else {
@@ -22552,7 +22557,8 @@ impl App {
         // an interface loaded while editing, undone or redone: what it wrote
         // besides the bars, as a load does
         if let Some(load) = self.toolbar_ui.take_load_back() {
-            load.take_back(&mut self.settings);
+            let again = load.take_back(&mut self.settings);
+            self.toolbar_ui.load_taken_back(again);
             self.toolbar_ui.notecards.selection_changed();
             self.settings.save();
             a.settings_changed = true;
@@ -26662,8 +26668,9 @@ impl ApplicationHandler for App {
                         self.gesture_state.manager.release(Some(key));
                     }
                     // Undo / Redo keep their keys while an editor with a
-                    // history shows: the build tools, or the poser
-                    let history_open = self.build.open || (self.ik_editor.open && self.ik_editor.posing());
+                    // history shows: the build tools, the poser, or the
+                    // interface editor
+                    let history_open = self.build.open || (self.ik_editor.open && self.ik_editor.posing()) || self.toolbar_ui.open;
                     if pressed
                         && !lens_shortcut
                         && !build_shortcut.is_some_and(|s| s.takes_gesture_key(history_open))

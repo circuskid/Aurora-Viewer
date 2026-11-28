@@ -141,17 +141,25 @@ click it gives the drawn button (or the menu's way when it is not drawn).
 `ui/toolbar/history.rs` is the interface editor's Undo and Redo: a snapshot of
 the toolbar settings and the floating blocks' places, 100 steps each way, kept
 while the viewer runs and dropped when the interface changed with the editor
-closed (a floating block dragged then included). A change becomes a step on the
-first settled frame that changes nothing, so the next frame's composition
-(top bar, chat and import controls) belongs to it. A floating block that moves
-is a step only while a pointer is down; one moved by the window (a resize, a
-clamp) is followed, not recorded. An interface loaded while editing
-(`ToolbarUi::interface_loaded`) also records the preferences it wrote (`Load`):
-its undo puts back each of them that still has the loaded value, and the
-selected interface. The lock, the migration flags and the shown blocks change
-outside editing too, so a restored step keeps their current values. Ctrl+Z is
-left to a window with its own history (Build and its tool windows, the poser,
-Director) in front of the editor or focused in its own native window.
+closed (a floating block dragged and an interface loaded then included, even
+when it leaves the same bars). A change becomes a step on the first settled
+frame that changes nothing, so the next frame's composition (top bar, chat and
+import controls) belongs to it. A floating block that moves is a step only
+while a pointer is down or released that frame; one moved by the window (a
+resize, a clamp) is followed, not recorded, and carried into the older steps
+that had it at its old place, so no undo puts it back. An interface loaded
+while editing (`ToolbarUi::interface_loaded`) also records the preferences it
+wrote (`Load`): its undo puts back each of them that still has the loaded
+value, and the selected interface, and its redo writes again only what the
+undo put back (`Load::take_back`). The chat thumbnails' slot follows the
+Conversations button except on the frame such an undo restores the bars. The
+lock, the migration flags and the shown blocks change outside editing too, so a
+restored step keeps their current values. Ctrl+Z is left to a window with its
+own history (Build and its tool windows, the poser, Director) in front of the
+editor or focused in its own native window, and to a web page, a media face or
+Director's timeline holding the keyboard; while the editor is open no gesture
+plays on it. The editor popped out into its own native window takes its keys
+there (`ToolbarUi::outside_key`).
 One-level drawer contents persist in the toolbar settings, reuse the same native
 handlers and drag payload, and can move between drawers and all four bars.
 `ui/toolbar/surface_drop.rs` freezes idle button-face geometry throughout a drag,

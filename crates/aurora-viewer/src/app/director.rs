@@ -695,8 +695,14 @@ impl App {
     /// track's last change, Ctrl+Y or Ctrl+Shift+Z does it again. The letters
     /// are the layout's (Z is not where a QWERTY keyboard has it everywhere).
     /// True when the key was the Director's.
+    /// The Director has the keyboard: its window open, the last click on
+    /// it, the timeline or a keyframe, and no track playing.
+    pub(super) fn director_has_keys(&self) -> bool {
+        self.panels.director && self.director.keys && !self.director.d.playing() && !self.director_montage_on()
+    }
+
     pub(super) fn director_key(&mut self, code: KeyCode, logical: &Key, pressed: bool, mods: Mods) -> bool {
-        if !self.panels.director || !self.director.keys || self.director.d.playing() || self.director_montage_on() {
+        if !self.director_has_keys() {
             return false;
         }
         let letter = |wanted: &str| matches!(logical, Key::Character(text) if text.eq_ignore_ascii_case(wanted));

@@ -2357,7 +2357,7 @@ impl Bench {
                 self.state.show(&ctx, &p, &layout, &self.settings, None);
                 self.state.commit_with_menus(&ctx, &layout, &mut self.settings);
                 // as the app does, after the frame's edits
-                self.state.track_history(&ctx, &mut self.settings);
+                self.state.track_history(&ctx, &mut self.settings, true);
             },
         );
         self.text.clear();
