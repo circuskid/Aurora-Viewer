@@ -21,6 +21,7 @@ mod drop_preview;
 pub(crate) mod edit_mode;
 mod editor;
 pub(crate) mod floating;
+mod history;
 pub(crate) mod native_context;
 pub(crate) mod notecards;
 pub(crate) mod presets;
@@ -901,6 +902,10 @@ pub struct ToolbarUi {
     /// The Preferences shortcuts (given by the app while the shortcut window
     /// is open), for its warnings.
     pub keybinds: Option<crate::keybinds::KeyBindings>,
+    /// Undo and redo while the interface is edited (`history`), and the
+    /// one asked for by the editor's title buttons this frame.
+    history: history::History,
+    history_request: Option<crate::keybinds::EditHistory>,
 }
 
 impl ToolbarUi {

@@ -2345,6 +2345,8 @@ impl Bench {
                 );
                 self.state.show(&ctx, &p, &layout, &self.settings, None);
                 self.state.commit_with_menus(&ctx, &layout, &mut self.settings);
+                // as the app does, after the frame's edits
+                self.state.track_history(&ctx, &mut self.settings);
             },
         );
         self.text.clear();
@@ -5639,4 +5641,112 @@ fn a_blocks_window_edits_its_shortcut_and_greys_hiding_without_one() {
         bench.frame(Vec::new());
     }
     assert!(!bench.settings.shortcuts.contains_key(&id));
+}
+
+/// The interface editor's Undo and Redo, through the frame as the app runs
+/// it: Restore defaults and Clear all, each one step, undone and redone
+/// with the title buttons or Ctrl+Z / Ctrl+Y (human request, 2026-11-28).
+#[test]
+fn restore_defaults_and_clear_all_each_undo_and_redo_in_one_step() {
+    let ctrl = |key| egui::Event::Key {
+        key,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::COMMAND,
+    };
+    let edits: [(&str, fn() -> Edit); 2] = [("restore", || Edit::Restore), ("clear", || Edit::Clear)];
+    for (edit, make) in edits {
+        for keys in [false, true] {
+            let mut bench = Bench {
+                screen: Vec2::new(1600.0, 1000.0),
+                ..Default::default()
+            };
+            bench.state.open = true;
+            for _ in 0..4 {
+                bench.frame(Vec::new());
+            }
+            let start = bench.settings.clone();
+            bench.state.pending = Some(Edit::Insert(Bar::Left, bars::top::button("inventory", "folder-filled"), 0));
+            for _ in 0..4 {
+                bench.frame(Vec::new());
+            }
+            let before = bench.settings.clone();
+            assert!(!before.left.is_empty(), "the button placed");
+            bench.state.pending = Some(make());
+            for _ in 0..4 {
+                bench.frame(Vec::new());
+            }
+            let after = bench.settings.clone();
+            assert_ne!(after, before, "{edit} changed the interface");
+            let step = |bench: &mut Bench, history| {
+                if keys {
+                    let key = match history {
+                        crate::keybinds::EditHistory::Undo => egui::Key::Z,
+                        crate::keybinds::EditHistory::Redo => egui::Key::Y,
+                    };
+                    bench.frame(vec![ctrl(key)]);
+                } else {
+                    bench.state.history_request = Some(history);
+                    bench.frame(Vec::new());
+                }
+                // the restored layout is settled: the next frames add no step
+                for _ in 0..4 {
+                    bench.frame(Vec::new());
+                }
+            };
+            step(&mut bench, crate::keybinds::EditHistory::Undo);
+            assert_eq!(bench.settings, before, "{edit} undone (keys {keys})");
+            assert!(bench.state.open, "the editor stays open");
+            step(&mut bench, crate::keybinds::EditHistory::Redo);
+            assert_eq!(bench.settings, after, "{edit} redone (keys {keys})");
+            step(&mut bench, crate::keybinds::EditHistory::Undo);
+            step(&mut bench, crate::keybinds::EditHistory::Undo);
+            assert_eq!(bench.settings, start, "the insert undone too");
+            step(&mut bench, crate::keybinds::EditHistory::Undo);
+            assert_eq!(bench.settings, start, "nothing further back");
+        }
+    }
+}
+
+/// The lock, set while the editor is open, is no step and stays as it is
+/// when a layout comes back; an interface loaded while editing (a preset,
+/// a saved interface) is one step.
+#[test]
+fn undo_keeps_the_lock_and_takes_back_an_interface_loaded_while_editing() {
+    let mut bench = Bench {
+        screen: Vec2::new(1600.0, 1000.0),
+        ..Default::default()
+    };
+    bench.state.open = true;
+    for _ in 0..4 {
+        bench.frame(Vec::new());
+    }
+    let before = bench.settings.clone();
+    let layout = Layout::default();
+    let mut loaded = presets::Preset::OldSchool.layout(&layout);
+    loaded.locked = bench.settings.locked;
+    bench.settings = loaded;
+    for _ in 0..4 {
+        bench.frame(Vec::new());
+    }
+    let after = bench.settings.clone();
+    assert_ne!(after.left, before.left, "the preset placed its buttons");
+    bench.settings.locked = !before.locked;
+    for _ in 0..4 {
+        bench.frame(Vec::new());
+    }
+    bench.state.history_request = Some(crate::keybinds::EditHistory::Undo);
+    for _ in 0..4 {
+        bench.frame(Vec::new());
+    }
+    assert_eq!(bench.settings.locked, !before.locked, "the lock stays");
+    assert_eq!(bench.settings.left, before.left, "the preset undone in one step");
+    assert_eq!(bench.settings.top, before.top);
+    bench.state.history_request = Some(crate::keybinds::EditHistory::Redo);
+    for _ in 0..4 {
+        bench.frame(Vec::new());
+    }
+    assert_eq!(bench.settings.left, after.left, "redone");
+    assert_eq!(bench.settings.locked, !before.locked, "the lock still stays");
 }

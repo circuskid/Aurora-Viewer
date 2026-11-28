@@ -299,8 +299,8 @@ pub(super) fn inner_bone(name: &str) -> bool {
 pub(super) fn optional_bone(name: &str) -> bool {
     ["Wing", "Tail", "HindLimb"].iter().any(|part| name.contains(part))
 }
-pub(super) const FULL_WINDOW: &str = "poser";
-pub(super) const COMPACT_WINDOW: &str = "poser-compact";
+pub(crate) const FULL_WINDOW: &str = "poser";
+pub(crate) const COMPACT_WINDOW: &str = "poser-compact";
 pub(super) fn window_id(compact: bool) -> &'static str {
     if compact { COMPACT_WINDOW } else { FULL_WINDOW }
 }

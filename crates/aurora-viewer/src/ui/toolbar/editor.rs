@@ -163,6 +163,8 @@ impl ToolbarUi {
         super::blocks::show(ctx, p, settings);
         let dragged = egui::DragAndDrop::payload::<Drag>(ctx);
         let mut open = self.open;
+        // undo and redo as the poser's title arrows (`history`)
+        let (mut undo, mut redo) = (false, false);
         let mut window = widgets::Floater::new(
             WINDOW,
             aurora_i18n::tr!("toolbar-title"),
@@ -170,6 +172,8 @@ impl ToolbarUi {
             Vec2::new(w, default_height(screen)),
         )
         .help(aurora_i18n::tr!("toolbar-help-modes"))
+        .action("arrow-forward-up", aurora_i18n::tr!("toolbar-redo"), &mut redo)
+        .action("arrow-back-up", aurora_i18n::tr!("toolbar-undo"), &mut undo)
         .steady_size();
         window.min_size = Vec2::new(560.0, 360.0);
         window.show(ctx, p, &mut open, |ui| {
@@ -508,6 +512,13 @@ impl ToolbarUi {
         if !self.open {
             self.selected = None;
         }
+        if undo || redo {
+            self.history_request = Some(if undo {
+                crate::keybinds::EditHistory::Undo
+            } else {
+                crate::keybinds::EditHistory::Redo
+            });
+        }
         self.show_appearance(ctx, p, settings, layout);
         self.show_menu_row_context(ctx, p, settings);
         super::block_window::show(ctx, p, self, settings, layout);
@@ -560,9 +571,9 @@ impl ToolbarUi {
                 });
                 ui.label(
                     egui::RichText::new(if restore {
-                        aurora_i18n::tr!("toolbar-confirm-restore")
+                        aurora_i18n::tr!("toolbar-confirm-restore-undoable")
                     } else {
-                        aurora_i18n::tr!("toolbar-confirm-clear")
+                        aurora_i18n::tr!("toolbar-confirm-clear-undoable")
                     })
                     .size(13.0)
                     .color(p.muted),

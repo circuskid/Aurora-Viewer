@@ -20286,6 +20286,8 @@ impl App {
                         }
                     }
                 }
+                // after every edit of the frame, before what follows one
+                toolbar_changed |= self.toolbar_ui.track_history(ui.ctx(), toolbar_settings);
                 if toolbar_changed && previous_conversations != conversation_slot(toolbar_settings) {
                     self.settings.chat_thumbnails = if conversation_slot(toolbar_settings).is_some() {
                         crate::settings::ChatThumbnails::TopRight

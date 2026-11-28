@@ -138,6 +138,11 @@ orientation and hiding live in `block_profiles` until it becomes a drawer).
 `ui/toolbar/shortcuts.rs` holds the keyboard shortcuts of toolbar buttons,
 drawers and blocks: the keys refused at capture, the target of a press, and the
 click it gives the drawn button (or the menu's way when it is not drawn).
+`ui/toolbar/history.rs` is the interface editor's Undo and Redo: a snapshot of
+the toolbar settings and the floating blocks' places once each change settles,
+100 steps each way, kept while the viewer runs and dropped when the interface
+changed with the editor closed. The lock, the migration flags and the shown
+blocks change outside editing too, so a restored step keeps their current values.
 One-level drawer contents persist in the toolbar settings, reuse the same native
 handlers and drag payload, and can move between drawers and all four bars.
 `ui/toolbar/surface_drop.rs` freezes idle button-face geometry throughout a drag,
