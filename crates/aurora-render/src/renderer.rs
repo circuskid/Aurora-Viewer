@@ -2305,6 +2305,9 @@ pub(crate) struct Backend {
     /// Of `shadow_count`, the maps of the projectors; the rest are point
     /// lights'.
     projector_maps: u8,
+    /// The point light maps drawn at the last frame that logged them (those
+    /// with a face in view), and their faces.
+    point_maps_drawn: (usize, usize),
     /// The projector map the rain's shelter takes while it is drawn
     /// (`projector_shadows::shelter_slot`): past the projectors' maps.
     shelter_slot: usize,
@@ -5206,6 +5209,7 @@ impl Backend {
             shadow_dims: crate::projector_shadows::atlas_size(shadow_size, crate::projector_shadows::atlas_maps(2, 2)),
             shadow_count: 2,
             projector_maps: 2,
+            point_maps_drawn: (0, 0),
             shelter_slot: 2,
             shelter_drawn: None,
             shelter_centre: None,
@@ -10759,6 +10763,20 @@ impl Backend {
         );
         let spot_vp: [Option<Mat4>; SPOT_SHADOWS] = views.map(|v| v.map(|(_, m)| m));
         let point_faces = point_shadow_faces(f, &views, projector_maps, mirror.is_some().then_some(mirror_vp));
+        // the point light maps really drawn (a face in view), logged when
+        // their count changes: the ranking's `active` line counts the lights
+        // given a map, not what the atlas draws
+        let drawn = point_faces.iter().flatten().map(|m| m.iter().flatten().count()).filter(|&n| n > 0);
+        let drawn = drawn.fold((0, 0), |(maps, faces), n| (maps + 1, faces + n));
+        if drawn.0 != self.point_maps_drawn.0 {
+            log::info!(
+                "point light shadow maps drawn: {}, {} faces, {} in the atlas",
+                drawn.0,
+                drawn.1,
+                usize::from(self.shadow_count).saturating_sub(projector_maps)
+            );
+            self.point_maps_drawn = drawn;
+        }
         let spot_bins = {
             use crate::projector_shadows::{SpotBins, SpotMap, point_near};
             SpotBins::new(&std::array::from_fn(|k| {

@@ -5406,7 +5406,10 @@ both open states and the selection count. Capture at frame 620.
   window instead, lighting the floor inside at a low angle: with `2`, the
   frame and bars cast clean shadows. `glass` adds a blended pane (alpha
   0.3): it shades the point light by half, evenly, as it does the sun,
-  without stripes on the floor.
+  without stripes on the floor. The log's `point light shadow maps drawn:`
+  line counts the maps the atlas draws. They need the shadows on: a
+  settings file with `shadows` off draws none, and `AURORA_SHADOWS` sets
+  only their quality, not that switch.
 - **`AURORA_DEMO_PROJECTOR=1|point`**: four lights, three of them
   projectors: a white projector facing a wall at 4.5 m, which projects
   the demo image (four colour quarters around a white disc), with

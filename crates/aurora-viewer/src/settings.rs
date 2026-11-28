@@ -4374,7 +4374,9 @@ impl Settings {
             hdr: self.hdr_emissive,
             shadow_resolution: self.shadow_params().0,
             projector_shadow_limit: if self.projector_shadows { self.projector_shadow_limit } else { 0 },
-            point_shadow_limit: if self.point_shadows && self.shadow_quality > 0 {
+            // without shadows no caster is listed (`build_lists`): the maps
+            // would be drawn empty while the light ranking still claims them
+            point_shadow_limit: if self.point_shadows && self.shadows && self.shadow_quality > 0 {
                 self.point_shadow_limit
             } else {
                 0
@@ -4831,6 +4833,9 @@ mod tests {
         assert_eq!(on.render_settings().point_shadow_limit, 3);
         on.shadow_quality = 0;
         assert_eq!(on.render_settings().point_shadow_limit, 0, "without shadows neither");
+        on.shadow_quality = 2;
+        on.shadows = false;
+        assert_eq!(on.render_settings().point_shadow_limit, 0, "nor with the shadows turned off alone");
 
         for (saved, expected) in [(0, 1), (8, 8), (200, 8)] {
             let loaded = Settings {

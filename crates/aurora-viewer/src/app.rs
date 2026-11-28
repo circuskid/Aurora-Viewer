@@ -1733,6 +1733,14 @@ fn apply_test_overrides(settings: &mut Settings) {
     if let Some(limit) = std::env::var("AURORA_POINT_SHADOWS").ok().and_then(|v| v.parse::<u8>().ok()) {
         settings.point_shadows = limit > 0;
         settings.point_shadow_limit = limit.clamp(1, aurora_render::projector_shadows::MAX_POINT_SHADOWS as u8);
+        // the point maps take the shadows' casters (`render_settings`)
+        if settings.point_shadows && !(settings.shadows && settings.shadow_quality > 0) {
+            log::warn!(
+                "AURORA_POINT_SHADOWS={limit}: no point light map is drawn, the shadows are off (shadows {}, quality {})",
+                settings.shadows,
+                settings.shadow_quality
+            );
+        }
     }
     if let Ok(v) = std::env::var("AURORA_HDR") {
         settings.hdr_emissive = v != "0";
